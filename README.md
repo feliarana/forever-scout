@@ -2,7 +2,7 @@
 
 Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), for a troll hunter.
 
-- `addon/FeliExport/` — in-game addon: character snapshot, loot advisor and NPC arrow
+- `addon/FeliExport/` — in-game addon: character snapshot, loot advisor, upkeep alerts and NPC arrow
   ([addon README](addon/FeliExport/README.md)). The game's `Interface/AddOns/FeliExport` is a
   symlink to this folder.
 - `tools/` — Python scripts that cross the live snapshot with the installed QuestieDB.
@@ -25,6 +25,9 @@ Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), fo
   costs.
 - **Loot advisor** — NEED / GREED verdict on every loot roll, or with
   `/wow <item link>`, using the hunter stat weights against the equipped item.
+- **Upkeep alerts** — on-screen warning and sound for low ammo (with a hint to equip another
+  stack), dead / unhappy / content / missing pet, nearly full bags and low durability.
+  `/wow alerts on|off`.
 - **NPC arrow** — `/donde <npc name | id | party member>` puts a TomTom arrow on the nearest
   spawn (Questie database) and prints the distance in yards and meters; with no argument it
   uses the NPC target, and it follows party members live. `/donde off` clears it.

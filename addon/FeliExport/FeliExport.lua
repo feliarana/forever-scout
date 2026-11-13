@@ -6,11 +6,15 @@
 -- type /reload to write the full snapshot to disk. See README.md for every feature.
 -- It also remembers the last quest reward window, trainer and vendor you opened.
 -- /donde <npc | party member> points a TomTom arrow at it (see where()).
+-- Upkeep alerts warn about ammo, pet, bags and durability (see checkAlerts(), /wow alerts).
 
 local frame = CreateFrame("Frame")
 
 -- Data captured from windows during the session; kept until the next snapshot.
 local session = {}
+
+-- Upkeep alerts (ammo, pet, bags, durability); defined further down, used by the event handler.
+local scheduleAlerts
 
 -- Call a function safely; return nil instead of raising if the API is missing or errors.
 local function try(fn, ...)
@@ -929,10 +933,19 @@ frame:RegisterEvent("START_LOOT_ROLL")
 frame:RegisterEvent("PLAYER_LOGOUT")
 frame:RegisterEvent("TAXIMAP_OPENED")
 frame:RegisterEvent("TRADE_SKILL_SHOW")
+-- Events that can change an upkeep alert. Some may not exist on every client, so each
+-- registration is protected.
+local ALERT_EVENTS = {
+  BAG_UPDATE_DELAYED = true, UNIT_PET = true, UNIT_HAPPINESS = true, PET_UI_UPDATE = true,
+  UPDATE_INVENTORY_DURABILITY = true, PLAYER_REGEN_ENABLED = true, PLAYER_ALIVE = true,
+  PLAYER_UNGHOST = true, PLAYER_UPDATE_RESTING = true, PLAYER_MOUNT_DISPLAY_CHANGED = true,
+}
+for event in pairs(ALERT_EVENTS) do pcall(frame.RegisterEvent, frame, event) end
 frame:SetScript("OnEvent", function(_, event, arg1, arg2)
   if event == "PLAYER_LOGIN" then
     onXPUpdate()
     requestRosters()
+    if C_Timer then C_Timer.After(10, function() scheduleAlerts() end) end
     -- Keep the snapshot fresh while playing, so a plain /reload always saves current data.
     -- Rosters are re-requested each tick; the server throttles them and the next tick reads them.
     if C_Timer and C_Timer.NewTicker then
@@ -940,6 +953,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
       C_Timer.NewTicker(20, function()
         pcall(requestRosters)
         pcall(buildSnapshot)
+        scheduleAlerts()
       end)
     end
   elseif event == "PLAYER_XP_UPDATE" then
@@ -973,6 +987,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
   elseif event == "MERCHANT_SHOW" then
     captureMerchant()
   end
+  if ALERT_EVENTS[event] then scheduleAlerts() end
 end)
 
 -- /wow [question] : store the optional question and build the snapshot.
@@ -1257,12 +1272,152 @@ SLASH_FELIEXPORTWHERE1 = "/donde"
 SLASH_FELIEXPORTWHERE2 = "/where"
 SlashCmdList.FELIEXPORTWHERE = where
 
+-- Upkeep alerts: a raid-warning style message, a sound and a chat line when ammo, the pet,
+-- bag space or durability need attention. Each alert fires when its condition starts and
+-- repeats every ALERT_LIMITS.repeatSeconds while it lasts. "/wow alerts off" mutes them.
+local ALERT_LIMITS = {
+  ammo = 400,           -- equipped ammo below this (two quiver stacks of 200)
+  freeSlots = 2,        -- free bag slots at or below this
+  durability = 25,      -- lowest equipped item durability (percent) below this
+  repeatSeconds = 300,
+}
+local PROJECTILE_CLASS = 6  -- item class ID of arrows and bullets
+local alertState = {}
+
+local function alertSettings()
+  local h = history()
+  h.alerts = h.alerts or { enabled = true }
+  return h.alerts
+end
+
+local function alert(key, active, text)
+  if not active then
+    alertState[key] = nil
+    return
+  end
+  local now = GetTime()
+  if alertState[key] and now - alertState[key] < ALERT_LIMITS.repeatSeconds then return end
+  alertState[key] = now
+  if RaidNotice_AddMessage and RaidWarningFrame then
+    pcall(RaidNotice_AddMessage, RaidWarningFrame, text, { r = 1, g = 0.5, b = 0.1 })
+  end
+  if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then pcall(PlaySound, SOUNDKIT.RAID_WARNING) end
+  say(text)
+end
+
+local function itemClassID(itemID)
+  local getInfo = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+  return select(6, try(getInfo, itemID))
+end
+
+-- Ammo in bags (quiver included): the equipped type, every type, and the best other stack.
+-- In this client the ammo slot (0) only references the bag stacks, so they are counted directly.
+local function ammoCounts()
+  local equippedID = try(GetInventoryItemID, "player", 0)
+  local equipped, total, byItem = 0, 0, {}
+  for bag = 0, 4 do
+    local slots = (C_Container and try(C_Container.GetContainerNumSlots, bag)) or try(GetContainerNumSlots, bag) or 0
+    for slot = 1, slots do
+      local info = C_Container and try(C_Container.GetContainerItemInfo, bag, slot)
+      local id, count = info and info.itemID, info and info.stackCount
+      if id and count and itemClassID(id) == PROJECTILE_CLASS then
+        total = total + count
+        byItem[id] = (byItem[id] or 0) + count
+        if id == equippedID then equipped = equipped + count end
+      end
+    end
+  end
+  local otherID, other = nil, 0
+  for id, count in pairs(byItem) do
+    if id ~= equippedID and count > other then otherID, other = id, count end
+  end
+  return equippedID, equipped, total, otherID, other
+end
+
+local function checkAlerts()
+  if not alertSettings().enabled then return end
+  local _, class = UnitClass("player")
+  local inCombat = InCombatLockdown and InCombatLockdown()
+  local dead = UnitIsDeadOrGhost("player")
+
+  if class == "HUNTER" and not dead then
+    local equippedID, equipped, total, otherID, other = ammoCounts()
+    local name = equippedID and itemNameFromLink(try(GetInventoryItemLink, "player", 0)) or "ammo"
+    if not equippedID then
+      alert("ammo", true, total > 0 and "No ammo equipped: drag arrows to the ammo slot." or "No ammo: buy arrows.")
+    elseif equipped < ALERT_LIMITS.ammo then
+      local hint = other > equipped and string.format(" Equip %s (%d).", itemNameFromLink(select(2, try(GetItemInfo, otherID))) or "your other ammo", other)
+        or (total < ALERT_LIMITS.ammo and " Buy more." or "")
+      alert("ammo", true, string.format("Low ammo: %d %s left.%s", equipped, name, hint))
+    else
+      alert("ammo", false)
+    end
+
+    if UnitExists("pet") then
+      alert("petMissing", false)
+      local petDead = UnitIsDead("pet")
+      alert("petDead", petDead and not inCombat, "Pet is dead: cast Revive Pet.")
+      -- 1 unhappy (75% damage), 2 content (100%), 3 happy (125%).
+      local happiness = not petDead and plain(try(GetPetHappiness))
+      alert("petUnhappy", happiness == 1, "Pet is unhappy (75% damage, may run away): Feed Pet now.")
+      alert("petContent", happiness == 2 and not inCombat, "Pet is only content: Feed Pet for +25% damage.")
+    else
+      alert("petDead", false)
+      alert("petUnhappy", false)
+      alert("petContent", false)
+      local away = (IsResting and IsResting()) or (IsMounted and IsMounted()) or (UnitOnTaxi and UnitOnTaxi("player"))
+      alert("petMissing", UnitLevel("player") >= 10 and not away and not inCombat, "No pet out: Call Pet.")
+    end
+  end
+
+  local u = getUpkeep()
+  alert("bags", u.freeSlots <= ALERT_LIMITS.freeSlots,
+    string.format("Bags almost full: %d free slot%s.", u.freeSlots, u.freeSlots == 1 and "" or "s"))
+  alert("durability", not dead and u.lowestDurability < ALERT_LIMITS.durability,
+    string.format("Gear at %d%% durability: repair.", u.lowestDurability))
+end
+
+-- Bag and unit events come in bursts; run one check a second after the last one.
+local alertPending = false
+scheduleAlerts = function()
+  if alertPending then return end
+  alertPending = true
+  local function run()
+    alertPending = false
+    pcall(checkAlerts)
+  end
+  if C_Timer and C_Timer.After then C_Timer.After(1, run) else run() end
+end
+
+local function alertsCommand(arg)
+  local cfg = alertSettings()
+  if arg == "off" then
+    cfg.enabled = false
+    say("upkeep alerts off (/wow alerts on to enable).")
+  elseif arg == "on" then
+    cfg.enabled = true
+    for k in pairs(alertState) do alertState[k] = nil end
+    say("upkeep alerts on.")
+    scheduleAlerts()
+  else
+    for k in pairs(alertState) do alertState[k] = nil end
+    say(string.format("upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing. Repeat every %d min. /wow alerts on|off",
+      cfg.enabled and "on" or "off", ALERT_LIMITS.ammo, ALERT_LIMITS.freeSlots, ALERT_LIMITS.durability, ALERT_LIMITS.repeatSeconds / 60))
+    if cfg.enabled then pcall(checkAlerts) end
+  end
+end
+
 local function command(msg)
   msg = msg and msg:match("^%s*(.-)%s*$") or ""
   -- "/wow <shift-clicked item link>" gives an instant Need/Greed verdict, no reload needed.
   local link = msg:match("(|c.-|Hitem:.-|h.-|h|r)") or msg:match("(|Hitem:.-|h.-|h)")
   if link then
     adviseItem(link)
+    return
+  end
+  local alertsArg = msg:match("^alerts%s*(%a*)$")
+  if alertsArg then
+    alertsCommand(alertsArg:lower())
     return
   end
   session.question = msg ~= "" and msg or nil

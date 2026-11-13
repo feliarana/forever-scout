@@ -1,8 +1,8 @@
 # FeliExport
 
 In-game addon for WoW Forever (Interface 16001). It saves a per-character snapshot to
-SavedVariables for the offline tools in `tools/`, gives loot advice in chat, and points a
-TomTom arrow at NPCs or party members.
+SavedVariables for the offline tools in `tools/`, gives loot advice in chat, warns about ammo,
+pet, bags and durability, and points a TomTom arrow at NPCs or party members.
 
 The game's `Interface/AddOns/FeliExport` folder is a symlink to this directory.
 
@@ -17,6 +17,8 @@ The game's `Interface/AddOns/FeliExport` folder is a symlink to this directory.
 | Command | What it does |
 |---|---|
 | `/wow [question]` (alias `/feli`) | Builds the snapshot now and opens a copy box with a one-line summary to paste into a chat. The optional question is stored in the snapshot. Type `/reload` afterwards to write the full snapshot to disk. |
+| `/wow alerts` | Shows the upkeep alert thresholds and runs a check now. |
+| `/wow alerts off` / `/wow alerts on` | Mutes or re-enables upkeep alerts (saved per character). |
 | `/wow <shift-clicked item link>` | Instant NEED / GREED verdict for that item against what is equipped. |
 | `/donde <npc name>` (alias `/where`) | TomTom arrow to the nearest spawn of the NPC, with distance in yards and meters. Partial names work and accents are optional (`jabali` matches `Jabalí`). With several matches the nearest spawn wins and the others are listed with their IDs. |
 | `/donde <npc id>` | Same, by NPC ID. |
@@ -71,11 +73,32 @@ is stored under `errors`.
 
 `FeliExportHistory` (per character, kept across sessions): running XP total, level-ups with
 date and zone, deaths with place and level (killer taken from a hostile target, best effort),
-dungeon runs with XP gained, flight paths and recipes.
+dungeon runs with XP gained, flight paths, recipes and the upkeep alert setting (`alerts`).
 
 Values from roster APIs can be restricted ("secret") on this client. Storing one in
 SavedVariables triggers the blocked-action dialog, so the addon drops any value that fails a
 comparison inside `pcall`.
+
+## Upkeep alerts
+
+A warning in the middle of the screen, the raid warning sound and a chat line when something
+needs attention. Each alert fires when its condition starts and repeats every 5 minutes while
+it lasts. Checks run a second after bag, pet, durability, combat-end and resting changes, and
+every 20 seconds.
+
+| Alert | Condition | Message hint |
+|---|---|---|
+| Low ammo (hunter) | Equipped ammo below 400 | Equip the bigger stack of other ammo if there is one, else buy more |
+| No ammo (hunter) | No ammo equipped | Drag arrows to the ammo slot, or buy them |
+| Pet dead (hunter) | Pet is dead, out of combat | Revive Pet |
+| Pet unhappy (hunter) | Happiness 1 (75% damage, may run away) | Feed Pet now |
+| Pet content (hunter) | Happiness 2, out of combat | Feed Pet for +25% damage |
+| No pet (hunter, level 10+) | No pet out, out of combat, not resting, mounted or flying | Call Pet |
+| Bags almost full | 2 free bag slots or fewer | — |
+| Low durability | Any equipped item below 25% | Repair |
+
+Ammo is counted from the bag stacks (quiver included), since the ammo slot only references
+them. Thresholds live in `ALERT_LIMITS` in `FeliExport.lua`.
 
 ## Loot advisor
 
