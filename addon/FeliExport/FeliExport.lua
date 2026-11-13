@@ -2,8 +2,10 @@
 -- WoW only flushes SavedVariables to disk on /reload, character switch or logout,
 -- so /wow builds the snapshot and the following /reload writes it to disk.
 --
--- Usage: /wow [optional question]  -> saves snapshot + question, then reloads the UI.
+-- Usage: /wow [optional question]  -> saves snapshot + question and shows a copy box;
+-- type /reload to write the full snapshot to disk. See README.md for every feature.
 -- It also remembers the last quest reward window, trainer and vendor you opened.
+-- /donde <npc | party member> points a TomTom arrow at it (see where()).
 
 local frame = CreateFrame("Frame")
 
@@ -153,24 +155,29 @@ local function adviseItem(link, attempt)
 end
 
 
-local function getLocation()
-  local loc = { zone = GetZoneText(), subZone = GetSubZoneText(), realZone = GetRealZoneText() }
-  if C_Map and C_Map.GetBestMapForUnit then
-    local mapID = try(C_Map.GetBestMapForUnit, "player")
-    if mapID then
-      loc.mapID = mapID
-      local info = try(C_Map.GetMapInfo, mapID)
-      if info then loc.mapName = info.name end
-      local pos = try(C_Map.GetPlayerMapPosition, mapID, "player")
-      if pos and pos.GetXY then
-        local x, y = pos:GetXY()
-        if x and y then
-          loc.x = math.floor(x * 10000 + 0.5) / 100
-          loc.y = math.floor(y * 10000 + 0.5) / 100
-        end
-      end
+-- Map ID, map name and x,y (percent) of a unit; nil fields when the client hides them.
+local function unitMapPos(unit)
+  local out = {}
+  if not (C_Map and C_Map.GetBestMapForUnit) then return out end
+  local mapID = try(C_Map.GetBestMapForUnit, unit)
+  if not mapID then return out end
+  out.mapID = mapID
+  local info = try(C_Map.GetMapInfo, mapID)
+  if info then out.mapName = info.name end
+  local pos = try(C_Map.GetPlayerMapPosition, mapID, unit)
+  if pos and pos.GetXY then
+    local x, y = pos:GetXY()
+    if x and y then
+      out.x = math.floor(x * 10000 + 0.5) / 100
+      out.y = math.floor(y * 10000 + 0.5) / 100
     end
   end
+  return out
+end
+
+local function getLocation()
+  local loc = { zone = GetZoneText(), subZone = GetSubZoneText(), realZone = GetRealZoneText() }
+  for k, v in pairs(unitMapPos("player")) do loc[k] = v end
   return loc
 end
 
@@ -681,20 +688,93 @@ local function push(list, entry)
   while #list > MAX_ENTRIES do table.remove(list, 1) end
 end
 
+-- Values from roster APIs can be restricted ("secret") on this client; storing one makes the
+-- SavedVariables write trip the blocked-action dialog. Comparing a secret value raises an error,
+-- so a value that survives a comparison inside pcall is a plain one and safe to keep.
+local function plain(v)
+  if v == nil then return nil end
+  local ok = pcall(function() return v == v end)
+  return ok and v or nil
+end
+
+local function isTrue(v)
+  local ok, r = pcall(function() return v == true end)
+  return ok and r or false
+end
+
+-- Strip the "-Realm" suffix the guild roster adds to names.
+local function shortName(name)
+  name = plain(name)
+  return type(name) == "string" and (name:match("^([^-]+)") or name) or nil
+end
+
 local function partyMembers()
   local members = {}
   for i = 1, 4 do
     local unit = "party" .. i
     if UnitExists(unit) then
       local _, class = UnitClass(unit)
-      -- Online and same-area flags tell whether the member can actually help right now.
+      -- Online flag and map position tell whether the member can actually help right now.
       local entry = { name = UnitName(unit), level = UnitLevel(unit), class = class }
       -- Connection state can come back as a restricted value; any test on it must stay inside pcall.
       pcall(function() entry.online = (UnitIsConnected(unit) == true) and "yes" or "no" end)
+      pcall(function()
+        for k, v in pairs(unitMapPos(unit)) do entry[k] = plain(v) end
+      end)
       members[#members + 1] = entry
     end
   end
   return members
+end
+
+-- Ask the server for fresh friend and guild rosters; the data arrives a moment later
+-- and is read by the next snapshot.
+local function requestRosters()
+  if C_FriendList and C_FriendList.ShowFriends then pcall(C_FriendList.ShowFriends) end
+  if IsInGuild and IsInGuild() then
+    if C_GuildInfo and C_GuildInfo.GuildRoster then pcall(C_GuildInfo.GuildRoster)
+    elseif GuildRoster then pcall(GuildRoster) end
+  end
+end
+
+-- Online friends (character list, Battle.net friends playing WoW, guild) with level and zone,
+-- so a session can be planned around who is actually playing and where.
+local function getOnlineFriends()
+  local out, seen = {}, {}
+  local function add(source, name, level, class, zone, realm)
+    name = shortName(name)
+    if not name or seen[name] then return end
+    seen[name] = true
+    out[#out + 1] = { source = source, name = name, level = plain(level), class = plain(class),
+                      zone = plain(zone), realm = plain(realm) }
+  end
+
+  if C_FriendList and C_FriendList.GetNumFriends and C_FriendList.GetFriendInfoByIndex then
+    for i = 1, (try(C_FriendList.GetNumFriends) or 0) do
+      local f = try(C_FriendList.GetFriendInfoByIndex, i)
+      if f and isTrue(f.connected) then add("friend", f.name, f.level, f.className, f.area) end
+    end
+  end
+
+  if BNGetNumFriends and C_BattleNet and C_BattleNet.GetFriendAccountInfo then
+    for i = 1, (try(BNGetNumFriends) or 0) do
+      local a = try(C_BattleNet.GetFriendAccountInfo, i)
+      local g = a and a.gameAccountInfo
+      if g and isTrue(g.isOnline) and plain(g.clientProgram) == "WoW" then
+        add("bnet", g.characterName, g.characterLevel, g.className, g.areaName, g.realmName)
+      end
+    end
+  end
+
+  if IsInGuild and IsInGuild() and GetNumGuildMembers and GetGuildRosterInfo then
+    for i = 1, (try(GetNumGuildMembers) or 0) do
+      local name, _, _, level, class, zone, _, _, online = try(GetGuildRosterInfo, i)
+      if isTrue(online) and shortName(name) ~= UnitName("player") then
+        add("guild", name, level, class, zone)
+      end
+    end
+  end
+  return out
 end
 
 -- Count every XP point gained, including across level-ups, into a running total.
@@ -791,6 +871,7 @@ local function buildSnapshot()
     return inInstance and { name = GetInstanceInfo(), type = instanceType } or nil
   end)
   section("party", function() return IsInGroup() and partyMembers() or nil end)
+  section("onlineFriends", getOnlineFriends)
   section("pvpFlagged", function() return UnitIsPVP("player") and true or false end)
   section("currentRun", function()
     local run = history().openRun
@@ -851,10 +932,15 @@ frame:RegisterEvent("TRADE_SKILL_SHOW")
 frame:SetScript("OnEvent", function(_, event, arg1, arg2)
   if event == "PLAYER_LOGIN" then
     onXPUpdate()
+    requestRosters()
     -- Keep the snapshot fresh while playing, so a plain /reload always saves current data.
+    -- Rosters are re-requested each tick; the server throttles them and the next tick reads them.
     if C_Timer and C_Timer.NewTicker then
       C_Timer.After(5, function() pcall(buildSnapshot) end)
-      C_Timer.NewTicker(20, function() pcall(buildSnapshot) end)
+      C_Timer.NewTicker(20, function()
+        pcall(requestRosters)
+        pcall(buildSnapshot)
+      end)
     end
   elseif event == "PLAYER_XP_UPDATE" then
     onXPUpdate()
@@ -916,8 +1002,11 @@ local function compactText(snap)
   if pet then add(string.format("pet: %s %s nv %s xp %s/%s feliz %s", tostring(pet.name), tostring(pet.family),
     tostring(pet.level), tostring(pet.xp), tostring(pet.xpMax), tostring(pet.happiness))) end
   local party = {}
-  for _, m in ipairs(snap.party or {}) do party[#party + 1] = tostring(m.name) .. " " .. tostring(m.class) .. " " .. tostring(m.level) .. " " .. tostring(m.online) end
+  for _, m in ipairs(snap.party or {}) do party[#party + 1] = tostring(m.name) .. " " .. tostring(m.class) .. " " .. tostring(m.level) .. " " .. tostring(m.online) .. " " .. tostring(m.mapName) end
   if #party > 0 then add("grupo: " .. table.concat(party, ", ")) end
+  local friends = {}
+  for _, f in ipairs(snap.onlineFriends or {}) do friends[#friends + 1] = tostring(f.name) .. " " .. tostring(f.level) .. " " .. tostring(f.zone) end
+  add("friends online: " .. (#friends > 0 and table.concat(friends, ", ") or "none"))
   for _, q in ipairs(snap.quests or {}) do
     local objs = {}
     for _, o in ipairs(q.objectives or {}) do objs[#objs + 1] = tostring(o.text) end
@@ -966,6 +1055,207 @@ local function showCopyBox(text)
   copyFrame.box:SetFocus()
   copyFrame.box:HighlightText()
 end
+
+-- /donde <npc name | npc id | party member>: points a TomTom arrow at the nearest spawn of an
+-- NPC from Questie's database, or follows a party member's live position. With no argument it
+-- uses the current target's NPC id. "/donde off" clears the arrow.
+-- Questie (spawn data) and TomTom (arrow and live distance) must be enabled.
+local YARD_IN_METERS = 0.9144
+
+local function say(text)
+  DEFAULT_CHAT_FRAME:AddMessage("|cFF54E33BFeliExport|r: " .. text)
+end
+
+local function questieModule(name)
+  if not (QuestieLoader and QuestieLoader.ImportModule) then return nil end
+  return try(QuestieLoader.ImportModule, QuestieLoader, name)
+end
+
+-- Lowercase and strip esMX accents (UTF-8 two-byte letters) so "jabali" matches "Jabalí".
+local ACCENTS = {
+  ["á"] = "a", ["é"] = "e", ["í"] = "i", ["ó"] = "o", ["ú"] = "u", ["ü"] = "u", ["ñ"] = "n",
+  ["Á"] = "a", ["É"] = "e", ["Í"] = "i", ["Ó"] = "o", ["Ú"] = "u", ["Ü"] = "u", ["Ñ"] = "n",
+}
+local function fold(text)
+  return (text:gsub("\195[\128-\191]", ACCENTS)):lower()
+end
+
+-- Name index over Questie's NPC table, built on first use (names come in the client locale).
+local npcIndex
+local function getNpcIndex()
+  if npcIndex then return npcIndex end
+  local db = questieModule("QuestieDB")
+  if not (db and db.NPCPointers and db.QueryNPCSingle) then return nil end
+  local index = {}
+  for id in pairs(db.NPCPointers) do
+    local name = try(db.QueryNPCSingle, id, "name")
+    if type(name) == "string" then index[#index + 1] = { id = id, name = name, key = fold(name) } end
+  end
+  if #index > 0 then npcIndex = index end
+  return npcIndex
+end
+
+-- Exact name or id matches win; otherwise every NPC whose name contains the query.
+local function findNpcs(query)
+  local index = getNpcIndex()
+  if not index then return nil end
+  local id, key = tonumber(query), fold(query)
+  local exact, partial = {}, {}
+  for _, e in ipairs(index) do
+    if id then
+      if e.id == id then exact[#exact + 1] = e end
+    elseif e.key == key then
+      exact[#exact + 1] = e
+    elseif e.key:find(key, 1, true) then
+      partial[#partial + 1] = e
+    end
+  end
+  return #exact > 0 and exact or partial
+end
+
+-- Nearest spawn (world yards) across the given NPCs, using Questie's own distance helper.
+local function nearestSpawn(entries)
+  local db, du = questieModule("QuestieDB"), questieModule("DistanceUtils")
+  if not (db and du and du.GetNearestSpawn) then return nil end
+  local best
+  for i = 1, math.min(#entries, 200) do
+    local e = entries[i]
+    local spawns = try(db.QueryNPCSingle, e.id, "spawns")
+    if type(spawns) == "table" and next(spawns) then
+      local spawn, zone, d = try(du.GetNearestSpawn, spawns)
+      if spawn and d and (not best or d < best.dist) then
+        best = { entry = e, x = spawn[1], y = spawn[2], zone = zone, dist = d }
+      end
+    end
+  end
+  return best
+end
+
+local arrowUid, followTicker
+local function clearArrow()
+  if followTicker then followTicker:Cancel(); followTicker = nil end
+  if arrowUid and TomTom and TomTom.RemoveWaypoint then pcall(TomTom.RemoveWaypoint, TomTom, arrowUid) end
+  arrowUid = nil
+end
+
+local function setArrow(mapID, x, y, title, silent)
+  if arrowUid and TomTom.RemoveWaypoint then pcall(TomTom.RemoveWaypoint, TomTom, arrowUid) end
+  arrowUid = try(TomTom.AddWaypoint, TomTom, mapID, x / 100, y / 100,
+    { title = title, crazy = true, persistent = false, silent = silent, from = "FeliExport" })
+  return arrowUid ~= nil
+end
+
+local function partyUnitByName(query)
+  local key = fold(query)
+  for i = 1, 4 do
+    local unit = "party" .. i
+    local name = UnitExists(unit) and plain(UnitName(unit))
+    if type(name) == "string" and fold(name):find(key, 1, true) then return unit, name end
+  end
+end
+
+-- Re-point the arrow at a moving party member every 2 seconds.
+local function followPartyMember(unit, name)
+  local last
+  local function update()
+    if not UnitExists(unit) or plain(UnitName(unit)) ~= name then
+      say(name .. " left the party; arrow cleared.")
+      clearArrow()
+      return
+    end
+    local pos = unitMapPos(unit)
+    if not (pos.mapID and pos.x and pos.y) then
+      if last then return end  -- keep the last known point
+      say(name .. ": position hidden (instance or other continent).")
+      clearArrow()
+      return
+    end
+    if last and last.mapID == pos.mapID and math.abs(last.x - pos.x) < 0.3 and math.abs(last.y - pos.y) < 0.3 then return end
+    setArrow(pos.mapID, pos.x, pos.y, name, last ~= nil)
+    last = pos
+  end
+  update()
+  if arrowUid and C_Timer and C_Timer.NewTicker then followTicker = C_Timer.NewTicker(2, update) end
+end
+
+local function targetNpcId()
+  local guid = plain(UnitGUID("target"))
+  if type(guid) ~= "string" then return nil end
+  return tonumber(guid:match("^Creature%-%d+%-%d+%-%d+%-%d+%-(%d+)") or guid:match("^Vehicle%-%d+%-%d+%-%d+%-%d+%-(%d+)"))
+end
+
+local function where(msg)
+  msg = msg and msg:match("^%s*(.-)%s*$") or ""
+  if msg == "off" or msg == "clear" then
+    clearArrow()
+    say("arrow cleared.")
+    return
+  end
+  if not (TomTom and TomTom.AddWaypoint) then
+    say("TomTom is not enabled; enable it to get the arrow.")
+    return
+  end
+  if msg == "" then
+    local id = targetNpcId()
+    if not id then
+      say("usage: /donde <npc name or id | party member>, /donde off. With no argument it uses your NPC target.")
+      return
+    end
+    msg = tostring(id)
+  end
+
+  local unit, member = partyUnitByName(msg)
+  if unit then
+    clearArrow()
+    say("following " .. member .. " (party member).")
+    followPartyMember(unit, member)
+    return
+  end
+
+  local found = findNpcs(msg)
+  if not found then
+    say("Questie is not loaded yet; try again in a few seconds.")
+    return
+  end
+  if #found == 0 then
+    say("no NPC matches \"" .. msg .. "\". Other players can only be tracked while in your party.")
+    return
+  end
+  local best = nearestSpawn(found)
+  if not best then
+    say(found[1].name .. ": no known spawn in the database.")
+    return
+  end
+  local zoneDB = questieModule("ZoneDB")
+  local mapID = zoneDB and try(zoneDB.GetUiMapIdByAreaId, zoneDB, best.zone)
+  if not mapID then
+    say(best.entry.name .. ": spawn zone " .. tostring(best.zone) .. " has no map.")
+    return
+  end
+  local info = try(C_Map.GetMapInfo, mapID)
+  -- Only replace the current arrow once the new target is known.
+  clearArrow()
+  setArrow(mapID, best.x, best.y, best.entry.name, true)
+  local distance
+  if best.dist >= 500000 then
+    distance = "other continent"
+  else
+    distance = string.format("%d yd (%d m)", math.floor(best.dist + 0.5), math.floor(best.dist * YARD_IN_METERS + 0.5))
+  end
+  say(string.format("%s (%d) — %s %.1f, %.1f — %s", best.entry.name, best.entry.id,
+    info and info.name or "?", best.x, best.y, distance))
+  if #found > 1 then
+    local others = {}
+    for i = 1, math.min(#found, 6) do
+      if found[i] ~= best.entry then others[#others + 1] = found[i].name .. " (" .. found[i].id .. ")" end
+    end
+    say(#found .. " matches, nearest chosen. Others: " .. table.concat(others, ", ") .. (#found > 6 and ", ..." or "") .. ". Use /donde <id>.")
+  end
+end
+
+SLASH_FELIEXPORTWHERE1 = "/donde"
+SLASH_FELIEXPORTWHERE2 = "/where"
+SlashCmdList.FELIEXPORTWHERE = where
 
 local function command(msg)
   msg = msg and msg:match("^%s*(.-)%s*$") or ""

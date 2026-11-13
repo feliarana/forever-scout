@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config  # noqa: E402
 from common import (  # noqa: E402
     char_name, fits_character, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot, main_character, snapshots, take_char_arg, IDENTITY,
-    locate, money, player_pos, prereqs_met, quest_level, quest_name, resolve_zone,
+    dist, locate, money, player_pos, prereqs_met, quest_level, quest_name, resolve_zone,
     snapshot_age_minutes, xp_at_level, zone_name,
 )
 
@@ -103,12 +103,35 @@ def character(Q, snap, hist):
     if snap.get("unspentTalentPoints"):
         print(f"!! Unspent talent points: {snap['unspentTalentPoints']}")
     print("PvP flagged: " + ("YES" if snap.get("pvpFlagged") else "no"))
+    loc = snap.get("location") or {}
     party = snap.get("party") or []
     if party:
-        print("Party: " + ", ".join(f"{m.get('name')} {m.get('class')} {m.get('level')} "
-                                    f"({'online' if m.get('online') == 'yes' else 'OFFLINE'})" for m in party))
+        print("Party:")
+        for m in party:
+            where = m.get("mapName") or "zone unknown"
+            if m.get("mapID") and m.get("mapID") == loc.get("mapID"):
+                where += " (same map"
+                if None not in (m.get("x"), m.get("y"), loc.get("x"), loc.get("y")):
+                    where += f", {dist((m['x'], m['y']), (loc['x'], loc['y'])):.1f} away"
+                where += ")"
+            state = "online" if m.get("online") == "yes" else "OFFLINE"
+            print(f"  {m.get('name')} {m.get('class')} {m.get('level')} ({state}) — {where}")
     else:
         print("Party: solo")
+    friends = snap.get("onlineFriends")
+    if friends is None:
+        print("Friends online: not captured (addon older than this tool; /reload)")
+    elif not friends:
+        print("Friends online: none")
+    else:
+        here = {loc.get("zone"), loc.get("realZone"), loc.get("mapName")} - {None}
+        print("Friends online:")
+        for f in sorted(friends, key=lambda f: (f.get("zone") not in here, -(f.get("level") or 0))):
+            near = " (same zone)" if f.get("zone") in here else ""
+            realm = f" [{f['realm']}]" if f.get("realm") and f.get("realm") != snap.get("realm") else ""
+            who = " ".join(str(x) for x in (f.get("name"), f.get("class"), f.get("level")) if x)
+            print(f"  {who} — {f.get('zone') or '?'}{near}"
+                  f"{realm} via {f.get('source')}")
     deaths = [d for d in hist.get("deaths") or [] if d.get("level") == level]
     if deaths:
         pvp = sum(1 for d in deaths if d.get("killerIsPlayer"))

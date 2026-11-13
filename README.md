@@ -2,10 +2,42 @@
 
 Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), for a troll hunter.
 
-- `addon/FeliExport/` — in-game addon that saves a character snapshot (quests, location, gear, bags, talents, pet, buffs…) to SavedVariables on `/wow` or `/reload`. The game's `Interface/AddOns/FeliExport` is a symlink to this folder.
+- `addon/FeliExport/` — in-game addon: character snapshot, loot advisor and NPC arrow
+  ([addon README](addon/FeliExport/README.md)). The game's `Interface/AddOns/FeliExport` is a
+  symlink to this folder.
 - `tools/` — Python scripts that cross the live snapshot with the installed QuestieDB.
-- `guide/` — leveling guide.
+- `guide/` — leveling guide for the troll hunter.
 - `CLAUDE.md` — rules for Claude when working in this repo.
+
+## Features
+
+### In game (FeliExport)
+
+- **Snapshot** — quests, location, gear, bags, talents, spellbook, action bars, pet,
+  professions, buffs, hearthstone, durability, party and online friends, refreshed every 20
+  seconds and written to disk on `/reload`. `/wow [question]` also opens a copy box with a
+  one-line summary to paste into a chat.
+- **Online friends** — friend list, Battle.net friends playing WoW and guild members, with
+  level and zone; party members with map position.
+- **Session history** — XP total, level-ups, deaths (with place), dungeon runs with XP gained,
+  known flight paths and recipes.
+- **Window capture** — last quest reward window, trainer and vendor opened, with stats and
+  costs.
+- **Loot advisor** — NEED / GREED verdict on every loot roll, or with
+  `/wow <item link>`, using the hunter stat weights against the equipped item.
+- **NPC arrow** — `/donde <npc name | id | party member>` puts a TomTom arrow on the nearest
+  spawn (Questie database) and prints the distance in yards and meters; with no argument it
+  uses the NPC target, and it follows party members live. `/donde off` clears it.
+
+### Offline tools
+
+| Script | What it gives |
+|---|---|
+| `analyze.py` | Character summary (XP, rested XP, location, hearthstone, gold, bags, durability, pet, unspent talent points, PvP flag, party with distance, online friends, deaths at this level, flight paths), gear and consumables (ranged weapon, ammo, food, bag upgrades by stat weights), quests ready to turn in with NPC and location, quests in progress with objectives, quests unlocked by turning in, and quests available in the current and neighboring zones |
+| `guide.py` | Per quest: start and turn-in NPCs, quest text, objectives with mob levels, elite flags and spawn clusters |
+| `route_check.py` | Distance from every logged quest's objectives and turn-in to a planned route (on route / short detour / off route) and real XP at the current level |
+| `inventory.py` | Vendor / auction / use / keep / turn-in for every character's bags, bank and mail, with Auctionator prices |
+| `build_q.py` | Builds the `data/Q.pkl` cache from QuestieDB plus real Forever quest XP (the other tools rebuild it when stale) |
 
 Nothing from the game is copied here: tools always read the live files under `WOW_DIR`.
 
