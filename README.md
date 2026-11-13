@@ -18,15 +18,38 @@ python3 -m venv .venv
 ```
 
 Paths live in `config.py` and can be overridden with environment variables:
-`WOW_DIR`, `WOW_ACCOUNT`, `WOW_REALM_DIR`, `WOW_CHAR`, `FELIEXPORT_SNAPSHOT`.
+
+| Variable | Default |
+|---|---|
+| `WOW_DIR` | game folder holding `Interface/` and `WTF/` |
+| `WOW_ACCOUNT` | auto-detected (the only, or most recently used, `WTF/Account/<name>`) |
+| `WOW_CHAR` | highest-level character with a FeliExport snapshot |
+| `FELIEXPORT_SNAPSHOT` | explicit snapshot file (overrides `WOW_CHAR`) |
+| `WOW_AUCTION_REALM` | every Auctionator price database key |
+
+## Characters
+
+Characters are discovered from `WTF/Account/<account>/<realm>/<character>/`, so any number of
+mains, alts and bank alts works. Install FeliExport and log in once with each character
+(`/wow` or `/reload`) so it gets a snapshot.
+
+- `analyze.py`, `guide.py` and `route_check.py` work on one character: `--char NAME`
+  (folder name like `Caza-Peques` or just `Caza`), else `WOW_CHAR`, else the highest level.
+  Quest filters use that character's race, class and faction.
+- `inventory.py` always covers every character: bags, bank and mail from Syndicator, plus
+  snapshot data. Items mailed to a bank alt show up under its mail until collected.
+- Stat weights for the bag-upgrade check are per class in `config.STAT_WEIGHTS` (hunter only
+  for now); `config.KEEP_ITEMS` is the list of items to never sell.
 
 ## Usage
 
 ```bash
 .venv/bin/python tools/analyze.py                 # current zone + neighbors
 .venv/bin/python tools/analyze.py 17 400          # specific zones
+.venv/bin/python tools/analyze.py --char Banca    # another character
 .venv/bin/python tools/guide.py 4841 5147
 .venv/bin/python tools/route_check.py 17:52,30 17:45,57 400:46,51 400:38,27
+.venv/bin/python tools/inventory.py            # what to vendor / auction / keep
 ```
 
 Distances are in map units (percent of the zone map). Route check thresholds: ≤10 on route,
@@ -40,3 +63,5 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 - `QuestieDB/support/Forever/Zones/uiMapIdToAreaId.lua` — map ID → zone.
 - `QuestieDB/support/Forever/DropTables/classicItemDrops.lua` — drop rates.
 - `WTF/.../SavedVariables/FeliExport.lua` and `ShortestPathForever.lua` — snapshot and known flight paths.
+- `WTF/<account>/SavedVariables/Syndicator.lua` — bags, bank and mail of every character.
+- `WTF/<account>/SavedVariables/Auctionator.lua` — AH price database (run a full scan to refresh) and vendor price cache.

@@ -1,7 +1,14 @@
 """Paths and constants for the WoW Forever tooling.
 
-Every path is derived from WOW_DIR and can be overridden with environment variables:
-  WOW_DIR, WOW_ACCOUNT, WOW_REALM_DIR, WOW_CHAR, WOW_CHAR_LEVEL_HINT (unused).
+Every path is derived from WOW_DIR. Environment overrides:
+  WOW_DIR            game folder (the one holding Interface/ and WTF/)
+  WOW_ACCOUNT        WTF/Account/<name>; auto-detected when there is only one (else newest)
+  WOW_CHAR           main character, as its WTF folder name ("Caza-Peques") or name ("Caza");
+                     default: the highest-level character with a FeliExport snapshot
+  FELIEXPORT_SNAPSHOT  explicit snapshot file (overrides WOW_CHAR)
+  WOW_AUCTION_REALM  Auctionator price database key (default: all keys)
+Every tool also accepts `--char NAME`. Characters are discovered from WTF, so any number of
+characters (mains, alts, bank alts) on any realm folder is supported.
 Nothing here copies game data into the repo: all tools read the live files.
 """
 import os
@@ -15,17 +22,52 @@ WOW_DIR = Path(os.environ.get(
     "WOW_DIR",
     "/mnt/datosKingston/Lutris/drive_c/Program Files (x86)/World of Warcraft/_forever_",
 ))
-ACCOUNT = os.environ.get("WOW_ACCOUNT", "80775418#1")
-REALM_DIR = os.environ.get("WOW_REALM_DIR", "91")
-CHARACTER = os.environ.get("WOW_CHAR", "Caza-Peques")
-
 ADDONS_DIR = WOW_DIR / "Interface" / "AddOns"
-ACCOUNT_DIR = WOW_DIR / "WTF" / "Account" / ACCOUNT
-CHAR_SV_DIR = ACCOUNT_DIR / REALM_DIR / CHARACTER / "SavedVariables"
+ACCOUNTS_DIR = WOW_DIR / "WTF" / "Account"
 
-SNAPSHOT = Path(os.environ.get("FELIEXPORT_SNAPSHOT", CHAR_SV_DIR / "FeliExport.lua"))
-SHORTESTPATH_SV = CHAR_SV_DIR / "ShortestPathForever.lua"
-QUESTIE_CONFIG = ACCOUNT_DIR / "SavedVariables" / "Questie.lua"
+
+def _detect_account():
+    if os.environ.get("WOW_ACCOUNT"):
+        return os.environ["WOW_ACCOUNT"]
+    if not ACCOUNTS_DIR.is_dir():
+        return ""
+    accounts = [d for d in ACCOUNTS_DIR.iterdir() if d.is_dir() and d.name != "SavedVariables"]
+    if not accounts:
+        return ""
+    return max(accounts, key=lambda d: d.stat().st_mtime).name
+
+
+ACCOUNT = _detect_account()
+ACCOUNT_DIR = ACCOUNTS_DIR / ACCOUNT
+ACCOUNT_SV_DIR = ACCOUNT_DIR / "SavedVariables"
+CHARACTER = os.environ.get("WOW_CHAR", "")
+SNAPSHOT_OVERRIDE = os.environ.get("FELIEXPORT_SNAPSHOT", "")
+
+
+def character_dirs():
+    """Every WTF/Account/<account>/<realm>/<character> folder that has SavedVariables."""
+    found = []
+    if not ACCOUNT_DIR.is_dir():
+        return found
+    for realm in sorted(ACCOUNT_DIR.iterdir()):
+        if not realm.is_dir() or realm.name == "SavedVariables":
+            continue
+        for char in sorted(realm.iterdir()):
+            if (char / "SavedVariables").is_dir():
+                found.append(char)
+    return found
+
+
+def char_sv(char_dir, addon):
+    """Per-character SavedVariables file of an addon."""
+    return Path(char_dir) / "SavedVariables" / f"{addon}.lua"
+
+
+QUESTIE_CONFIG = ACCOUNT_SV_DIR / "Questie.lua"
+SYNDICATOR_SV = ACCOUNT_SV_DIR / "Syndicator.lua"     # bags/bank/mail of every character
+AUCTIONATOR_SV = ACCOUNT_SV_DIR / "Auctionator.lua"   # AH price database + vendor price cache
+# Auctionator price database realm key; empty = use every key found.
+AUCTION_REALM_KEY = os.environ.get("WOW_AUCTION_REALM", "")
 
 QUESTIEDB_DIR = ADDONS_DIR / "QuestieDB"
 QUESTIEDB_TOC = QUESTIEDB_DIR / "QuestieDB_Forever.toc"
@@ -36,9 +78,16 @@ UIMAP_TO_AREA = QUESTIEDB_SUPPORT / "Zones" / "uiMapIdToAreaId.lua"
 ITEM_DROPS = QUESTIEDB_SUPPORT / "DropTables" / "classicItemDrops.lua"
 ZONES_ENUM = QUESTIEDB_DIR / "src" / "corrections" / "enum" / "zones.lua"
 
-# Character identity used for quest filtering.
-RACE_BIT = 128   # Troll
-CLASS_BIT = 4    # Hunter
+# Quest race/class masks (QuestieDB). Keys are the non-localized client tokens.
+RACE_BITS = {
+    "Human": 1, "Orc": 2, "Dwarf": 4, "NightElf": 8, "Scourge": 16, "Undead": 16,
+    "Tauren": 32, "Gnome": 64, "Troll": 128,
+}
+CLASS_BITS = {
+    "WARRIOR": 1, "PALADIN": 2, "HUNTER": 4, "ROGUE": 8, "PRIEST": 16, "SHAMAN": 64,
+    "MAGE": 128, "WARLOCK": 256, "DRUID": 1024,
+}
+HORDE_RACES = {"Orc", "Scourge", "Undead", "Tauren", "Troll"}
 
 # Snapshot older than this (minutes) is considered stale.
 STALE_MINUTES = 30
@@ -71,8 +120,41 @@ for _a, _b in _NEIGHBOR_PAIRS:
     NEIGHBORS.setdefault(_a, set()).add(_b)
     NEIGHBORS.setdefault(_b, set()).add(_a)
 
-# Stat weights (RestedXP, hunter 20-29). "dps" applies only to ranged weapons.
+# Stat weights per class token (RestedXP, hunter 20-29). "dps" applies only to ranged weapons.
+# Classes without weights skip the bag-upgrade check.
 STAT_WEIGHTS = {
-    "dps": 14.0, "agi": 2.33, "spi": 1.12, "rap": 0.80, "sta": 0.75,
-    "int": 0.55, "str": 0.20, "armor": 0.035,
+    "HUNTER": {
+        "dps": 14.0, "agi": 2.33, "spi": 1.12, "rap": 0.80, "sta": 0.75,
+        "int": 0.55, "str": 0.20, "armor": 0.035,
+    },
 }
+
+# Items inventory.py always recommends keeping, with the reason (professions: Skinning +
+# Leatherworking; First Aid, Cooking, Fishing). Edit as professions level up.
+KEEP_ITEMS = {
+    # Leatherworking
+    2318: "LW: Light Leather", 2319: "LW: Medium Leather", 783: "LW: Light Hide",
+    4232: "LW: Medium Hide", 4231: "LW: Cured Light Hide", 2320: "LW: Coarse Thread",
+    2321: "LW: Fine Thread", 4293: "LW pattern (learn at 100)", 6476: "LW pattern",
+    6470: "LW: Deviate Scale", 6471: "LW: Perfect Deviate Scale", 249427: "LW: check tooltip",
+    # First Aid
+    2592: "First Aid: wool bandages (103 -> 150)", 4306: "First Aid: silk bandages at 150",
+    3530: "Bandage (use)", 2581: "Bandage (use)",
+    # Cooking
+    5467: "Cooking", 5469: "Cooking", 6289: "Cooking", 6291: "Cooking (skill-up now)",
+    6303: "Cooking (skill-up now)", 6308: "Cooking",
+    # Tools and camp buffs
+    6256: "Fishing", 7005: "Skinning", 6948: "Hearthstone", 279978: "Camp buff",
+    279981: "Camp buff", 279968: "First Aid kit", 3030: "Current ammo",
+    250187: "Bound recipe: learn",
+    # Food: eat or feed the boar (boars eat every food type)
+    117: "Food / pet food", 159: "Drink", 1179: "Drink", 1205: "Drink", 9451: "Drink",
+    2287: "Food / pet food", 2679: "Food / pet food", 3448: "Food / pet food",
+    4536: "Food / pet food", 4537: "Food / pet food", 4542: "Food / pet food",
+    4604: "Food / pet food", 11584: "Food / pet food",
+    # Scrolls: use before hard pulls
+    954: "Scroll (use)", 955: "Scroll (use)", 1180: "Scroll (use)", 1181: "Scroll (use)",
+}
+
+# Auction house cut in Classic (deducted from the sale price).
+AH_CUT = 0.05

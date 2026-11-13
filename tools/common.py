@@ -54,17 +54,102 @@ def load_lua_globals(path, *names):
     return [_lua_to_py(g[n]) if g[n] is not None else None for n in names]
 
 
-def load_snapshot(path=None):
-    """Return (FeliExportDB, FeliExportHistory) from the live SavedVariables."""
-    db, hist = load_lua_globals(path or config.SNAPSHOT, "FeliExportDB", "FeliExportHistory")
-    return db or {}, hist or {}
+# -- characters ------------------------------------------------------------------------
+_char_arg = None      # set by take_char_arg() from `--char NAME`
+_snapshots = {}       # snapshot path -> (db, hist)
+_syndicator = None    # cached syndicator_characters()
 
 
-def load_known_taxis():
+def take_char_arg(argv=None):
+    """Remove `--char NAME` from argv (default sys.argv) and remember it for main_character()."""
+    global _char_arg
+    argv = sys.argv if argv is None else argv
+    if "--char" in argv:
+        i = argv.index("--char")
+        if i + 1 >= len(argv):
+            sys.exit("--char needs a character name")
+        _char_arg = argv[i + 1]
+        del argv[i:i + 2]
+    return argv
+
+
+def char_name(char_dir):
+    """Display name of a character folder: 'Caza-Peques'."""
+    return Path(char_dir).name
+
+
+def _snapshot_at(path):
+    path = Path(path)
+    if path not in _snapshots:
+        if not path.exists():
+            _snapshots[path] = ({}, {})
+        else:
+            db, hist = load_lua_globals(path, "FeliExportDB", "FeliExportHistory")
+            _snapshots[path] = (db or {}, hist or {})
+    return _snapshots[path]
+
+
+def snapshots():
+    """{char_dir: (db, hist)} for every character with a FeliExport snapshot."""
+    out = {}
+    for d in config.character_dirs():
+        path = config.char_sv(d, "FeliExport")
+        if path.exists():
+            out[d] = _snapshot_at(path)
+    return out
+
+
+def syndicator_characters():
+    """{character folder name: Syndicator character data} (bags, bank tabs, mail, details)."""
+    global _syndicator
+    if _syndicator is None:
+        _syndicator = {}
+        if config.SYNDICATOR_SV.exists():
+            (data,) = load_lua_globals(config.SYNDICATOR_SV, "SYNDICATOR_DATA")
+            for key, char in ((data or {}).get("Characters") or {}).items():
+                name = (char.get("details") or {}).get("character") or key.rsplit("-", 1)[0]
+                _syndicator[name.replace(" ", "-")] = char
+    return _syndicator
+
+
+def main_character():
+    """Character folder to analyze: --char, then WOW_CHAR, then the highest-level snapshot.
+    Also sets IDENTITY (class/race/faction) for quest filtering."""
+    d = _pick_character()
+    use_identity(d)
+    return d
+
+
+def _pick_character():
+    wanted = _char_arg or config.CHARACTER
+    dirs = config.character_dirs()
+    if wanted:
+        w = wanted.lower().replace(" ", "-")
+        for d in dirs:
+            if d.name.lower() == w or d.name.split("-")[0].lower() == w:
+                return d
+        sys.exit(f"Unknown character '{wanted}'. Known: {', '.join(char_name(d) for d in dirs)}")
+    snaps = snapshots()
+    if not snaps:
+        sys.exit("No FeliExport snapshot found: log in, run /wow or /reload, then retry")
+    return max(snaps, key=lambda d: (snaps[d][0].get("level") or 0, snaps[d][0].get("savedAt") or ""))
+
+
+def load_snapshot(char_dir=None):
+    """Return (FeliExportDB, FeliExportHistory) for a character (default: main_character())."""
+    if char_dir is None and config.SNAPSHOT_OVERRIDE:
+        snap = _snapshot_at(config.SNAPSHOT_OVERRIDE)
+        IDENTITY.update({k: snap[0].get(k) for k in ("class", "race", "faction")})
+        return snap
+    return _snapshot_at(config.char_sv(char_dir or main_character(), "FeliExport"))
+
+
+def load_known_taxis(char_dir=None):
     """Known flight paths from ShortestPathForever: list of names."""
-    if not config.SHORTESTPATH_SV.exists():
+    path = config.char_sv(char_dir or main_character(), "ShortestPathForever")
+    if not path.exists():
         return []
-    (char,) = load_lua_globals(config.SHORTESTPATH_SV, "ShortestPathForeverCharDB")
+    (char,) = load_lua_globals(path, "ShortestPathForeverCharDB")
     if not char:
         return []
     names = char.get("taxiNames") or {}
@@ -232,15 +317,49 @@ def cluster(points, radius=8.0):
 
 
 # -- quest rules -----------------------------------------------------------------------
-def fits_character(q):
+# Identity of the character being analyzed; set by main_character() / use_identity().
+IDENTITY = {"class": None, "race": None, "faction": None}
+
+
+def identity_of(char_dir):
+    """{"class": "HUNTER", "race": "Troll", "faction": "Horde"} from the snapshot, falling
+    back to Syndicator's character details for snapshots taken before these fields existed."""
+    snap = _snapshot_at(config.char_sv(char_dir, "FeliExport"))[0]
+    ident = {k: snap.get(k) for k in ("class", "race", "faction")}
+    if not all(ident.values()):
+        details = syndicator_characters().get(char_name(char_dir), {}).get("details") or {}
+        ident["class"] = ident["class"] or details.get("className")
+        ident["race"] = ident["race"] or details.get("race")
+        ident["faction"] = ident["faction"] or details.get("faction")
+    if not ident["faction"] and ident["race"]:
+        ident["faction"] = "Horde" if ident["race"] in config.HORDE_RACES else "Alliance"
+    return ident
+
+
+def use_identity(char_dir):
+    IDENTITY.update(identity_of(char_dir))
+    return IDENTITY
+
+
+def fits_character(q, ident=None):
+    ident = ident or IDENTITY
     races, classes = q["races"], q["classes"]
-    return (not races or races & config.RACE_BIT) and (not classes or classes & config.CLASS_BIT)
+    race_bit = config.RACE_BITS.get(ident.get("race") or "", 0)
+    class_bit = config.CLASS_BITS.get(ident.get("class") or "", 0)
+    # Unknown identity: do not filter on that dimension.
+    race_ok = not races or not race_bit or races & race_bit
+    class_ok = not classes or not class_bit or classes & class_bit
+    return bool(race_ok and class_ok)
 
 
-def is_horde_ok(Q, q):
-    """False when every starting NPC is Alliance-only."""
+def is_horde_ok(Q, q, ident=None):
+    """False when every starting NPC belongs to the other faction."""
+    faction = (ident or IDENTITY).get("faction")
+    if faction not in ("Horde", "Alliance"):
+        return True
+    mine = faction[0]
     factions = [Q["npcs"].get(n, {}).get("faction") for n in q["start_npcs"]]
-    return not factions or any(f in (None, "AH", "H") for f in factions)
+    return not factions or any(f in (None, "AH", mine) for f in factions)
 
 
 def prereqs_met(q, done):

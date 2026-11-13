@@ -1,6 +1,6 @@
 """Check how far each quest in the log is from a planned route.
 
-Usage: route_check.py ZONE:X,Y [ZONE:X,Y ...]
+Usage: route_check.py [--char NAME] ZONE:X,Y [ZONE:X,Y ...]
   ZONE is a zone ID or (partial) zone name in English or esMX, e.g. 17:52,30 "Thousand:45,50".
   Consecutive points in the same zone form route segments.
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (  # noqa: E402
-    fmt_xp, load_q, load_snapshot, objective_targets, quest_name, resolve_zone, spawns_of,
+    fmt_xp, load_q, load_snapshot, objective_targets, take_char_arg, quest_name, resolve_zone, spawns_of,
     xp_at_level, zone_name,
 )
 
@@ -80,6 +80,7 @@ def verdict(Q, hit, points_by_zone):
 
 
 def main():
+    take_char_arg()
     if len(sys.argv) < 2:
         sys.exit(__doc__)
     Q = load_q()

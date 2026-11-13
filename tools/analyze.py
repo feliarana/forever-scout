@@ -1,6 +1,6 @@
 """Character summary + quest planning from the live FeliExport snapshot.
 
-Usage: analyze.py [zoneID|zoneName ...]
+Usage: analyze.py [--char NAME] [zoneID|zoneName ...]
   Zones default to the player's current zone plus its neighbors (config.NEIGHBORS).
 """
 import sys
@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config  # noqa: E402
 from common import (  # noqa: E402
-    fits_character, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot,
+    char_name, fits_character, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot, main_character, snapshots, take_char_arg, IDENTITY,
     locate, money, player_pos, prereqs_met, quest_level, quest_name, resolve_zone,
     snapshot_age_minutes, xp_at_level, zone_name,
 )
@@ -25,7 +25,8 @@ INVTYPE_SLOTS = {
     "INVTYPE_RANGEDRIGHT": [18], "INVTYPE_THROWN": [18],
 }
 RANGED = {"INVTYPE_RANGED", "INVTYPE_RANGEDRIGHT", "INVTYPE_THROWN"}
-# Armor a hunter cannot wear yet (mail unlocks at 40, plate never).
+# Armor a hunter cannot wear yet (mail unlocks at 40, plate never). Only used for hunters,
+# the only class with stat weights so far.
 BLOCKED_ARMOR = {"Placas", "Plate", "Escudos", "Shields"}
 MAIL = {"Malla", "Mail"}
 # Quest sort categories / zones that are not leveling content: holidays, AQ war effort,
@@ -33,10 +34,10 @@ MAIL = {"Malla", "Mail"}
 SKIP_ZONES = {-22, -41, -284, -367, -364, -365, -366, -369, -370, -376, -1002, -1003, 2597, 3277, 3358}
 
 
-def score(item):
+def score(item, weights):
     stats = item.get("stats") or {}
     total = 0.0
-    for key, weight in config.STAT_WEIGHTS.items():
+    for key, weight in weights.items():
         if key == "dps" and item.get("slot") not in RANGED:
             continue
         total += (stats.get(key) or 0) * weight
@@ -120,21 +121,28 @@ def character(Q, snap, hist):
 def gear(snap):
     section("Gear and consumables")
     level = snap.get("level") or 0
+    cls = IDENTITY.get("class")
     equipped = as_slot_map(snap.get("equipment"))
     bags = snap.get("bags") or []
     if isinstance(bags, dict):
         bags = list(bags.values())
-    ranged = equipped.get(18)
-    if ranged:
-        print(f"Ranged: {ranged.get('name')} ({ranged.get('subType')}, "
-              f"{(ranged.get('stats') or {}).get('dps') or 0:.1f} DPS)")
-    else:
-        print("!! No ranged weapon equipped")
-    ammo = [b for b in bags if b.get("slot") == "INVTYPE_AMMO" or b.get("type") in ("Proyectil", "Projectile")]
-    print("Ammo: " + (", ".join(f"{a.get('name')} x{a.get('count')}" for a in ammo) or "!! NONE"))
+    if cls == "HUNTER":
+        ranged = equipped.get(18)
+        if ranged:
+            print(f"Ranged: {ranged.get('name')} ({ranged.get('subType')}, "
+                  f"{(ranged.get('stats') or {}).get('dps') or 0:.1f} DPS)")
+        else:
+            print("!! No ranged weapon equipped")
+        ammo = [b for b in bags if b.get("slot") == "INVTYPE_AMMO" or b.get("type") in ("Proyectil", "Projectile")]
+        print("Ammo: " + (", ".join(f"{a.get('name')} x{a.get('count')}" for a in ammo) or "!! NONE"))
     food = [b for b in bags if b.get("subType") in ("Comida y bebida", "Food & Drink")]
     print("Food/drink: " + (", ".join(f"{f.get('name')} x{f.get('count')}" for f in food) or "none"))
 
+    weights = config.STAT_WEIGHTS.get(cls)
+    if not weights:
+        print(f"No stat weights for {cls or 'unknown class'}: bag-upgrade check skipped "
+              "(add them to config.STAT_WEIGHTS).")
+        return
     upgrades = []
     for item in bags:
         slots = INVTYPE_SLOTS.get(item.get("slot"))
@@ -143,9 +151,9 @@ def gear(snap):
         sub = item.get("subType")
         if sub in BLOCKED_ARMOR or (sub in MAIL and level < 40):
             continue
-        new = score(item)
-        cur = min(slots, key=lambda s: score(equipped.get(s) or {}))
-        old = score(equipped.get(cur) or {})
+        new = score(item, weights)
+        cur = min(slots, key=lambda s: score(equipped.get(s) or {}, weights))
+        old = score(equipped.get(cur) or {}, weights)
         if new > old + 0.01:
             upgrades.append((new - old, item, equipped.get(cur), cur))
     if upgrades:
@@ -236,7 +244,12 @@ def quests(Q, snap, zones):
 
 
 def main():
+    take_char_arg()
     Q = load_q()
+    me = main_character()
+    others = [f"{char_name(d)} ({s.get('level')})" for d, (s, _) in snapshots().items() if d != me]
+    print(f"Character: {char_name(me)} ({IDENTITY.get('race')} {IDENTITY.get('class')}, {IDENTITY.get('faction')})" + (f" | other snapshots: {', '.join(others)}" if others else "")
+          + " (pick another with --char NAME)")
     snap, hist = load_snapshot()
     zid = player_pos(Q, snap)[0]
     if len(sys.argv) > 1:

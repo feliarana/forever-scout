@@ -1,13 +1,14 @@
 """Per-quest guide: start, turn-in, text and objectives with mob levels and spawn clusters.
 
-Usage: guide.py <questID> [questID ...]
+Usage: guide.py [--char NAME] <questID> [questID ...]
+  The character only sets the level used for XP.
 """
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (  # noqa: E402
-    cluster, fits_character, fmt_loc, fmt_source, fmt_xp, load_q, load_snapshot, locate,
+    cluster, fits_character, fmt_loc, fmt_source, fmt_xp, load_q, load_snapshot, locate, take_char_arg,
     objective_targets, quest_name, zone_name,
 )
 
@@ -33,7 +34,7 @@ def show(Q, qid, level):
     print(f"\n### [{qid}] {quest_name(Q, qid)}")
     zone = zone_name(Q, q["zone"]) if q["zone"] else "?"
     print(f"Level {q['level']} (req {q['req_level']}) · {zone} · {fmt_xp(q, level)} at level {level}"
-          + ("" if fits_character(q) else " · !! not available to a troll hunter"))
+          + ("" if fits_character(q) else " · !! not available to this character's race/class"))
     for loc in locate(Q, q["start_npcs"], q["start_objects"]):
         print(f"Start: {fmt_loc(Q, loc)}")
     if q["start_items"]:
@@ -69,12 +70,13 @@ def show(Q, qid, level):
 
 
 def main():
+    take_char_arg()
     if len(sys.argv) < 2:
         sys.exit(__doc__)
     Q = load_q()
     try:
         level = load_snapshot()[0].get("level") or 60
-    except Exception:  # snapshot missing: still print the guide
+    except (Exception, SystemExit):  # no snapshot: still print the guide
         level = 60
     for arg in sys.argv[1:]:
         show(Q, int(arg), level)

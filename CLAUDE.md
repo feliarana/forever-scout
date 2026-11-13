@@ -10,7 +10,7 @@
 
 ## When I say "leé" (read)
 
-1. Read the FeliExport snapshot live (paths in `config.py`). If it is old (`savedAt`), ask me for a /reload.
+1. Read the FeliExport snapshot live (paths in `config.py`). The main character is the highest-level one (Caza-Peques); Banca-Orca is the bank alt (mage) I mail items to for selling. If the snapshot is old (`savedAt`), ask me for a /reload on that character.
 2. Run `tools/analyze.py` (and `tools/build_q.py` if `data/Q.pkl` does not exist or QuestieDB changed; the tools also rebuild it automatically).
 3. Before planning:
    - Check whether my party friends are online and nearby, and how much rested XP I really have. Do not plan around an offline friend or rested XP that is not enough.
@@ -34,8 +34,9 @@ Run with the repo virtualenv: `.venv/bin/python tools/<script>.py`.
 | Script | Purpose |
 |---|---|
 | `tools/build_q.py` | Build `data/Q.pkl` from QuestieDB + real Forever XP |
-| `tools/analyze.py [zone …]` | Character summary, turn-ins, progress, unlocks, available quests |
-| `tools/guide.py <questID …>` | Start, turn-in, text, objectives with levels, ELITE and spawn clusters |
-| `tools/route_check.py ZONE:X,Y …` | Distance of each logged quest to a route + XP at current level |
+| `tools/analyze.py [--char NAME] [zone …]` | Character summary, turn-ins, progress, unlocks, available quests |
+| `tools/guide.py [--char NAME] <questID …>` | Start, turn-in, text, objectives with levels, ELITE and spawn clusters |
+| `tools/route_check.py [--char NAME] ZONE:X,Y …` | Distance of each logged quest to a route + XP at current level |
+| `tools/inventory.py [--all]` | Vendor / auction / use / keep / turn-in for every character's bags, bank and mail (Syndicator + Auctionator). Ask for an Auctionator full scan + /reload when prices are stale. Keep list: `config.KEEP_ITEMS` |
 
 Zones accept an ID or a partial English/esMX name (`17`, `barrens`, `"Mil Agujas"`).
