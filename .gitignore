@@ -1,0 +1,24 @@
+# Generated cache (rebuilt by tools/build_q.py)
+data/
+*.pkl
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Game files: never commit SavedVariables / WTF snapshots
+WTF/
+**/SavedVariables/
+SavedVariables*
+*.lua.bak
+
+# Third-party addons (QuestieDB, Questie, etc.) are read live from the game, never copied here.
+# Only our own addon lives in addon/.
+addon/*
+!addon/FeliExport/
+QuestieDB*/
+Questie*/
+
+# The global git ignore excludes CLAUDE.md; this repo tracks it.
+!CLAUDE.md

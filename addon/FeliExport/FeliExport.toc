@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: FeliExport
+## Notes: Saves a snapshot of quest log, location, gear and professions on /reload or logout so it can be read offline.
+## Author: Feli
+## Version: 1.0.0
+## SavedVariablesPerCharacter: FeliExportDB, FeliExportHistory
+
+FeliExport.lua
