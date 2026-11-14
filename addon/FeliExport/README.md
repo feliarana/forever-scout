@@ -100,12 +100,24 @@ every 20 seconds.
 Ammo is counted from the bag stacks (quiver included), since the ammo slot only references
 them. Thresholds live in `ALERT_LIMITS` in `FeliExport.lua`.
 
-## Loot advisor
+## Loot advisor and tooltip score
 
-When a loot roll starts (or on `/wow <item link>`), the item is scored with the RestedXP
-hunter weights (levels 20-29) and compared to the equipped item in that slot. The verdict
-(NEED or GREED, a reason and the score difference) is printed in chat and stored in
-`lastRolls`.
+Items are scored with the RestedXP hunter weights (levels 20-29: ranged DPS 14, agility 2.33,
+spirit 1.12, attack power 0.8, stamina 0.75, intellect 0.55, strength 0.2, armor 0.035) and
+compared to the equipped item in the same slot. For rings and trinkets the weaker equipped one
+is the comparison; a two-hander is compared to main hand plus off hand.
+
+- **Loot rolls**: when a roll starts (or on `/wow <item link>`), the verdict (NEED or GREED,
+  a reason and the score difference) is printed in chat and stored in `lastRolls`.
+- **Tooltips**: every gear tooltip (bags, quest rewards, vendors, chat links) gets one line,
+  for hunters only:
+  - `FeliExport: +12.3 vs equipped (score 45.1)`: green above +0.5, red below -0.5, gray in
+    between; adds `needs level N` when the item requires a higher level.
+  - `FeliExport: equipped, score N` on the item you are wearing.
+  - `FeliExport: not for you (...)` on plate, shields, mail before 40 and weapons hunters
+    cannot use.
+  - No line on non-gear items (materials, ammo, bags, shirts). Comparison tooltips are left
+    alone.
 
 ## Copy box
 

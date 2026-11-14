@@ -7,6 +7,7 @@
 -- It also remembers the last quest reward window, trainer and vendor you opened.
 -- /donde <npc | party member> points a TomTom arrow at it (see where()).
 -- Upkeep alerts warn about ammo, pet, bags and durability (see checkAlerts(), /wow alerts).
+-- Gear tooltips get a weighted score line against what is equipped (see addTooltipScore()).
 
 local frame = CreateFrame("Frame")
 
@@ -107,40 +108,55 @@ local function scoreItem(link)
   return score
 end
 
--- Returns verdict ("NEED", "GREED"), a short reason, and the score delta.
-local function judgeItem(link)
+-- Weighted score of an item against what is equipped in its slot.
+-- Returns nil while the item is not cached yet. Otherwise a table with one of:
+--   skip = reason        not gear the weights apply to (non-equippable, ammo, bags, shirts...)
+--   unusable = reason    gear a hunter cannot wear or wield at this level
+--   score, current, delta, reqLevel, equipped (true when this exact item is equipped)
+local function evaluateItem(link)
   local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
   local name, _, _, _, reqLevel, _, _, _, equipLoc, _, _, classID, subClassID = try(getInfo, link)
   if not name then return nil end
   if not equipLoc or equipLoc == "" or equipLoc == "INVTYPE_NON_EQUIP_IGNORE" then
-    return "GREED", "no es equipable", 0
+    return { skip = "no es equipable" }
   end
   if classID == 2 and not HUNTER_WEAPONS[subClassID] then
-    return "GREED", "arma que un cazador no puede usar", 0
+    return { unusable = "arma que un cazador no puede usar" }
   end
   if classID == 4 then
-    if subClassID == 4 or subClassID == 6 then return "GREED", "placas/escudo, no lo podés usar", 0 end
-    if subClassID == 3 and UnitLevel("player") < 40 then return "GREED", "malla, recién al 40", 0 end
+    if subClassID == 4 or subClassID == 6 then return { unusable = "placas/escudo, no lo podés usar" } end
+    if subClassID == 3 and UnitLevel("player") < 40 then return { unusable = "malla, recién al 40" } end
   end
   local slots = SLOTS_BY_EQUIPLOC[equipLoc]
-  if not slots then return "GREED", "ranura no reconocida (" .. tostring(equipLoc) .. ")", 0 end
-  local new = scoreItem(link)
-  local current
+  if not slots then return { skip = "ranura no reconocida (" .. tostring(equipLoc) .. ")" } end
+  local result = { score = scoreItem(link), reqLevel = reqLevel }
+  local id = itemIdFromLink(link)
   if equipLoc == "INVTYPE_2HWEAPON" then
-    current = scoreItem(GetInventoryItemLink("player", 16)) + scoreItem(GetInventoryItemLink("player", 17))
+    result.current = scoreItem(GetInventoryItemLink("player", 16)) + scoreItem(GetInventoryItemLink("player", 17))
+    result.equipped = id ~= nil and id == itemIdFromLink(GetInventoryItemLink("player", 16))
   else
     for _, slot in ipairs(slots) do
-      local s = scoreItem(GetInventoryItemLink("player", slot))
-      if not current or s < current then current = s end
+      local equippedLink = GetInventoryItemLink("player", slot)
+      local s = scoreItem(equippedLink)
+      if not result.current or s < result.current then result.current = s end
+      if id ~= nil and id == itemIdFromLink(equippedLink) then result.equipped = true end
     end
   end
-  local delta = new - (current or 0)
+  result.delta = result.score - (result.current or 0)
+  return result
+end
+
+-- Returns verdict ("NEED", "GREED"), a short reason, and the score delta.
+local function judgeItem(link)
+  local e = evaluateItem(link)
+  if not e then return nil end
+  if e.skip or e.unusable then return "GREED", e.skip or e.unusable, 0 end
   local note = ""
-  if reqLevel and reqLevel > UnitLevel("player") then note = " (requiere nivel " .. reqLevel .. ")" end
-  if delta > 0.5 then
-    return "NEED", string.format("mejora +%.1f puntos%s", delta, note), delta
+  if e.reqLevel and e.reqLevel > UnitLevel("player") then note = " (requiere nivel " .. e.reqLevel .. ")" end
+  if e.delta > 0.5 then
+    return "NEED", string.format("mejora +%.1f puntos%s", e.delta, note), e.delta
   end
-  return "GREED", string.format("no mejora lo tuyo (%.1f)%s", delta, note), delta
+  return "GREED", string.format("no mejora lo tuyo (%.1f)%s", e.delta, note), e.delta
 end
 
 local function adviseItem(link, attempt)
@@ -177,6 +193,43 @@ local function unitMapPos(unit)
     end
   end
   return out
+end
+
+-- Tooltip score: one line on every gear tooltip (bags, quest rewards, vendors, links) with the
+-- weighted score difference against what is equipped in that slot. Hunter weights only.
+local function addTooltipScore(tooltip)
+  if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end  -- skip comparison tooltips
+  if select(2, UnitClass("player")) ~= "HUNTER" then return end
+  local _, link = tooltip:GetItem()
+  if not link then return end
+  local e = evaluateItem(link)
+  if not e or e.skip then return end
+  local text
+  if e.unusable then
+    text = "|cff808080FeliExport: not for you (" .. e.unusable .. ")|r"
+  elseif e.equipped then
+    text = string.format("|cff808080FeliExport: equipped, score %.1f|r", e.score)
+  else
+    local color = e.delta > 0.5 and "|cff00ff00" or (e.delta < -0.5 and "|cffff4040" or "|cffbbbbbb")
+    text = string.format("%sFeliExport: %+.1f vs equipped|r |cff808080(score %.1f)|r", color, e.delta, e.score)
+    if e.reqLevel and e.reqLevel > UnitLevel("player") then
+      text = text .. " |cffff8000needs level " .. e.reqLevel .. "|r"
+    end
+  end
+  tooltip:AddLine(text)
+  tooltip:Show()  -- resize to fit the new line
+end
+
+-- Modern clients route every item tooltip through TooltipDataProcessor; older ones fire
+-- OnTooltipSetItem. Only one of the two is hooked so the line is never added twice.
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+  TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip) pcall(addTooltipScore, tooltip) end)
+else
+  for _, tip in ipairs({ GameTooltip, ItemRefTooltip }) do
+    if tip and tip.HookScript then
+      pcall(tip.HookScript, tip, "OnTooltipSetItem", function(self) pcall(addTooltipScore, self) end)
+    end
+  end
 end
 
 local function getLocation()
