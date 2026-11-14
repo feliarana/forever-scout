@@ -794,8 +794,49 @@ local function requestRosters()
   end
 end
 
--- Online friends (character list, Battle.net friends playing WoW, guild) with level and zone,
--- so a session can be planned around who is actually playing and where.
+-- Communities (C_Club): every subscribed club except the guild, with its online members.
+-- Club types: 0 Battle.net, 1 WoW character community, 2 guild, 3 other.
+local CLUB_TYPES = { [0] = "bnet", [1] = "wow", [3] = "other" }
+-- Enum.ClubMemberPresence: 1 online, 2 online on mobile, 3 offline, 4 away, 5 busy.
+local CLUB_ONLINE = { [1] = true, [4] = true, [5] = true }
+
+local function className(classID)
+  local info = classID and C_CreatureInfo and try(C_CreatureInfo.GetClassInfo, classID)
+  return info and info.className
+end
+
+local function getCommunities()
+  if not (C_Club and C_Club.GetSubscribedClubs) then return nil end
+  local out = {}
+  for _, club in ipairs(try(C_Club.GetSubscribedClubs) or {}) do
+    local clubType = plain(club.clubType)
+    if clubType ~= 2 then
+      local entry = { name = plain(club.name), type = CLUB_TYPES[clubType] or tostring(clubType),
+                      members = plain(club.memberCount), online = {} }
+      for _, memberId in ipairs(try(C_Club.GetClubMembers, club.clubId) or {}) do
+        local m = try(C_Club.GetMemberInfo, club.clubId, memberId)
+        if m and not isTrue(m.isSelf) and CLUB_ONLINE[plain(m.presence)] then
+          entry.online[#entry.online + 1] = { name = shortName(m.name), level = plain(m.level),
+            class = className(plain(m.classID)), zone = plain(m.zone) }
+        end
+      end
+      out[#out + 1] = entry
+    end
+  end
+  return out
+end
+
+-- Guild name, own rank and member counts; nil when not in a guild.
+local function getGuild()
+  if not (IsInGuild and IsInGuild()) then return nil end
+  local name, rank, rankIndex = try(GetGuildInfo, "player")
+  local total, online = try(GetNumGuildMembers)
+  return { name = plain(name), rank = plain(rank), rankIndex = plain(rankIndex),
+           members = plain(total), online = plain(online) }
+end
+
+-- Online friends (character list, Battle.net friends playing WoW, guild, communities) with
+-- level and zone, so a session can be planned around who is actually playing and where.
 local function getOnlineFriends()
   local out, seen = {}, {}
   local function add(source, name, level, class, zone, realm)
@@ -830,6 +871,10 @@ local function getOnlineFriends()
         add("guild", name, level, class, zone)
       end
     end
+  end
+
+  for _, club in ipairs(getCommunities() or {}) do
+    for _, m in ipairs(club.online) do add("community", m.name, m.level, m.class, m.zone) end
   end
   return out
 end
@@ -929,6 +974,8 @@ local function buildSnapshot()
   end)
   section("party", function() return IsInGroup() and partyMembers() or nil end)
   section("onlineFriends", getOnlineFriends)
+  section("guild", getGuild)
+  section("communities", getCommunities)
   section("pvpFlagged", function() return UnitIsPVP("player") and true or false end)
   section("currentRun", function()
     local run = history().openRun

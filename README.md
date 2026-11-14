@@ -17,8 +17,9 @@ Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), fo
   professions, buffs, hearthstone, durability, party and online friends, refreshed every 20
   seconds and written to disk on `/reload`. `/wow [question]` also opens a copy box with a
   one-line summary to paste into a chat.
-- **Online friends** — friend list, Battle.net friends playing WoW and guild members, with
-  level and zone; party members with map position.
+- **Online friends** — friend list, Battle.net friends playing WoW, guild and community
+  members, with level and zone; guild name and rank, communities; party members with map
+  position.
 - **Session history** — XP total, level-ups, deaths (with place), dungeon runs with XP gained,
   known flight paths and recipes.
 - **Window capture** — last quest reward window, trainer and vendor opened, with stats and

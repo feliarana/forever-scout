@@ -118,6 +118,14 @@ def character(Q, snap, hist):
             print(f"  {m.get('name')} {m.get('class')} {m.get('level')} ({state}) — {where}")
     else:
         print("Party: solo")
+    guild = snap.get("guild")
+    if "guild" in snap or "communities" in snap:
+        print("Guild: " + (f"<{guild.get('name')}> rank {guild.get('rank')}, "
+                           f"{guild.get('online')}/{guild.get('members')} online" if guild else "none"))
+        clubs = snap.get("communities") or []
+        print("Communities: " + (", ".join(f"{c.get('name')} ({c.get('type')}, "
+                                           f"{len(c.get('online') or [])}/{c.get('members')} online)"
+                                           for c in clubs) or "none"))
     friends = snap.get("onlineFriends")
     if friends is None:
         print("Friends online: not captured (addon older than this tool; /reload)")

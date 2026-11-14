@@ -54,7 +54,9 @@ is stored under `errors`.
 | `location` | Zone, subzone, map ID, map name and x,y in percent |
 | `instance`, `currentRun` | Current instance and the dungeon run in progress (XP so far) |
 | `party` | Party members: name, class, level, online flag, map ID, map name and x,y |
-| `onlineFriends` | Online friends from the friend list, Battle.net friends playing WoW, and the guild: name, level, class, zone, realm and source (`friend`, `bnet`, `guild`) |
+| `onlineFriends` | Online friends from the friend list, Battle.net friends playing WoW, the guild and communities: name, level, class, zone, realm and source (`friend`, `bnet`, `guild`, `community`) |
+| `guild` | Guild name, own rank and rank index, members and members online; absent when not in a guild |
+| `communities` | Every subscribed community except the guild: name, type (`bnet`, `wow`, `other`), member count and online members with level, class and zone |
 | `pvpFlagged`, `target` | PvP flag and the current target |
 | `quests`, `completedQuests` | Quest log with objectives, and completed quest IDs |
 | `equipment`, `bags` | Equipped items and bag contents, with stats |
