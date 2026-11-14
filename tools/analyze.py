@@ -100,8 +100,14 @@ def character(Q, snap, hist):
         warn = " !! more than 2 levels behind" if (pet.get("level") or 0) < level - 2 else ""
         print(f"Pet: {pet.get('name')} ({pet.get('family')}) level {pet.get('level')} "
               f"XP {pet.get('xp')}/{pet.get('xpMax')}{warn}")
-    if snap.get("unspentTalentPoints"):
-        print(f"!! Unspent talent points: {snap['unspentTalentPoints']}")
+    # Forever uses the trait system: unspent points live in each tree's currency ("available"),
+    # while UnitCharacterPoints (unspentTalentPoints) stays empty.
+    unspent = snap.get("unspentTalentPoints") or 0
+    for tree in (snap.get("talents") or {}).get("trees") or []:
+        for cur in tree.get("currencies") or []:
+            unspent = max(unspent, cur.get("available") or 0)
+    if unspent:
+        print(f"!! Unspent talent points: {unspent}")
     print("PvP flagged: " + ("YES" if snap.get("pvpFlagged") else "no"))
     loc = snap.get("location") or {}
     party = snap.get("party") or []
