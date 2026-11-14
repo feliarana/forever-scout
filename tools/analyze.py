@@ -126,7 +126,10 @@ def character(Q, snap, hist):
         print("Communities: " + (", ".join(f"{c.get('name')} ({c.get('type')}, "
                                            f"{len(c.get('online') or [])}/{c.get('members')} online)"
                                            for c in clubs) or "none"))
+    # Battle.net protected names ("|K...|k") cannot be read by addons; older snapshots kept them.
     friends = snap.get("onlineFriends")
+    if friends:
+        friends = [f for f in friends if "|K" not in str(f.get("name") or "|K")]
     if friends is None:
         print("Friends online: not captured (addon older than this tool; /reload)")
     elif not friends:

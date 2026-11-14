@@ -759,10 +759,12 @@ local function isTrue(v)
   return ok and r or false
 end
 
--- Strip the "-Realm" suffix the guild roster adds to names.
+-- Strip the "-Realm" suffix the guild roster adds to names. Battle.net hides real names
+-- behind protected "|K...|k" tokens that only the UI can render; those are dropped.
 local function shortName(name)
   name = plain(name)
-  return type(name) == "string" and (name:match("^([^-]+)") or name) or nil
+  if type(name) ~= "string" or name == "" or name:find("|K", 1, true) then return nil end
+  return name:match("^([^-]+)") or name
 end
 
 local function partyMembers()
