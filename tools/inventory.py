@@ -7,7 +7,7 @@ Usage: inventory.py [--all]
   --all also lists items with no price data at all.
 
 Sources (read live):
-  * FeliExport snapshots (every character that has one): item type and vendor price.
+  * ForeverScout snapshots (every character that has one): item type and vendor price.
   * Syndicator: bags, bank tabs and mail of every character on the account.
   * Auctionator: AH price database (CBOR blob per realm key) and vendor price cache.
 Rules:
@@ -96,7 +96,7 @@ def _link_name(link):
 
 def collect(snaps):
     """{itemID: row} for every character: Syndicator bags/bank/mail, falling back to the
-    FeliExport snapshot bags for characters Syndicator does not know. Snapshots of every
+    ForeverScout snapshot bags for characters Syndicator does not know. Snapshots of every
     character also supply item type and vendor price."""
     rows = {}
 

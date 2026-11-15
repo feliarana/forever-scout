@@ -1,5 +1,8 @@
 # WoW Forever — rules
 
+These are the repo author's personal rules (main character Caza-Peques). When the user is
+anyone else, follow `AGENTS.md` instead of this file.
+
 - Reply to the user in Rioplatense Spanish: direct and actionable. Everything written into this repo (code, comments, script output, docs) is in English.
 - Everything is for a Horde troll hunter, Beast Mastery, on a PvP server: account for world PvP on every route.
 - Professions: Skinning + Leatherworking; secondary First Aid, Cooking and Fishing.
@@ -10,7 +13,7 @@
 
 ## When I say "leé" (read)
 
-1. Read the FeliExport snapshot live (paths in `config.py`). The main character is the highest-level one (Caza-Peques); Banca-Orca is the bank alt (mage) I mail items to for selling. If the snapshot is old (`savedAt`), ask me for a /reload on that character.
+1. Read the ForeverScout snapshot live (paths in `config.py`). The main character is the highest-level one (Caza-Peques); Banca-Orca is the bank alt (mage) I mail items to for selling. If the snapshot is old (`savedAt`), ask me for a /reload on that character.
 2. Run `tools/analyze.py` (and `tools/build_q.py` if `data/Q.pkl` does not exist or QuestieDB changed; the tools also rebuild it automatically).
 3. Before planning:
    - Check whether my party friends are online and nearby, and how much rested XP I really have. Do not plan around an offline friend or rested XP that is not enough.

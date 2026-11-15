@@ -16,9 +16,12 @@ SavedVariables*
 # Third-party addons (QuestieDB, Questie, etc.) are read live from the game, never copied here.
 # Only our own addon lives in addon/.
 addon/*
-!addon/FeliExport/
+!addon/ForeverScout/
 QuestieDB*/
 Questie*/
 
 # The global git ignore excludes CLAUDE.md; this repo tracks it.
 !CLAUDE.md
+
+# Personal player profile written by AI assistants (see AGENTS.md)
+PLAYER.md

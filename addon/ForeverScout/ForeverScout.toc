@@ -1,9 +1,9 @@
 ## Interface: 16001
-## Title: FeliExport
+## Title: ForeverScout
 ## Notes: Saves a snapshot of quest log, location, gear and professions on /reload or logout so it can be read offline.
 ## Author: Feli
 ## Version: 1.0.0
 ## OptionalDeps: Questie, TomTom
-## SavedVariablesPerCharacter: FeliExportDB, FeliExportHistory
+## SavedVariablesPerCharacter: ForeverScoutDB, ForeverScoutHistory
 
-FeliExport.lua
+ForeverScout.lua

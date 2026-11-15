@@ -1,4 +1,4 @@
-"""Shared helpers: load the Q.pkl cache and the live FeliExport snapshot, name/zone lookups,
+"""Shared helpers: load the Q.pkl cache and the live ForeverScout snapshot, name/zone lookups,
 spawn geometry and quest availability rules."""
 import datetime as dt
 import math
@@ -78,24 +78,76 @@ def char_name(char_dir):
     return Path(char_dir).name
 
 
-def _snapshot_at(path):
+# The addon was called FeliExport before; its SavedVariables file and globals keep that name
+# on disk until the character logs in with ForeverScout. Both are read so no history is lost.
+ADDON = ("ForeverScout", "ForeverScoutDB", "ForeverScoutHistory")
+OLD_ADDON = ("FeliExport", "FeliExportDB", "FeliExportHistory")
+
+
+def _load_sv(path, names):
     path = Path(path)
-    if path not in _snapshots:
+    key = (path, names)
+    if key not in _snapshots:
         if not path.exists():
-            _snapshots[path] = ({}, {})
+            _snapshots[key] = ({}, {})
         else:
-            db, hist = load_lua_globals(path, "FeliExportDB", "FeliExportHistory")
-            _snapshots[path] = (db or {}, hist or {})
-    return _snapshots[path]
+            db, hist = load_lua_globals(path, *names)
+            _snapshots[key] = (db or {}, hist or {})
+    return _snapshots[key]
+
+
+def _merge_history(old, new):
+    """History across the rename: lists are concatenated, maps merged, the XP total summed."""
+    if not old:
+        return new
+    if not new:
+        return old
+    merged = dict(old)
+    for key, value in new.items():
+        prev = merged.get(key)
+        if isinstance(value, list) and isinstance(prev, list):
+            merged[key] = prev + value
+        elif isinstance(value, dict) and isinstance(prev, dict):
+            merged[key] = {**prev, **value}
+        elif key == "xpTotal" and isinstance(prev, (int, float)):
+            merged[key] = prev + (value or 0)
+        else:
+            merged[key] = value
+    # A dungeon run left open under the old name is stale once the new addon is running.
+    merged["openRun"] = new.get("openRun")
+    return merged
+
+
+def _snapshot_at(path):
+    """(db, hist) from an explicit snapshot file, under either addon name."""
+    db, hist = _load_sv(path, ADDON[1:])
+    if not db and not hist:
+        db, hist = _load_sv(path, OLD_ADDON[1:])
+    return db, hist
+
+
+def char_snapshot(char_dir):
+    """(db, hist) for a character: the current snapshot (old addon file as fallback) and the
+    history of both addon names merged."""
+    new_db, new_hist = _load_sv(config.char_sv(char_dir, ADDON[0]), ADDON[1:])
+    old_db, old_hist = _load_sv(config.char_sv(char_dir, OLD_ADDON[0]), OLD_ADDON[1:])
+    hist = _merge_history(old_hist, new_hist)
+    db = new_db or old_db
+    if db is new_db and old_db:
+        # Flight paths and recipes are only re-recorded when their windows open again.
+        for key in ("flights", "recipes"):
+            if not db.get(key) and hist.get(key):
+                db[key] = hist[key]
+    return db, hist
 
 
 def snapshots():
-    """{char_dir: (db, hist)} for every character with a FeliExport snapshot."""
+    """{char_dir: (db, hist)} for every character with a ForeverScout (or older FeliExport)
+    snapshot."""
     out = {}
     for d in config.character_dirs():
-        path = config.char_sv(d, "FeliExport")
-        if path.exists():
-            out[d] = _snapshot_at(path)
+        if any(config.char_sv(d, name).exists() for name in (ADDON[0], OLD_ADDON[0])):
+            out[d] = char_snapshot(d)
     return out
 
 
@@ -131,17 +183,17 @@ def _pick_character():
         sys.exit(f"Unknown character '{wanted}'. Known: {', '.join(char_name(d) for d in dirs)}")
     snaps = snapshots()
     if not snaps:
-        sys.exit("No FeliExport snapshot found: log in, run /wow or /reload, then retry")
+        sys.exit("No ForeverScout snapshot found: log in, run /wow or /reload, then retry")
     return max(snaps, key=lambda d: (snaps[d][0].get("level") or 0, snaps[d][0].get("savedAt") or ""))
 
 
 def load_snapshot(char_dir=None):
-    """Return (FeliExportDB, FeliExportHistory) for a character (default: main_character())."""
+    """Return (ForeverScoutDB, ForeverScoutHistory) for a character (default: main_character())."""
     if char_dir is None and config.SNAPSHOT_OVERRIDE:
         snap = _snapshot_at(config.SNAPSHOT_OVERRIDE)
         IDENTITY.update({k: snap[0].get(k) for k in ("class", "race", "faction")})
         return snap
-    return _snapshot_at(config.char_sv(char_dir or main_character(), "FeliExport"))
+    return char_snapshot(char_dir or main_character())
 
 
 def load_known_taxis(char_dir=None):
@@ -324,7 +376,7 @@ IDENTITY = {"class": None, "race": None, "faction": None}
 def identity_of(char_dir):
     """{"class": "HUNTER", "race": "Troll", "faction": "Horde"} from the snapshot, falling
     back to Syndicator's character details for snapshots taken before these fields existed."""
-    snap = _snapshot_at(config.char_sv(char_dir, "FeliExport"))[0]
+    snap = char_snapshot(char_dir)[0]
     ident = {k: snap.get(k) for k in ("class", "race", "faction")}
     if not all(ident.values()):
         details = syndicator_characters().get(char_name(char_dir), {}).get("details") or {}

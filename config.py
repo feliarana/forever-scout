@@ -4,8 +4,8 @@ Every path is derived from WOW_DIR. Environment overrides:
   WOW_DIR            game folder (the one holding Interface/ and WTF/)
   WOW_ACCOUNT        WTF/Account/<name>; auto-detected when there is only one (else newest)
   WOW_CHAR           main character, as its WTF folder name ("Caza-Peques") or name ("Caza");
-                     default: the highest-level character with a FeliExport snapshot
-  FELIEXPORT_SNAPSHOT  explicit snapshot file (overrides WOW_CHAR)
+                     default: the highest-level character with a ForeverScout snapshot
+  FOREVERSCOUT_SNAPSHOT  explicit snapshot file (overrides WOW_CHAR)
   WOW_AUCTION_REALM  Auctionator price database key (default: all keys)
 Every tool also accepts `--char NAME`. Characters are discovered from WTF, so any number of
 characters (mains, alts, bank alts) on any realm folder is supported.
@@ -41,7 +41,8 @@ ACCOUNT = _detect_account()
 ACCOUNT_DIR = ACCOUNTS_DIR / ACCOUNT
 ACCOUNT_SV_DIR = ACCOUNT_DIR / "SavedVariables"
 CHARACTER = os.environ.get("WOW_CHAR", "")
-SNAPSHOT_OVERRIDE = os.environ.get("FELIEXPORT_SNAPSHOT", "")
+# FELIEXPORT_SNAPSHOT is the name used before the addon was renamed.
+SNAPSHOT_OVERRIDE = os.environ.get("FOREVERSCOUT_SNAPSHOT") or os.environ.get("FELIEXPORT_SNAPSHOT", "")
 
 
 def character_dirs():

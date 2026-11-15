@@ -1,10 +1,15 @@
-# FeliExport
+# ForeverScout
 
 In-game addon for WoW Forever (Interface 16001). It saves a per-character snapshot to
 SavedVariables for the offline tools in `tools/`, gives loot advice in chat, warns about ammo,
 pet, bags and durability, and points a TomTom arrow at NPCs or party members.
 
-The game's `Interface/AddOns/FeliExport` folder is a symlink to this directory.
+The game's `Interface/AddOns/ForeverScout` folder is a symlink to this directory.
+
+Formerly called **FeliExport**. The game keeps addon data in a file named after the addon, so
+after the rename each character starts a new `SavedVariables/ForeverScout.lua`. The offline
+tools still read the old `FeliExport.lua` and merge its history (deaths, dungeon runs,
+level-ups, flight paths, recipes) with the new one, so nothing recorded before is lost.
 
 ## Requirements
 
@@ -16,7 +21,7 @@ The game's `Interface/AddOns/FeliExport` folder is a symlink to this directory.
 
 | Command | What it does |
 |---|---|
-| `/wow [question]` (alias `/feli`) | Builds the snapshot now and opens a copy box with a one-line summary to paste into a chat. The optional question is stored in the snapshot. Type `/reload` afterwards to write the full snapshot to disk. |
+| `/wow [question]` (aliases `/scout`, `/feli`) | Builds the snapshot now and opens a copy box with a one-line summary to paste into a chat. The optional question is stored in the snapshot. Type `/reload` afterwards to write the full snapshot to disk. |
 | `/wow addons` | Lists loaded addons that do the same job (bags, damage meters, action bars, quest auto-accept, map coordinates, fast loot, vendor prices…). Leatrix Plus and ElvUI only clash if the matching option is on. |
 | `/wow alerts` | Shows the upkeep alert thresholds and runs a check now. |
 | `/wow alerts off` / `/wow alerts on` | Mutes or re-enables upkeep alerts (saved per character). |
@@ -45,7 +50,7 @@ torn down) never overwrites a good one.
 Each section is built on its own: an API that fails only empties its section, and the error
 is stored under `errors`.
 
-`FeliExportDB` (per character, replaced on every snapshot):
+`ForeverScoutDB` (per character, replaced on every snapshot):
 
 | Key | Content |
 |---|---|
@@ -75,7 +80,7 @@ is stored under `errors`.
 | `apiDiagnostics` | Which APIs exist on the client; only collected while talents or skills come back empty |
 | `errors` | Error message per failed section |
 
-`FeliExportHistory` (per character, kept across sessions): running XP total, level-ups with
+`ForeverScoutHistory` (per character, kept across sessions): running XP total, level-ups with
 date and zone, deaths with place and level (killer taken from a hostile target, best effort),
 dungeon runs with XP gained, flight paths, recipes and the upkeep alert setting (`alerts`).
 
@@ -102,7 +107,7 @@ every 20 seconds.
 | Low durability | Any equipped item below 25% | Repair |
 
 Ammo is counted from the bag stacks (quiver included), since the ammo slot only references
-them. Thresholds live in `ALERT_LIMITS` in `FeliExport.lua`.
+them. Thresholds live in `ALERT_LIMITS` in `ForeverScout.lua`.
 
 ## Loot advisor and tooltip score
 
@@ -118,10 +123,10 @@ is the comparison; a two-hander is compared to main hand plus off hand.
   a reason and the score difference) is printed in chat and stored in `lastRolls`.
 - **Tooltips**: every gear tooltip (bags, quest rewards, vendors, chat links) gets one line,
   for hunters only:
-  - `FeliExport: +12.3 vs equipped (score 45.1)`: green above +0.5, red below -0.5, gray in
+  - `ForeverScout: +12.3 vs equipped (score 45.1)`: green above +0.5, red below -0.5, gray in
     between; adds `needs level N` when the item requires a higher level.
-  - `FeliExport: equipped, score N` on the item you are wearing.
-  - `FeliExport: not for you (...)` on plate, shields, mail before 40 and weapons hunters
+  - `ForeverScout: equipped, score N` on the item you are wearing.
+  - `ForeverScout: not for you (...)` on plate, shields, mail before 40 and weapons hunters
     cannot use.
   - No line on non-gear items (materials, ammo, bags, shirts). Comparison tooltips are left
     alone.

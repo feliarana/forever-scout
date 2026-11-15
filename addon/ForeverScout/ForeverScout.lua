@@ -1,4 +1,4 @@
--- FeliExport: writes a per-character snapshot into SavedVariables.
+-- ForeverScout: writes a per-character snapshot into SavedVariables.
 -- WoW only flushes SavedVariables to disk on /reload, character switch or logout,
 -- so /wow builds the snapshot and the following /reload writes it to disk.
 --
@@ -173,7 +173,7 @@ local function adviseItem(link, attempt)
     return
   end
   local color = verdict == "NEED" and "|cff00ff00NECESIDAD|r" or "|cffffd100CODICIA|r"
-  print("|cff33ff99FeliExport|r: " .. link .. " -> " .. color .. " (" .. reason .. ")")
+  print("|cff33ff99ForeverScout|r: " .. link .. " -> " .. color .. " (" .. reason .. ")")
   session.lastRolls = session.lastRolls or {}
   table.insert(session.lastRolls, 1, { item = describeItem(link), verdict = verdict, reason = reason,
                                        delta = math.floor((delta or 0) * 10) / 10, at = date("%H:%M:%S") })
@@ -212,12 +212,12 @@ local function addTooltipScore(tooltip)
   if not e or e.skip then return end
   local text
   if e.unusable then
-    text = "|cff808080FeliExport: not for you (" .. e.unusable .. ")|r"
+    text = "|cff808080ForeverScout: not for you (" .. e.unusable .. ")|r"
   elseif e.equipped then
-    text = string.format("|cff808080FeliExport: equipped, score %.1f|r", e.score)
+    text = string.format("|cff808080ForeverScout: equipped, score %.1f|r", e.score)
   else
     local color = e.delta > 0.5 and "|cff00ff00" or (e.delta < -0.5 and "|cffff4040" or "|cffbbbbbb")
-    text = string.format("%sFeliExport: %+.1f vs equipped|r |cff808080(score %.1f)|r", color, e.delta, e.score)
+    text = string.format("%sForeverScout: %+.1f vs equipped|r |cff808080(score %.1f)|r", color, e.delta, e.score)
     if e.reqLevel and e.reqLevel > UnitLevel("player") then
       text = text .. " |cffff8000needs level " .. e.reqLevel .. "|r"
     end
@@ -586,8 +586,8 @@ end
 -- Flight masters: the client only lists known nodes while the flight map is open,
 -- so they are stored in the per-character history and kept across sessions.
 local function captureTaxi()
-  local h = FeliExportHistory or {}
-  FeliExportHistory = h
+  local h = ForeverScoutHistory or {}
+  ForeverScoutHistory = h
   h.flights = h.flights or {}
   for i = 1, (try(NumTaxiNodes) or 0) do
     local name = try(TaxiNodeName, i)
@@ -607,8 +607,8 @@ end
 
 -- Profession recipes: recorded whenever a profession window is opened, kept across sessions.
 local function captureTradeSkill()
-  local h = FeliExportHistory or {}
-  FeliExportHistory = h
+  local h = ForeverScoutHistory or {}
+  ForeverScoutHistory = h
   h.recipes = h.recipes or {}
   local profession = try(GetTradeSkillLine)
   local list = {}
@@ -737,8 +737,8 @@ local MAX_ENTRIES = 60
 local tracker = { lastXP = nil, lastXPMax = nil, lastLevel = nil }
 
 local function history()
-  FeliExportHistory = FeliExportHistory or {}
-  local h = FeliExportHistory
+  ForeverScoutHistory = ForeverScoutHistory or {}
+  local h = ForeverScoutHistory
   h.levelUps = h.levelUps or {}
   h.deaths = h.deaths or {}
   h.runs = h.runs or {}
@@ -1070,8 +1070,8 @@ local function buildSnapshot()
   section("pet", getPet)
   section("hearth", getHearth)
   section("upkeep", getUpkeep)
-  section("flights", function() return FeliExportHistory and FeliExportHistory.flights end)
-  section("recipes", function() return FeliExportHistory and FeliExportHistory.recipes end)
+  section("flights", function() return ForeverScoutHistory and ForeverScoutHistory.flights end)
+  section("recipes", function() return ForeverScoutHistory and ForeverScoutHistory.recipes end)
   section("buffs", function() return getAuras("player", "HELPFUL") end)
   section("debuffs", function() return getAuras("player", "HARMFUL") end)
   section("spellbook", getSpellbook)
@@ -1093,7 +1093,7 @@ local function buildSnapshot()
   -- never overwrite a good snapshot with one of those.
   local valid = (snap.xpMax or 0) > 0 and type(snap.bags) == "table" and next(snap.bags) ~= nil
   if valid then
-    FeliExportDB = snap
+    ForeverScoutDB = snap
   end
   return valid
 end
@@ -1172,7 +1172,7 @@ end)
 -- /wow [question] : store the optional question and build the snapshot.
 -- The player then types /reload themselves: any reload started from addon code
 -- (ReloadUI or a prefilled chat line) is tainted and blocked on this client.
--- /feli is kept as an alias.
+-- /feli and /scout are aliases.
 
 -- Compact one-line export of the current snapshot, shown in a copy box so it can be pasted
 -- straight into a chat with Claude without a /reload.
@@ -1219,7 +1219,7 @@ end
 local copyFrame
 local function showCopyBox(text)
   if not copyFrame then
-    copyFrame = CreateFrame("Frame", "FeliExportCopyFrame", UIParent, "BackdropTemplate")
+    copyFrame = CreateFrame("Frame", "ForeverScoutCopyFrame", UIParent, "BackdropTemplate")
     copyFrame:SetSize(520, 70)
     copyFrame:SetPoint("TOP", UIParent, "TOP", 0, -120)
     copyFrame:SetFrameStrata("DIALOG")
@@ -1231,7 +1231,7 @@ local function showCopyBox(text)
     end
     local label = copyFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("TOP", 0, -8)
-    label:SetText("FeliExport: Ctrl+C para copiar, pegalo en Claude. Esc para cerrar.")
+    label:SetText("ForeverScout: Ctrl+C para copiar, pegalo en Claude. Esc para cerrar.")
     local box = CreateFrame("EditBox", nil, copyFrame, "InputBoxTemplate")
     box:SetSize(480, 24)
     box:SetPoint("BOTTOM", 0, 12)
@@ -1257,7 +1257,7 @@ end
 local YARD_IN_METERS = 0.9144
 
 local function say(text)
-  DEFAULT_CHAT_FRAME:AddMessage("|cFF54E33BFeliExport|r: " .. text)
+  DEFAULT_CHAT_FRAME:AddMessage("|cFF54E33BForeverScout|r: " .. text)
 end
 
 local function questieModule(name)
@@ -1335,7 +1335,7 @@ end
 local function setArrow(mapID, x, y, title, silent)
   if arrowUid and TomTom.RemoveWaypoint then pcall(TomTom.RemoveWaypoint, TomTom, arrowUid) end
   arrowUid = try(TomTom.AddWaypoint, TomTom, mapID, x / 100, y / 100,
-    { title = title, crazy = true, persistent = false, silent = silent, from = "FeliExport" })
+    { title = title, crazy = true, persistent = false, silent = silent, from = "ForeverScout" })
   return arrowUid ~= nil
 end
 
@@ -1447,9 +1447,9 @@ local function where(msg)
   end
 end
 
-SLASH_FELIEXPORTWHERE1 = "/donde"
-SLASH_FELIEXPORTWHERE2 = "/where"
-SlashCmdList.FELIEXPORTWHERE = where
+SLASH_FOREVERSCOUTWHERE1 = "/donde"
+SLASH_FOREVERSCOUTWHERE2 = "/where"
+SlashCmdList.FOREVERSCOUTWHERE = where
 
 -- Upkeep alerts: a raid-warning style message, a sound and a chat line when ammo, the pet,
 -- bag space or durability need attention. Each alert fires when its condition starts and
@@ -1607,7 +1607,7 @@ local function command(msg)
     if isHunter() then
       adviseItem(link)
     else
-      print("|cff33ff99FeliExport|r: loot advice uses hunter stat weights; it is off for your class.")
+      print("|cff33ff99ForeverScout|r: loot advice uses hunter stat weights; it is off for your class.")
     end
     return
   end
@@ -1623,9 +1623,10 @@ local function command(msg)
   session.question = msg ~= "" and msg or nil
   buildSnapshot()
   -- Show the copy box right away; /reload is still available for the full detailed file.
-  showCopyBox(compactText(FeliExportDB or {}))
+  showCopyBox(compactText(ForeverScoutDB or {}))
 end
 
-SLASH_FELIEXPORT1 = "/wow"
-SLASH_FELIEXPORT2 = "/feli"
-SlashCmdList.FELIEXPORT = command
+SLASH_FOREVERSCOUT1 = "/wow"
+SLASH_FOREVERSCOUT2 = "/feli"
+SLASH_FOREVERSCOUT3 = "/scout"
+SlashCmdList.FOREVERSCOUT = command

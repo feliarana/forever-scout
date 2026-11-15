@@ -2,16 +2,17 @@
 
 Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), for a troll hunter.
 
-- `addon/FeliExport/` — in-game addon: character snapshot, loot advisor, tooltip score, upkeep alerts and NPC arrow
-  ([addon README](addon/FeliExport/README.md)). The game's `Interface/AddOns/FeliExport` is a
+- `addon/ForeverScout/` — in-game addon: character snapshot, loot advisor, tooltip score, upkeep alerts and NPC arrow
+  ([addon README](addon/ForeverScout/README.md)). The game's `Interface/AddOns/ForeverScout` is a
   symlink to this folder.
 - `tools/` — Python scripts that cross the live snapshot with the installed QuestieDB.
 - `guide/` — leveling guide for the troll hunter.
-- `CLAUDE.md` — rules for Claude when working in this repo.
+- `AGENTS.md` — guide for any AI assistant helping a player set up and use the toolkit.
+- `CLAUDE.md` — the author's personal rules for Claude.
 
 ## Features
 
-### In game (FeliExport)
+### In game (ForeverScout)
 
 - **Snapshot** — quests, location, gear, bags, talents, spellbook, action bars, pet,
   professions, buffs, hearthstone, durability, party and online friends, refreshed every 20
@@ -54,15 +55,15 @@ Nothing from the game is copied here: tools always read the live files under `WO
 ### 1. The addon (any class)
 
 1. Get the repo (clone it, or *Code → Download ZIP* on GitHub and unzip it).
-2. Copy the `addon/FeliExport` folder into the game's `_forever_/Interface/AddOns/`, so the
-   game has `Interface/AddOns/FeliExport/FeliExport.toc`.
+2. Copy the `addon/ForeverScout` folder into the game's `_forever_/Interface/AddOns/`, so the
+   game has `Interface/AddOns/ForeverScout/ForeverScout.toc`.
    - To pick up updates automatically, link it instead of copying:
      - Windows (Command Prompt as admin):
-       `mklink /D "C:\...\_forever_\Interface\AddOns\FeliExport" "C:\...\forever-claude\addon\FeliExport"`
-     - Linux / macOS: `ln -s /path/to/forever-claude/addon/FeliExport /path/to/_forever_/Interface/AddOns/FeliExport`
+       `mklink /D "C:\...\_forever_\Interface\AddOns\ForeverScout" "C:\...\forever-claude\addon\ForeverScout"`
+     - Linux / macOS: `ln -s /path/to/forever-claude/addon/ForeverScout /path/to/_forever_/Interface/AddOns/ForeverScout`
 3. Optional, recommended: install **Questie** (Forever version, with QuestieDB) and **TomTom**.
    `/donde` needs both.
-4. In game, enable FeliExport in the AddOns list and `/reload`.
+4. In game, enable ForeverScout in the AddOns list and `/reload`.
 
 What works for each class:
 
@@ -103,8 +104,9 @@ $env:WOW_DIR = "C:\Program Files (x86)\World of Warcraft\_forever_"
 `config.py` is the author's own path, so set it (or edit `config.py`) on any other machine.
 Log in once with each character and `/reload` so it gets a snapshot.
 
-`CLAUDE.md` holds the author's rules for Claude (character, professions, stat weights). Adapt
-it to your own character if you use Claude Code with this repo.
+Using an AI assistant (Claude Code, Codex, Cursor…)? Ask it to read `AGENTS.md`: it walks you
+through setup and daily use, and keeps your personal profile in a git-ignored `PLAYER.md`.
+`CLAUDE.md` holds the author's own rules.
 
 ### Configuration
 
@@ -114,14 +116,14 @@ Paths live in `config.py` and can be overridden with environment variables:
 |---|---|
 | `WOW_DIR` | game folder holding `Interface/` and `WTF/` |
 | `WOW_ACCOUNT` | auto-detected (the only, or most recently used, `WTF/Account/<name>`) |
-| `WOW_CHAR` | highest-level character with a FeliExport snapshot |
-| `FELIEXPORT_SNAPSHOT` | explicit snapshot file (overrides `WOW_CHAR`) |
+| `WOW_CHAR` | highest-level character with a ForeverScout snapshot |
+| `FOREVERSCOUT_SNAPSHOT` | explicit snapshot file (overrides `WOW_CHAR`) |
 | `WOW_AUCTION_REALM` | every Auctionator price database key |
 
 ## Characters
 
 Characters are discovered from `WTF/Account/<account>/<realm>/<character>/`, so any number of
-mains, alts and bank alts works. Install FeliExport and log in once with each character
+mains, alts and bank alts works. Install ForeverScout and log in once with each character
 (`/wow` or `/reload`) so it gets a snapshot.
 
 - `analyze.py`, `guide.py` and `route_check.py` work on one character: `--char NAME`
@@ -153,6 +155,6 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 - `QuestieDB/support/Forever/QuestXP/xpDB-traces.lua` — real quest XP on Forever.
 - `QuestieDB/support/Forever/Zones/uiMapIdToAreaId.lua` — map ID → zone.
 - `QuestieDB/support/Forever/DropTables/classicItemDrops.lua` — drop rates.
-- `WTF/.../SavedVariables/FeliExport.lua` and `ShortestPathForever.lua` — snapshot and known flight paths.
+- `WTF/.../SavedVariables/ForeverScout.lua` and `ShortestPathForever.lua` — snapshot and known flight paths.
 - `WTF/<account>/SavedVariables/Syndicator.lua` — bags, bank and mail of every character.
 - `WTF/<account>/SavedVariables/Auctionator.lua` — AH price database (run a full scan to refresh) and vendor price cache.
