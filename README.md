@@ -28,6 +28,8 @@ Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), fo
   `/wow <item link>`, using the hunter stat weights against the equipped item.
 - **Tooltip score** — every gear tooltip shows the weighted score difference against what is
   equipped (green upgrade, red downgrade), or why the item is not for a hunter.
+- **Addon overlap check** — `/wow addons` lists loaded addons that do the same job, to trim
+  long addon lists.
 - **Upkeep alerts** — on-screen warning and sound for low ammo (with a hint to equip another
   stack), dead / unhappy / content / missing pet, nearly full bags and low durability.
   `/wow alerts on|off`.
@@ -47,13 +49,64 @@ Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), fo
 
 Nothing from the game is copied here: tools always read the live files under `WOW_DIR`.
 
-## Setup
+## Install
+
+### 1. The addon (any class)
+
+1. Get the repo (clone it, or *Code → Download ZIP* on GitHub and unzip it).
+2. Copy the `addon/FeliExport` folder into the game's `_forever_/Interface/AddOns/`, so the
+   game has `Interface/AddOns/FeliExport/FeliExport.toc`.
+   - To pick up updates automatically, link it instead of copying:
+     - Windows (Command Prompt as admin):
+       `mklink /D "C:\...\_forever_\Interface\AddOns\FeliExport" "C:\...\forever-claude\addon\FeliExport"`
+     - Linux / macOS: `ln -s /path/to/forever-claude/addon/FeliExport /path/to/_forever_/Interface/AddOns/FeliExport`
+3. Optional, recommended: install **Questie** (Forever version, with QuestieDB) and **TomTom**.
+   `/donde` needs both.
+4. In game, enable FeliExport in the AddOns list and `/reload`.
+
+What works for each class:
+
+| Feature | Hunter | Other classes |
+|---|---|---|
+| Snapshot (`/wow`, `/reload`), copy box, session history | yes | yes |
+| `/donde` NPC and party arrow | yes | yes |
+| Online friends, guild and communities | yes | yes |
+| Alerts: bags almost full, low durability | yes | yes |
+| Alerts: ammo and pet | yes | — |
+| Loot roll NEED / GREED advice | yes | — (hunter stat weights) |
+| Tooltip score | yes | — (hunter stat weights) |
+
+### 2. The offline tools (optional)
+
+Needs Python 3.10+ and the Forever QuestieDB addon installed in the game.
+
+Linux / macOS:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python tools/build_q.py
+WOW_DIR="/path/to/_forever_" .venv/bin/python tools/build_q.py
+WOW_DIR="/path/to/_forever_" .venv/bin/python tools/analyze.py
 ```
+
+Windows (PowerShell):
+
+```powershell
+py -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+$env:WOW_DIR = "C:\Program Files (x86)\World of Warcraft\_forever_"
+.venv\Scripts\python tools\build_q.py
+.venv\Scripts\python tools\analyze.py
+```
+
+`WOW_DIR` must point at the game folder that holds `Interface/` and `WTF/`. The default in
+`config.py` is the author's own path, so set it (or edit `config.py`) on any other machine.
+Log in once with each character and `/reload` so it gets a snapshot.
+
+`CLAUDE.md` holds the author's rules for Claude (character, professions, stat weights). Adapt
+it to your own character if you use Claude Code with this repo.
+
+### Configuration
 
 Paths live in `config.py` and can be overridden with environment variables:
 

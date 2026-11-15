@@ -159,6 +159,12 @@ local function judgeItem(link)
   return "GREED", string.format("no mejora lo tuyo (%.1f)%s", e.delta, note), e.delta
 end
 
+-- The weights, weapon list and armor rules above are for hunters; other classes would get
+-- wrong NEED/GREED advice, so the advisor and the tooltip score only run for hunters.
+local function isHunter()
+  return select(2, UnitClass("player")) == "HUNTER"
+end
+
 local function adviseItem(link, attempt)
   local verdict, reason, delta = judgeItem(link)
   if not verdict then
@@ -199,7 +205,7 @@ end
 -- weighted score difference against what is equipped in that slot. Hunter weights only.
 local function addTooltipScore(tooltip)
   if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end  -- skip comparison tooltips
-  if select(2, UnitClass("player")) ~= "HUNTER" then return end
+  if not isHunter() then return end
   local _, link = tooltip:GetItem()
   if not link then return end
   local e = evaluateItem(link)
@@ -937,6 +943,76 @@ local function onZoneChange()
   end
 end
 
+-- Addon overlap check: loaded addons that do the same job, so a long addon list can be trimmed.
+-- Groups are matched by folder name prefix (case-insensitive). Leatrix Plus and ElvUI bundle many
+-- features, so they are listed in several groups: whether they really clash depends on which of
+-- their options are turned on.
+local ADDON_GROUPS = {
+  { label = "Bags", names = { "Baganator", "Bagnon", "AdiBags", "ArkInventory", "OneBag", "Combuctor", "BetterBags", "ElvUI" } },
+  { label = "Damage meters", names = { "Details", "Recount", "Skada" } },
+  { label = "Action bars", names = { "Bartender4", "Dominos", "ElvUI" } },
+  { label = "Unit frames", names = { "ElvUI", "ShadowedUnitFrames", "PitBull4", "XPerl", "Z-Perl", "SUF" } },
+  { label = "Nameplates", names = { "Plater", "TidyPlates", "Kui_Nameplates", "ElvUI" } },
+  { label = "Leveling guides", names = { "RXPGuides", "Guidelime", "AAP", "AzerothAutoPilot", "TourGuide", "Zygor" } },
+  { label = "Quest auto-accept", names = { "ForeverAutoQuest", "QuickQuest", "AutoTurnIn", "Leatrix_Plus" } },
+  { label = "Waypoint arrows", names = { "TomTom", "Carbonite", "Waypoints" } },
+  { label = "World map coordinates", names = { "WhereYouAt", "OpenMap", "Mapster", "Leatrix_Maps", "MapCoords" } },
+  { label = "Auction house", names = { "Auctionator", "Auctioneer", "TradeSkillMaster", "TSM", "aux" } },
+  { label = "Vendor price in tooltips", names = { "BetterVendorPrice", "VendorPrice", "Auctionator", "TradeSkillMaster" } },
+  { label = "Fast loot", names = { "SpeedyAutoLoot", "FasterLoot", "AutoLooter", "Leatrix_Plus" } },
+  { label = "Swing / auto shot timers", names = { "AutoshotForever", "Quartz", "WeaponSwingTimer", "SwingTimer" } },
+  { label = "Chat", names = { "Prat", "Chatter", "ElvUI" } },
+  { label = "Tooltips", names = { "TipTac", "TinyTooltip", "ElvUI" } },
+  { label = "Rare scanners", names = { "RareScanner", "NPCScan", "SilverDragon", "UnitScan" } },
+}
+
+local function addonList()
+  local num = (C_AddOns and C_AddOns.GetNumAddOns) or GetNumAddOns
+  local info = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
+  local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+  local out = {}
+  for i = 1, (try(num) or 0) do
+    local name, title = try(info, i)
+    if name then
+      out[#out + 1] = { name = name, title = title and title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or name,
+                        loaded = try(loaded, i) and true or false }
+    end
+  end
+  return out
+end
+
+-- {label, addons = {names}} for every group with two or more loaded addons.
+local function addonOverlaps(list)
+  local loadedNames = {}
+  for _, a in ipairs(list) do if a.loaded then loadedNames[#loadedNames + 1] = a.name end end
+  local result = {}
+  for _, group in ipairs(ADDON_GROUPS) do
+    local hits, seen = {}, {}
+    for _, name in ipairs(loadedNames) do
+      local lower = name:lower()
+      for _, prefix in ipairs(group.names) do
+        if lower:sub(1, #prefix) == prefix:lower() then
+          -- Plugins (Details_Streamer, ...) count as their parent addon.
+          local root = name:match("^([^_]+)_") or name
+          if prefix:find("_") then root = name end
+          if not seen[root] then seen[root] = true; hits[#hits + 1] = root end
+          break
+        end
+      end
+    end
+    if #hits > 1 then result[#result + 1] = { label = group.label, addons = hits } end
+  end
+  return result
+end
+
+-- Snapshot section: loaded addon count, the full list and the overlaps.
+local function getAddons()
+  local list = addonList()
+  local loaded = {}
+  for _, a in ipairs(list) do if a.loaded then loaded[#loaded + 1] = a.name end end
+  return { loaded = loaded, total = #list, overlaps = addonOverlaps(list) }
+end
+
 -- Build each section independently so one failing API cannot wipe the whole snapshot.
 -- Any error message is stored under `errors` to help debugging.
 local function buildSnapshot()
@@ -1005,6 +1081,7 @@ local function buildSnapshot()
   section("lastMerchant", function() return session.lastMerchant end)
   section("lastRolls", function() return session.lastRolls end)
   section("locale", function() return GetLocale() end)
+  section("addons", getAddons)
   -- Only collect API diagnostics while some section is still empty.
   local talentsFound = snap.talents and ((snap.talents.trees and #snap.talents.trees > 0) or (snap.talents.tabs and #snap.talents.tabs > 0))
   if not talentsFound or not (snap.skills and #snap.skills > 0) then
@@ -1079,7 +1156,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
     if C_Timer then C_Timer.After(1, function() pcall(captureTradeSkill) end) end
   elseif event == "START_LOOT_ROLL" then
     local link = try(GetLootRollItemLink, arg1)
-    if link then adviseItem(link) end
+    if link and isHunter() then adviseItem(link) end
   elseif event == "QUEST_DETAIL" then
     captureQuestWindow("offered")
   elseif event == "QUEST_COMPLETE" then
@@ -1509,12 +1586,33 @@ local function alertsCommand(arg)
   end
 end
 
+local function addonsCommand()
+  local a = getAddons()
+  say(string.format("%d addons loaded (of %d installed).", #a.loaded, a.total))
+  if #a.overlaps == 0 then
+    say("no overlapping addons found.")
+    return
+  end
+  for _, o in ipairs(a.overlaps) do
+    say("|cffffd100" .. o.label .. "|r: " .. table.concat(o.addons, ", "))
+  end
+  say("same job twice: keep one per line (Leatrix Plus / ElvUI only clash if that option is on).")
+end
+
 local function command(msg)
   msg = msg and msg:match("^%s*(.-)%s*$") or ""
   -- "/wow <shift-clicked item link>" gives an instant Need/Greed verdict, no reload needed.
   local link = msg:match("(|c.-|Hitem:.-|h.-|h|r)") or msg:match("(|Hitem:.-|h.-|h)")
   if link then
-    adviseItem(link)
+    if isHunter() then
+      adviseItem(link)
+    else
+      print("|cff33ff99FeliExport|r: loot advice uses hunter stat weights; it is off for your class.")
+    end
+    return
+  end
+  if msg:lower() == "addons" then
+    addonsCommand()
     return
   end
   local alertsArg = msg:match("^alerts%s*(%a*)$")

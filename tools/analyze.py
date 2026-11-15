@@ -103,9 +103,17 @@ def character(Q, snap, hist):
     # Forever uses the trait system: unspent points live in each tree's currency ("available"),
     # while UnitCharacterPoints (unspentTalentPoints) stays empty.
     unspent = snap.get("unspentTalentPoints") or 0
+    spent = total = 0
+    picked = []
     for tree in (snap.get("talents") or {}).get("trees") or []:
         for cur in tree.get("currencies") or []:
             unspent = max(unspent, cur.get("available") or 0)
+            spent, total = max(spent, cur.get("spent") or 0), max(total, cur.get("max") or 0)
+        # Talent tree order: top row first, left to right.
+        nodes = sorted(tree.get("nodes") or [], key=lambda n: (n.get("y") or 0, n.get("x") or 0))
+        picked += [f"{n.get('name')} {n.get('rank')}/{n.get('max')}" for n in nodes if n.get("rank")]
+    if picked:
+        print(f"Talents {spent}/{total}: " + ", ".join(picked))
     if unspent:
         print(f"!! Unspent talent points: {unspent}")
     print("PvP flagged: " + ("YES" if snap.get("pvpFlagged") else "no"))

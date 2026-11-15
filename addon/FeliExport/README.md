@@ -17,6 +17,7 @@ The game's `Interface/AddOns/FeliExport` folder is a symlink to this directory.
 | Command | What it does |
 |---|---|
 | `/wow [question]` (alias `/feli`) | Builds the snapshot now and opens a copy box with a one-line summary to paste into a chat. The optional question is stored in the snapshot. Type `/reload` afterwards to write the full snapshot to disk. |
+| `/wow addons` | Lists loaded addons that do the same job (bags, damage meters, action bars, quest auto-accept, map coordinates, fast loot, vendor prices…). Leatrix Plus and ElvUI only clash if the matching option is on. |
 | `/wow alerts` | Shows the upkeep alert thresholds and runs a check now. |
 | `/wow alerts off` / `/wow alerts on` | Mutes or re-enables upkeep alerts (saved per character). |
 | `/wow <shift-clicked item link>` | Instant NEED / GREED verdict for that item against what is equipped. |
@@ -70,6 +71,7 @@ is stored under `errors`.
 | `buffs`, `debuffs` | Active auras with stacks and time left |
 | `lastQuestWindow`, `lastTrainer`, `lastMerchant` | Last quest reward window, trainer and vendor opened, with items and costs |
 | `lastRolls` | Last 10 loot roll verdicts |
+| `addons` | Loaded addon names, installed count and overlapping groups |
 | `apiDiagnostics` | Which APIs exist on the client; only collected while talents or skills come back empty |
 | `errors` | Error message per failed section |
 
@@ -103,6 +105,9 @@ Ammo is counted from the bag stacks (quiver included), since the ammo slot only 
 them. Thresholds live in `ALERT_LIMITS` in `FeliExport.lua`.
 
 ## Loot advisor and tooltip score
+
+Hunters only: the weights and the usable-gear rules are for hunters, so other classes get
+no roll advice and no tooltip line.
 
 Items are scored with the RestedXP hunter weights (levels 20-29: ranged DPS 14, agility 2.33,
 spirit 1.12, attack power 0.8, stamina 0.75, intellect 0.55, strength 0.2, armor 0.035) and
