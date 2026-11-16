@@ -102,6 +102,11 @@ def character(Q, snap, hist):
         warn = " !! more than 2 levels behind" if (pet.get("level") or 0) < level - 2 else ""
         print(f"Pet: {pet.get('name')} ({pet.get('family')}) level {pet.get('level')} "
               f"XP {pet.get('xp')}/{pet.get('xpMax')}{warn}")
+        mood = {1: "!! unhappy (75% damage, may run away): feed it", 2: "content (100% damage): feed it for 125%",
+                3: "happy (125% damage)"}.get(pet.get("happiness"))
+        diet = ", ".join(pet.get("foodTypes") or [])
+        if mood or diet:
+            print("     " + " | ".join(x for x in (mood, f"eats: {diet}" if diet else None) if x))
     # Forever uses the trait system: unspent points live in each tree's currency ("available"),
     # while UnitCharacterPoints (unspentTalentPoints) stays empty.
     unspent = snap.get("unspentTalentPoints") or 0

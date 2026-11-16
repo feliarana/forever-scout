@@ -880,32 +880,105 @@ local function captureTaxi()
 end
 
 -- Profession recipes: recorded whenever a profession window is opened, kept across sessions.
+-- The recipe list API keeps answering with the last profession that had recipes, so opening
+-- one without any (fishing) used to save another profession's list under its name. Each
+-- recipe is therefore filed under the profession the client says it belongs to.
+local function sameRecipeNames(a, b)
+  if #a ~= #b then return false end
+  for i = 1, #a do
+    if a[i].name ~= b[i].name then return false end
+  end
+  return true
+end
+
+-- Drop a profession whose saved list is a copy of another one's (data from older versions):
+-- the later capture is the wrong one.
+local function dropDuplicateRecipes(recipes)
+  local names = {}
+  for name in pairs(recipes) do names[#names + 1] = name end
+  for _, name in ipairs(names) do
+    for _, other in ipairs(names) do
+      local mine, theirs = recipes[name], recipes[other]
+      if name ~= other and mine and theirs and #mine.list > 0 and sameRecipeNames(mine.list, theirs.list)
+        and (mine.at or "") > (theirs.at or "") then
+        recipes[name] = nil
+      end
+    end
+  end
+end
+
 local function captureTradeSkill()
   local h = ForeverScoutHistory or {}
   ForeverScoutHistory = h
   h.recipes = h.recipes or {}
+  local now = date("%Y-%m-%d %H:%M")
+  local byProfession = {}
+
+  -- Classic-era window: the list belongs to the open trade skill.
   local profession = try(GetTradeSkillLine)
   local list = {}
   for i = 1, (try(GetNumTradeSkills) or 0) do
     local name, kind = try(GetTradeSkillInfo, i)
     if name and kind ~= "header" then list[#list + 1] = { name = name, color = kind } end
   end
-  if #list == 0 and C_TradeSkillUI and C_TradeSkillUI.GetAllRecipeIDs then
-    profession = profession or (C_TradeSkillUI.GetBaseProfessionInfo and try(C_TradeSkillUI.GetBaseProfessionInfo) or {}).professionName
+  if type(profession) == "string" and #list > 0 then byProfession[profession] = list end
+
+  if not next(byProfession) and C_TradeSkillUI and C_TradeSkillUI.GetAllRecipeIDs then
+    local base = C_TradeSkillUI.GetBaseProfessionInfo and try(C_TradeSkillUI.GetBaseProfessionInfo) or {}
     for _, id in ipairs(try(C_TradeSkillUI.GetAllRecipeIDs) or {}) do
       local info = try(C_TradeSkillUI.GetRecipeInfo, id)
-      if info and info.learned then list[#list + 1] = { name = info.name, color = info.relativeDifficulty } end
+      if info and info.learned then
+        local owner = C_TradeSkillUI.GetProfessionInfoByRecipeID and try(C_TradeSkillUI.GetProfessionInfoByRecipeID, id)
+        local name = owner and (plainText(owner.parentProfessionName) or plainText(owner.professionName))
+        if not name or name == "" then name = plainText(base.parentProfessionName) or plainText(base.professionName) end
+        if name and name ~= "" then
+          byProfession[name] = byProfession[name] or {}
+          table.insert(byProfession[name], { name = info.name, color = info.relativeDifficulty })
+        end
+      end
     end
   end
-  if profession and #list > 0 then
-    h.recipes[profession] = { at = date("%Y-%m-%d %H:%M"), list = list }
+
+  for name, recipes in pairs(byProfession) do
+    -- Without per-recipe ownership a copy of another profession's list is the stale answer.
+    local copy = false
+    for other, saved in pairs(h.recipes) do
+      if other ~= name and sameRecipeNames(recipes, saved.list) then copy = true end
+    end
+    if not copy then h.recipes[name] = { at = now, list = recipes } end
   end
+  dropDuplicateRecipes(h.recipes)
+end
+
+-- Pet happiness: 1 unhappy (75% damage), 2 content (100%), 3 happy (125%), plus the damage
+-- percentage. Forever reports it through C_PetInfo; the global is the Classic-era fallback.
+-- Returns nil when the client gives no usable number.
+local function petHappiness()
+  local happiness, damage
+  if C_PetInfo and C_PetInfo.GetPetHappiness then happiness, damage = try(C_PetInfo.GetPetHappiness) end
+  if happiness == nil then happiness, damage = try(GetPetHappiness) end
+  local ok, value = pcall(function() return happiness + 0 end)
+  if not ok then return nil end
+  local okDamage, damageValue = pcall(function() return damage + 0 end)
+  return value, okDamage and damageValue or nil
 end
 
 local function getPet()
   if not UnitExists("pet") then return nil end
   local pet = { name = UnitName("pet"), level = UnitLevel("pet"), family = try(UnitCreatureFamily, "pet") }
-  pet.happiness = try(GetPetHappiness)
+  pet.happiness, pet.damagePercent = petHappiness()
+  -- What the pet eats, so food in the bags can be matched to it.
+  local diet = { (C_PetInfo and try(C_PetInfo.GetPetFoodTypes)) or try(GetPetFoodTypes) }
+  if type(diet[1]) == "table" then diet = diet[1] end
+  local foods = {}
+  for _, food in ipairs(diet) do
+    if type(food) == "string" then foods[#foods + 1] = food end
+  end
+  if #foods > 0 then pet.foodTypes = foods end
+  pcall(function()
+    local loyalty = (C_PetInfo and C_PetInfo.GetPetLoyalty and C_PetInfo.GetPetLoyalty()) or (GetPetLoyalty and GetPetLoyalty())
+    if type(loyalty) == "string" then pet.loyalty = loyalty end
+  end)
   pcall(function()
     local xp, xpMax = GetPetExperience()
     pet.xp, pet.xpMax = xp, xpMax
@@ -1530,6 +1603,10 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
     if HEAVY_EVENTS[event] == "talents" then heavyFresh.traitSystems, talentRetries, perkRetries = nil, 0, 0 end
   end
   if event == "PLAYER_LOGIN" then
+    -- Clean recipe lists saved under the wrong profession by older versions.
+    pcall(function()
+      if ForeverScoutHistory and ForeverScoutHistory.recipes then dropDuplicateRecipes(ForeverScoutHistory.recipes) end
+    end)
     onXPUpdate()
     requestRosters()
     if C_Timer then
@@ -2133,7 +2210,7 @@ local function checkAlerts()
       local petDead = UnitIsDead("pet")
       alert("petDead", petDead and not inCombat, T("Pet is dead: cast Revive Pet."))
       -- 1 unhappy (75% damage), 2 content (100%), 3 happy (125%).
-      local happiness = not petDead and plain(try(GetPetHappiness))
+      local happiness = not petDead and petHappiness()
       alert("petUnhappy", happiness == 1, T("Pet is unhappy (75% damage, may run away): Feed Pet now."))
       alert("petContent", happiness == 2 and not inCombat, T("Pet is only content: Feed Pet for +25% damage."))
     else

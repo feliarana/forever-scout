@@ -534,3 +534,53 @@ test("/whereis: old aliases still work and the link is translated on esMX", () =
     assert(STUB.said("otro continente") and STUB.said("[Ver en mapa]"))
   `);
 });
+
+test("pet happiness is read from C_PetInfo on Forever, with the pet's diet", () => {
+  withAddon(ONE_ITEM + `
+    STUB.installPetInfo()
+    STUB.pet = { name = "Boar", level = 29, happiness = 1, foods = { "Meat", "Fish" } }
+  `, LOGIN + `
+    login()
+    assert(STUB.said("Pet is unhappy"), "the unhappy alert must fire from C_PetInfo data")
+    local pet = ForeverScoutDB.pet
+    assert(pet.happiness == 1 and pet.damagePercent == 75, "happiness missing from the snapshot")
+    assert(pet.foodTypes[1] == "Meat" and pet.foodTypes[2] == "Fish", "diet missing from the snapshot")
+    STUB.clearChat()
+    STUB.pet.happiness = 3
+    STUB.advance(400)
+    assert(not STUB.said("Pet is unhappy") and not STUB.said("only content"), "a happy pet must be quiet")
+  `);
+});
+
+test("recipes are filed under their own profession, not the window that was opened", () => {
+  withAddon(ONE_ITEM + `STUB.installTradeSkills()`, LOGIN + `
+    STUB.recipeIDs[1] = { name = "Linen Bandage", profession = "First Aid", difficulty = 3 }
+    STUB.recipeIDs[2] = { name = "Wool Bandage", profession = "First Aid", difficulty = 1 }
+    STUB.openProfession = "First Aid"
+    STUB.fire("TRADE_SKILL_SHOW")
+    local recipes = ForeverScoutHistory.recipes
+    assert(#recipes["First Aid"].list == 2)
+
+    -- Fishing has no recipes: the client keeps answering with the First Aid list.
+    STUB.openProfession = "Fishing"
+    STUB.fire("TRADE_SKILL_SHOW")
+    assert(recipes["Fishing"] == nil, "First Aid recipes were saved under Fishing")
+    assert(#recipes["First Aid"].list == 2)
+  `);
+});
+
+test("recipe lists copied to the wrong profession by older versions are cleaned at login", () => {
+  withAddon(ONE_ITEM + `
+    local bandages = { { name = "Linen Bandage", color = 3 }, { name = "Wool Bandage", color = 1 } }
+    ForeverScoutHistory = { recipes = {
+      ["First Aid"] = { at = "2026-11-15 20:17", list = bandages },
+      ["Fishing"] = { at = "2026-11-15 20:18", list = { { name = "Linen Bandage", color = 3 }, { name = "Wool Bandage", color = 1 } } },
+      ["Cooking"] = { at = "2026-11-15 20:18", list = { { name = "Charred Wolf Meat", color = 0 } } },
+    } }
+  `, LOGIN + `
+    login()
+    local recipes = ForeverScoutHistory.recipes
+    assert(recipes["Fishing"] == nil, "the copied list was kept")
+    assert(recipes["First Aid"] and recipes["Cooking"], "a real list was dropped")
+  `);
+});

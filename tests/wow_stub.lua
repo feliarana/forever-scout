@@ -393,3 +393,38 @@ function STUB.clickLink(link)
     callback.fn(callback.owner, link, "[text]", "LeftButton", DEFAULT_CHAT_FRAME)
   end
 end
+
+----------------------------------------------------------------------------------------
+-- Forever-style pet and profession APIs: not present by default (tests opt in).
+-- STUB.installPetInfo() serves pet happiness through C_PetInfo instead of the old global.
+-- STUB.installTradeSkills() serves STUB.recipeIDs = { [id] = { name, profession, difficulty } }
+-- as the recipes of whichever profession window "opens"; STUB.openProfession is its name.
+----------------------------------------------------------------------------------------
+
+function STUB.installPetInfo()
+  GetPetHappiness = nil
+  C_PetInfo = {}
+  function C_PetInfo.GetPetHappiness()
+    if STUB.pet then return STUB.pet.happiness, STUB.pet.happiness == 1 and 75 or 100, 0 end
+  end
+  function C_PetInfo.GetPetFoodTypes() return STUB.pet and STUB.pet.foods or {} end
+end
+
+function STUB.installTradeSkills()
+  STUB.recipeIDs, STUB.openProfession = {}, nil
+  C_TradeSkillUI = {}
+  function C_TradeSkillUI.GetBaseProfessionInfo() return { professionName = STUB.openProfession } end
+  function C_TradeSkillUI.GetAllRecipeIDs()
+    local ids = {}
+    for id in pairs(STUB.recipeIDs) do ids[#ids + 1] = id end
+    table.sort(ids)
+    return ids
+  end
+  function C_TradeSkillUI.GetRecipeInfo(id)
+    local r = STUB.recipeIDs[id]
+    return { name = r.name, learned = true, relativeDifficulty = r.difficulty }
+  end
+  function C_TradeSkillUI.GetProfessionInfoByRecipeID(id)
+    return { professionName = STUB.recipeIDs[id].profession }
+  end
+end
