@@ -426,9 +426,16 @@ local function getTraitTalents()
             if def then name = def.overrideName or spellName(def.spellID) end
           end
         end
+        -- open: prerequisites met (row gate and parent talents). canBuy: open and a point is
+        -- free right now. Read defensively: these flags may be restricted values.
+        local open, canBuy
+        pcall(function()
+          open = (node.isAvailable == true) or nil
+          canBuy = (node.canPurchaseRank == true) or nil
+        end)
         tree.nodes[#tree.nodes + 1] = {
           name = name, rank = node.activeRank or node.currentRank, max = node.maxRanks,
-          x = node.posX, y = node.posY,
+          x = node.posX, y = node.posY, open = open, canBuy = canBuy,
         }
       end
     end
@@ -907,11 +914,78 @@ local function onXPUpdate()
   tracker.lastXP, tracker.lastXPMax, tracker.lastLevel = xp, xpMax, level
 end
 
+-- XP pacing. A play session survives /reload and ends after SESSION_GAP seconds without a
+-- snapshot. One XP sample is kept every SAMPLE_EVERY seconds (about the last hour), so the
+-- recent rate is not diluted by an AFK break earlier in the session.
+local SESSION_GAP, SAMPLE_EVERY, MAX_SAMPLES, MIN_PACE_SECONDS = 1800, 300, 13, 300
+
+local function getPace()
+  local h, now = history(), time()
+  local s = h.pace
+  if not s or now - (s.lastSeen or 0) > SESSION_GAP then
+    s = { start = now, startedAt = date("%Y-%m-%d %H:%M"), startXP = h.xpTotal, samples = {} }
+    h.pace = s
+  end
+  s.lastSeen = now
+  s.samples = s.samples or {}
+  local last = s.samples[#s.samples]
+  if not last or now - last.t >= SAMPLE_EVERY then
+    s.samples[#s.samples + 1] = { t = now, xp = h.xpTotal }
+    while #s.samples > MAX_SAMPLES do table.remove(s.samples, 1) end
+  end
+
+  local pace = { sessionStartedAt = s.startedAt, sessionSeconds = now - s.start,
+                 sessionXP = h.xpTotal - s.startXP }
+  if pace.sessionSeconds >= MIN_PACE_SECONDS then
+    pace.xpPerHour = math.floor(pace.sessionXP * 3600 / pace.sessionSeconds)
+  end
+  local first = s.samples[1]
+  if first and now - first.t >= MIN_PACE_SECONDS then
+    pace.recentSeconds = now - first.t
+    pace.recentXPPerHour = math.floor((h.xpTotal - first.xp) * 3600 / pace.recentSeconds)
+  end
+  return pace
+end
+
+-- Quest log size and cap, so advice can tell whether another quest still fits.
+local function getQuestLogSize()
+  local out = {}
+  local _, count
+  if C_QuestLog and C_QuestLog.GetNumQuestLogEntries then _, count = try(C_QuestLog.GetNumQuestLogEntries) end
+  if not count then _, count = try(GetNumQuestLogEntries) end
+  out.count = plain(count)
+  out.max = plain((C_QuestLog and try(C_QuestLog.GetMaxNumQuestsCanAccept)) or MAX_QUESTS or MAX_QUESTLOG_QUESTS)
+  return out
+end
+
+-- Unspent talent points. Forever keeps them in the trait tree currency; UnitCharacterPoints
+-- is the classic fallback.
+local function unspentTalentPoints()
+  local points = plain(try(UnitCharacterPoints, "player"))
+  if type(points) ~= "number" then points = 0 end
+  if C_ClassTalents and C_Traits then
+    local configID = try(C_ClassTalents.GetActiveConfigID)
+    local config = configID and try(C_Traits.GetConfigInfo, configID)
+    for _, treeID in ipairs(config and config.treeIDs or {}) do
+      for _, c in ipairs(try(C_Traits.GetTreeCurrencyInfo, configID, treeID, false) or {}) do
+        local quantity = plain(c.quantity)
+        if type(quantity) == "number" and quantity > points then points = quantity end
+      end
+    end
+  end
+  return points
+end
+
 -- Log each death with place and level. The combat log is restricted on this client,
 -- so the killer is taken from the current target when it is hostile (best effort).
 -- With no hostile target the killer is unknown: killer and killerIsPlayer stay nil, so a
 -- death is never recorded as "not a player" without evidence.
+local lastDeathAt
 local function onDeath()
+  -- PLAYER_DEAD fires twice per death on this client; keep one entry.
+  local now = GetTime()
+  if lastDeathAt and now - lastDeathAt < 10 then return end
+  lastDeathAt = now
   local loc = getLocation()
   local killer, killerIsPlayer
   if UnitExists("target") and UnitCanAttack("player", "target") then
@@ -1092,6 +1166,8 @@ local function buildSnapshot()
   end)
   section("target", getTarget)
   section("quests", getQuestLog)
+  section("questLog", getQuestLogSize)
+  section("pace", getPace)
   heavySection("completedQuests", getCompletedQuests)
   section("equipment", getEquipment)
   section("bags", getBags)
@@ -1149,6 +1225,7 @@ local ALERT_EVENTS = {
   BAG_UPDATE_DELAYED = true, UNIT_PET = true, UNIT_HAPPINESS = true, PET_UI_UPDATE = true,
   UPDATE_INVENTORY_DURABILITY = true, PLAYER_REGEN_ENABLED = true, PLAYER_ALIVE = true,
   PLAYER_UNGHOST = true, PLAYER_UPDATE_RESTING = true, PLAYER_MOUNT_DISPLAY_CHANGED = true,
+  PLAYER_LEVEL_UP = true, TRAIT_CONFIG_UPDATED = true,
 }
 for event in pairs(ALERT_EVENTS) do pcall(frame.RegisterEvent, frame, event) end
 for event in pairs(HEAVY_EVENTS) do pcall(frame.RegisterEvent, frame, event) end
@@ -1590,6 +1667,10 @@ local function checkAlerts()
     end
   end
 
+  local points = unspentTalentPoints()
+  alert("talents", points > 0 and not inCombat and not dead,
+    string.format("%d unspent talent point%s: open the talent window.", points, points == 1 and "" or "s"))
+
   local u = getUpkeep()
   alert("bags", u.freeSlots <= ALERT_LIMITS.freeSlots,
     string.format("Bags almost full: %d free slot%s.", u.freeSlots, u.freeSlots == 1 and "" or "s"))
@@ -1621,7 +1702,7 @@ local function alertsCommand(arg)
     scheduleAlerts()
   else
     for k in pairs(alertState) do alertState[k] = nil end
-    say(string.format("upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing. Repeat every %d min. /wow alerts on|off",
+    say(string.format("upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points. Repeat every %d min. /wow alerts on|off",
       cfg.enabled and "on" or "off", ALERT_LIMITS.ammo, ALERT_LIMITS.freeSlots, ALERT_LIMITS.durability, ALERT_LIMITS.repeatSeconds / 60))
     if cfg.enabled then pcall(checkAlerts) end
   end

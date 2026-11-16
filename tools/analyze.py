@@ -116,6 +116,24 @@ def character(Q, snap, hist):
         print(f"Talents {spent}/{total}: " + ", ".join(picked))
     if unspent:
         print(f"!! Unspent talent points: {unspent}")
+        # canBuy comes from the trait API: prerequisites met and a point free right now.
+        buyable = [f"{n.get('name')} {n.get('rank') or 0}/{n.get('max')}"
+                   for tree in (snap.get("talents") or {}).get("trees") or []
+                   for n in sorted(tree.get("nodes") or [], key=lambda n: (n.get("y") or 0, n.get("x") or 0))
+                   if n.get("canBuy")]
+        if buyable:
+            print("   Can spend now on: " + ", ".join(buyable))
+    pace = snap.get("pace") or {}
+    if pace:
+        to_go = xp_max - xp
+        parts = []
+        for label, rate, secs in (("session", pace.get("xpPerHour"), pace.get("sessionSeconds")),
+                                  ("recent", pace.get("recentXPPerHour"), pace.get("recentSeconds"))):
+            if rate is not None:
+                eta = f", level {level + 1} in {fmt_time(to_go * 3600 / rate)}" if rate > 0 else ""
+                parts.append(f"{label} {rate} XP/h over {fmt_time(secs)}{eta}")
+        print("Pace: " + ("; ".join(parts) if parts else
+                          f"session started {pace.get('sessionStartedAt')}, too short to rate yet"))
     print("PvP flagged: " + ("YES" if snap.get("pvpFlagged") else "no"))
     loc = snap.get("location") or {}
     party = snap.get("party") or []
@@ -157,7 +175,13 @@ def character(Q, snap, hist):
             who = " ".join(str(x) for x in (f.get("name"), f.get("class"), f.get("level")) if x)
             print(f"  {who} — {f.get('zone') or '?'}{near}"
                   f"{realm} via {f.get('source')}")
-    deaths = [d for d in hist.get("deaths") or [] if d.get("level") == level]
+    # Older addon versions logged every death twice (same minute, same spot): count it once.
+    deaths = []
+    for d in hist.get("deaths") or []:
+        key = (d.get("at"), d.get("x"), d.get("y"))
+        if d.get("level") == level and (not deaths or key != deaths[-1][0]):
+            deaths.append((key, d))
+    deaths = [d for _, d in deaths]
     if deaths:
         pvp = sum(1 for d in deaths if d.get("killerIsPlayer"))
         # No recorded killer means the cause is unknown (older snapshots stored that as False).
@@ -231,6 +255,11 @@ def quests(Q, snap, zones):
             return ["(not in QuestieDB)"]
         return [fmt_loc(Q, l) for l in locate(Q, q["end_npcs"], q["end_objects"], zid, pos)] or ["?"]
 
+    size = snap.get("questLog") or {}
+    if size.get("max"):
+        count = size.get("count") if size.get("count") is not None else len(log)
+        left = size["max"] - count
+        print(f"\nQuest log: {count}/{size['max']}" + (" !! FULL" if left <= 0 else f" ({left} free)"))
     section(f"Ready to turn in ({len(complete)})")
     for lq in sorted(complete, key=lambda q: q.get("level") or 0):
         q = Q["quests"].get(lq["id"])

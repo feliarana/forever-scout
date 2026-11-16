@@ -67,9 +67,11 @@ is stored under `errors`.
 | `communities` | Every subscribed community except the guild: name, type (`bnet`, `wow`, `other`), member count and online members with level, class and zone |
 | `pvpFlagged`, `target` | PvP flag and the current target |
 | `quests`, `completedQuests` | Quest log with objectives, and completed quest IDs |
+| `questLog` | Quests in the log (`count`) and the log cap (`max`, absent when the client does not report it) |
+| `pace` | XP pacing: session start, seconds and XP, `xpPerHour` for the session and `recentXPPerHour` over about the last hour. A session survives `/reload` and ends after 30 minutes without a snapshot; rates appear after 5 minutes |
 | `equipment`, `bags` | Equipped items and bag contents, with stats |
 | `skills`, `recipes` | Professions and the recipes seen in each profession window |
-| `talents`, `unspentTalentPoints` | Full talent trees (trait system, classic API as fallback) |
+| `talents`, `unspentTalentPoints` | Full talent trees (trait system, classic API as fallback). Trait nodes carry `open` (prerequisites met) and `canBuy` (a point can be spent on it now) |
 | `spellbook`, `actionBars` | Known spells with rank, and what sits in each action slot |
 | `pet` | Name, family, level, XP and happiness |
 | `hearth` | Hearthstone bind location and cooldown left |
@@ -84,7 +86,8 @@ is stored under `errors`.
 
 `ForeverScoutHistory` (per character, kept across sessions): running XP total, level-ups with
 date and zone, deaths with place and level (killer taken from a hostile target, best effort; left empty when unknown),
-dungeon runs with XP gained, flight paths, recipes and the upkeep alert setting (`alerts`).
+dungeon runs with XP gained, flight paths, recipes, the XP pacing session (`pace`) and the
+upkeep alert setting (`alerts`).
 
 Values from roster APIs can be restricted ("secret") on this client. Storing one in
 SavedVariables triggers the blocked-action dialog, so the addon drops any value that fails a
@@ -94,8 +97,8 @@ comparison inside `pcall`.
 
 A warning in the middle of the screen, the raid warning sound and a chat line when something
 needs attention. Each alert fires when its condition starts and repeats every 5 minutes while
-it lasts. Checks run a second after bag, pet, durability, combat-end and resting changes, and
-every 20 seconds.
+it lasts. Checks run a second after bag, pet, durability, combat-end, resting, level-up and
+talent changes, and every 20 seconds.
 
 | Alert | Condition | Message hint |
 |---|---|---|
@@ -105,6 +108,7 @@ every 20 seconds.
 | Pet unhappy (hunter) | Happiness 1 (75% damage, may run away) | Feed Pet now |
 | Pet content (hunter) | Happiness 2, out of combat | Feed Pet for +25% damage |
 | No pet (hunter, level 10+) | No pet out, out of combat, not resting, mounted or flying | Call Pet |
+| Unspent talent points | One or more points free, out of combat | Open the talent window |
 | Bags almost full | 2 free bag slots or fewer | — |
 | Low durability | Any equipped item below 25% | Repair |
 
