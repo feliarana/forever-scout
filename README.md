@@ -279,7 +279,9 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 - `tools/` — Python scripts that cross the live snapshot with the installed QuestieDB.
 - `tests/` — tests for the addon and the tools that run outside the game.
 - `guide/` — the author's troll hunter leveling guide (work in progress).
-- `docs/curseforge.md`, `assets/` — texts and logo for the CurseForge page.
+- `CHANGELOG.md` — what each release brings.
+- `docs/curseforge.md`, `docs/curseforge-description.md`, `assets/` — texts and logo for the
+  CurseForge page.
 - `LICENSE` — MIT.
 - `AGENTS.md` — guide for any AI assistant helping a player set up and use the toolkit.
 - `CLAUDE.md` — pointer for Claude Code to `AGENTS.md` and the player's private `PLAYER.md`.
