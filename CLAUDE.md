@@ -1,4 +1,4 @@
-# forever-scout
+# trail-scout-wow
 
 This repository uses one instruction file for every AI agent, and one private file per player.
 Read both before doing anything else:

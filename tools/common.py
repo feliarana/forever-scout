@@ -1,4 +1,4 @@
-"""Shared helpers: load the Q.pkl cache and the live ForeverScout snapshot, name/zone lookups,
+"""Shared helpers: load the Q.pkl cache and the live TrailScout snapshot, name/zone lookups,
 spawn geometry and quest availability rules."""
 import datetime as dt
 import math
@@ -79,10 +79,18 @@ def char_name(char_dir):
     return Path(char_dir).name
 
 
-# The addon was called FeliExport before; its SavedVariables file and globals keep that name
-# on disk until the character logs in with ForeverScout. Both are read so no history is lost.
-ADDON = ("ForeverScout", "ForeverScoutDB", "ForeverScoutHistory")
-OLD_ADDON = ("FeliExport", "FeliExportDB", "FeliExportHistory")
+# The addon was called FeliExport, then ForeverScout, before TrailScout. The game keeps addon
+# data in a file named after the addon, so each rename started a new SavedVariables file and
+# left the older ones on disk. All of them are read, oldest first, so no history is lost.
+ADDON = ("TrailScout", "TrailScoutDB", "TrailScoutHistory")
+OLD_ADDONS = (
+    ("FeliExport", "FeliExportDB", "FeliExportHistory"),
+    ("ForeverScout", "ForeverScoutDB", "ForeverScoutHistory"),
+)
+# Keys only this addon writes. Another addon on CurseForge is also called ForeverScout: a
+# ForeverScout.lua that lacks these is its data, not an older snapshot of ours.
+_OUR_SNAPSHOT_KEYS = ("savedAt", "quests", "upkeep")
+_OUR_HISTORY_KEYS = ("levelUps", "deaths", "xpTotal", "flights", "recipes")
 
 
 def _load_sv(path, names):
@@ -93,12 +101,14 @@ def _load_sv(path, names):
             _snapshots[key] = ({}, {})
         else:
             db, hist = load_lua_globals(path, *names)
-            _snapshots[key] = (db or {}, hist or {})
+            db = db if isinstance(db, dict) and any(k in db for k in _OUR_SNAPSHOT_KEYS) else {}
+            hist = hist if isinstance(hist, dict) and any(k in hist for k in _OUR_HISTORY_KEYS) else {}
+            _snapshots[key] = (db, hist)
     return _snapshots[key]
 
 
 def _merge_history(old, new):
-    """History across the rename: lists are concatenated, maps merged, the XP total summed."""
+    """History across a rename: lists are concatenated, maps merged, the XP total summed."""
     if not old:
         return new
     if not new:
@@ -114,27 +124,30 @@ def _merge_history(old, new):
             merged[key] = prev + (value or 0)
         else:
             merged[key] = value
-    # A dungeon run left open under the old name is stale once the new addon is running.
+    # A dungeon run left open under an older name is stale once the new addon is running.
     merged["openRun"] = new.get("openRun")
     return merged
 
 
 def _snapshot_at(path):
-    """(db, hist) from an explicit snapshot file, under either addon name."""
-    db, hist = _load_sv(path, ADDON[1:])
-    if not db and not hist:
-        db, hist = _load_sv(path, OLD_ADDON[1:])
-    return db, hist
+    """(db, hist) from an explicit snapshot file, under any of the addon's names."""
+    for _, *names in (ADDON,) + tuple(reversed(OLD_ADDONS)):
+        db, hist = _load_sv(path, tuple(names))
+        if db or hist:
+            return db, hist
+    return {}, {}
 
 
 def char_snapshot(char_dir):
-    """(db, hist) for a character: the current snapshot (old addon file as fallback) and the
-    history of both addon names merged."""
-    new_db, new_hist = _load_sv(config.char_sv(char_dir, ADDON[0]), ADDON[1:])
-    old_db, old_hist = _load_sv(config.char_sv(char_dir, OLD_ADDON[0]), OLD_ADDON[1:])
-    hist = _merge_history(old_hist, new_hist)
-    db = new_db or old_db
-    if db is new_db and old_db:
+    """(db, hist) for a character: the newest snapshot among the addon's names (the file
+    with the latest savedAt) and the history of all of them merged, oldest first."""
+    loaded = [_load_sv(config.char_sv(char_dir, name), tuple(names)) for name, *names in OLD_ADDONS + (ADDON,)]
+    hist = {}
+    for _, part in loaded:
+        hist = _merge_history(hist, part)
+    snapshots_found = [db for db, _ in loaded if db]
+    db = max(snapshots_found, key=lambda d: str(d.get("savedAt") or ""), default={})
+    if db:
         # Flight paths and recipes are only re-recorded when their windows open again.
         for key in ("flights", "recipes"):
             if not db.get(key) and hist.get(key):
@@ -143,12 +156,14 @@ def char_snapshot(char_dir):
 
 
 def snapshots():
-    """{char_dir: (db, hist)} for every character with a ForeverScout (or older FeliExport)
-    snapshot."""
+    """{char_dir: (db, hist)} for every character with a snapshot under any addon name."""
     out = {}
+    names = [ADDON[0]] + [old[0] for old in OLD_ADDONS]
     for d in config.character_dirs():
-        if any(config.char_sv(d, name).exists() for name in (ADDON[0], OLD_ADDON[0])):
-            out[d] = char_snapshot(d)
+        if any(config.char_sv(d, name).exists() for name in names):
+            snap = char_snapshot(d)
+            if snap[0]:
+                out[d] = snap
     return out
 
 
@@ -185,7 +200,7 @@ def link_name(link):
 
 def collect_items(snaps):
     """{itemID: row} for every character: Syndicator bags/bank/mail, falling back to the
-    ForeverScout snapshot bags for characters Syndicator does not know. Snapshots of every
+    TrailScout snapshot bags for characters Syndicator does not know. Snapshots of every
     character also supply item type and vendor price."""
     rows = {}
 
@@ -242,12 +257,12 @@ def _pick_character():
         sys.exit(f"Unknown character '{wanted}'. Known: {', '.join(char_name(d) for d in dirs)}")
     snaps = snapshots()
     if not snaps:
-        sys.exit("No ForeverScout snapshot found: log in, run /scout or /reload, then retry")
+        sys.exit("No TrailScout snapshot found: log in, run /scout or /reload, then retry")
     return max(snaps, key=lambda d: (snaps[d][0].get("level") or 0, snaps[d][0].get("savedAt") or ""))
 
 
 def load_snapshot(char_dir=None):
-    """Return (ForeverScoutDB, ForeverScoutHistory) for a character (default: main_character())."""
+    """Return (TrailScoutDB, TrailScoutHistory) for a character (default: main_character())."""
     if char_dir is None and config.SNAPSHOT_OVERRIDE:
         snap = _snapshot_at(config.SNAPSHOT_OVERRIDE)
         IDENTITY.update({k: snap[0].get(k) for k in ("class", "race", "faction")})

@@ -1,13 +1,13 @@
 ## Interface: 16001
-## Title: ForeverScout
+## Title: TrailScout
 ## Notes: Saves a snapshot of your character (quests, gear, bags, talents, friends) for an AI assistant to read. Type /scout help.
 ## Author: Feli
-## Version: 1.4.2
+## Version: 1.5.0
 ## OptionalDeps: Questie, TomTom
 ## X-License: MIT
-## X-Website: https://github.com/feliarana/forever-scout
+## X-Website: https://github.com/feliarana/trail-scout-wow
 ## X-Curse-Project-ID: 1810026
-## SavedVariablesPerCharacter: ForeverScoutDB, ForeverScoutHistory
+## SavedVariablesPerCharacter: TrailScoutDB, TrailScoutHistory
 
 Route.lua
-ForeverScout.lua
+TrailScout.lua

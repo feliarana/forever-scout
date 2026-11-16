@@ -1,4 +1,4 @@
-// Loads addon/ForeverScout/ForeverScout.lua in a Lua VM (fengari) against tests/wow_stub.lua
+// Loads addon/TrailScout/TrailScout.lua in a Lua VM (fengari) against tests/wow_stub.lua
 // and checks its behaviour without the game. Run with: npm test
 //
 // Each test gets a fresh VM. `setup` is Lua run before the addon loads (to configure STUB),
@@ -10,7 +10,7 @@ const path = require("node:path");
 const luaparse = require("luaparse");
 const { lua, lauxlib, lualib, to_luastring } = require("fengari");
 
-const ADDON = path.join(__dirname, "..", "addon", "ForeverScout", "ForeverScout.lua");
+const ADDON = path.join(__dirname, "..", "addon", "TrailScout", "TrailScout.lua");
 const STUB = path.join(__dirname, "wow_stub.lua");
 
 function exec(L, code, name) {
@@ -28,7 +28,7 @@ function withAddon(setup, body) {
   lualib.luaL_openlibs(L);
   exec(L, fs.readFileSync(STUB, "utf8"), "wow_stub.lua");
   exec(L, setup || "", "setup");
-  exec(L, fs.readFileSync(ADDON, "utf8"), "ForeverScout.lua");
+  exec(L, fs.readFileSync(ADDON, "utf8"), "TrailScout.lua");
   exec(L, body, "test");
 }
 
@@ -38,7 +38,7 @@ const LOGIN = `
     STUB.fire("PLAYER_LOGIN")
     STUB.advance(12)
   end
-  local function slash(text) SlashCmdList.FOREVERSCOUT(text) end
+  local function slash(text) SlashCmdList.TRAILSCOUT(text) end
 `;
 
 // A bag with one junk item so the snapshot counts as valid (it must see bag contents).
@@ -57,7 +57,7 @@ test("login builds a complete snapshot with no section errors", () => {
                     { id = 5881, title = "Calling in the Reserves", level = 28, complete = true } }
   `, LOGIN + `
     login()
-    local snap = ForeverScoutDB
+    local snap = TrailScoutDB
     assert(snap, "no snapshot saved")
     if snap.errors then
       for key, message in pairs(snap.errors) do error("section " .. key .. " failed: " .. message) end
@@ -76,11 +76,11 @@ test("login builds a complete snapshot with no section errors", () => {
 test("a snapshot with empty bags never overwrites a good one", () => {
   withAddon(ONE_ITEM, LOGIN + `
     login()
-    assert(ForeverScoutDB.level == 30)
+    assert(TrailScoutDB.level == 30)
     STUB.bags[0] = { size = 16 }
     STUB.player.level = 31
     STUB.fire("PLAYER_LOGOUT")
-    assert(ForeverScoutDB.level == 30, "torn-down logout data replaced the snapshot")
+    assert(TrailScoutDB.level == 30, "torn-down logout data replaced the snapshot")
   `);
 });
 
@@ -95,7 +95,7 @@ test("bag stacks are keyed by item string, so random suffixes stay separate", ()
   `, LOGIN + `
     login()
     local boots, arrows = 0, nil
-    for _, item in ipairs(ForeverScoutDB.bags) do
+    for _, item in ipairs(TrailScoutDB.bags) do
       if item.id == 9000 then boots = boots + 1 end
       if item.id == 3030 then arrows = item end
     end
@@ -109,7 +109,7 @@ test("a death is logged once, with an unknown killer unless a hostile target is 
     login()
     STUB.fire("PLAYER_DEAD")
     STUB.fire("PLAYER_DEAD")  -- the client fires it twice
-    local deaths = ForeverScoutHistory.deaths
+    local deaths = TrailScoutHistory.deaths
     assert(#deaths == 1, "duplicate death logged")
     assert(deaths[1].killer == nil and deaths[1].killerIsPlayer == nil, "unknown killer must stay empty")
 
@@ -126,10 +126,10 @@ test("the periodic snapshot is skipped in combat and catches up after", () => {
     STUB.inCombat = true
     STUB.player.xp = 9999
     STUB.advance(60)
-    assert(ForeverScoutDB.xp == 7000, "snapshot rebuilt during combat")
+    assert(TrailScoutDB.xp == 7000, "snapshot rebuilt during combat")
     STUB.inCombat = false
     STUB.advance(20)
-    assert(ForeverScoutDB.xp == 9999, "snapshot did not catch up after combat")
+    assert(TrailScoutDB.xp == 9999, "snapshot did not catch up after combat")
   `);
 });
 
@@ -138,13 +138,13 @@ test("heavy sections are cached until their event or an explicit /scout", () => 
     login()
     STUB.completedQuests = { 1, 2, 3, 4 }
     STUB.advance(20)
-    assert(#ForeverScoutDB.completedQuests == 3, "cache was rebuilt without an event")
+    assert(#TrailScoutDB.completedQuests == 3, "cache was rebuilt without an event")
     STUB.fire("QUEST_TURNED_IN")
     STUB.advance(20)
-    assert(#ForeverScoutDB.completedQuests == 4, "QUEST_TURNED_IN did not invalidate the cache")
+    assert(#TrailScoutDB.completedQuests == 4, "QUEST_TURNED_IN did not invalidate the cache")
     STUB.completedQuests = { 1, 2, 3, 4, 5 }
     slash("")
-    assert(#ForeverScoutDB.completedQuests == 5, "/scout must rebuild everything")
+    assert(#TrailScoutDB.completedQuests == 5, "/scout must rebuild everything")
   `);
 });
 
@@ -155,11 +155,11 @@ test("XP pace: the session survives a reload and reports a rate after five minut
     STUB.player.xp = 8000
     STUB.fire("PLAYER_XP_UPDATE")
     STUB.advance(20)
-    assert(ForeverScoutDB.pace.sessionXP == 1000)
-    local started = ForeverScoutHistory.pace.start
+    assert(TrailScoutDB.pace.sessionXP == 1000)
+    local started = TrailScoutHistory.pace.start
     STUB.fire("PLAYER_LOGIN")  -- a /reload
     STUB.advance(20)
-    assert(ForeverScoutHistory.pace.start == started, "reload reset the session")
+    assert(TrailScoutHistory.pace.start == started, "reload reset the session")
   `);
 });
 
@@ -251,11 +251,11 @@ test("a class without built-in weights gets a clear message, then its own weight
     STUB.clearChat()
     slash("weights bogus=3")
     assert(STUB.said('unknown stat "bogus"'))
-    assert(ForeverScoutHistory.weights == nil, "an invalid line must not save anything")
+    assert(TrailScoutHistory.weights == nil, "an invalid line must not save anything")
 
     STUB.clearChat()
     slash("weights int=1 sta=0.5")
-    assert(ForeverScoutHistory.weights.int == 1 and ForeverScoutHistory.weights.sta == 0.5)
+    assert(TrailScoutHistory.weights.int == 1 and TrailScoutHistory.weights.sta == 0.5)
     assert(STUB.said("int=1") and STUB.said("yours"))
 
     STUB.clearChat()
@@ -266,7 +266,7 @@ test("a class without built-in weights gets a clear message, then its own weight
     assert(STUB.said("too heavy"), "a mage cannot wear leather")
 
     slash("weights reset")
-    assert(ForeverScoutHistory.weights == nil)
+    assert(TrailScoutHistory.weights == nil)
   `);
 });
 
@@ -314,20 +314,20 @@ test("hunter alerts: low ammo and unhappy pet, in Spanish on an esMX client", ()
 test("the copy box summary is English data whatever the client language", () => {
   withAddon(ONE_ITEM + `STUB.locale = "esMX"`, LOGIN + `
     slash("where do I go next?")
-    local text = ForeverScoutCopyFrame.box.text
+    local text = TrailScoutCopyFrame.box.text
     assert(text:find("FX1", 1, true) and text:find("level 30", 1, true), "summary header missing")
     assert(text:find("QUESTION: where do I go next?", 1, true))
-    assert(ForeverScoutDB.question == "where do I go next?")
+    assert(TrailScoutDB.question == "where do I go next?")
     -- The box says what the text is, in the client language, with its length.
-    assert(ForeverScoutCopyFrame.info.text:find("Resumen de tu personaje (" .. #text .. " caracteres)", 1, true))
-    assert(ForeverScoutCopyFrame.box.cursor == 0, "the box must show the start of the summary")
+    assert(TrailScoutCopyFrame.info.text:find("Resumen de tu personaje (" .. #text .. " caracteres)", 1, true))
+    assert(TrailScoutCopyFrame.box.cursor == 0, "the box must show the start of the summary")
   `);
 });
 
 // A three-stop route as tools/map_route.py --addon writes it into Route.lua: a waypoint,
 // a quest objective and a turn-in, all on the map the stub player stands on (1424).
 const ROUTE = `
-  ForeverScoutRoute = { title = "Route: Hillsbrad", createdAt = "2026-11-16 09:00:00", loop = false, points = {
+  TrailScoutRoute = { title = "Route: Hillsbrad", createdAt = "2026-11-16 09:00:00", loop = false, points = {
     { m = 1424, x = 61, y = 20, label = "1. Tarren Mill", kind = "poi" },
     { m = 1424, x = 64.4, y = 61.3, label = "2. Mudsnout Blossoms", kind = "loot" },
     { m = 1424, x = 61.4, y = 19.1, label = "3. Lydon: Elixir of Agony", kind = "turnin" },
@@ -373,7 +373,7 @@ test("/scout route: one waypoint per stop, arrow on the current one, advancing b
 
     slash("route next")
     assert(STUB.said("route finished.") and STUB.waypointCount() == 0)
-    assert(ForeverScoutHistory.routeState == nil)
+    assert(TrailScoutHistory.routeState == nil)
   `);
 });
 
@@ -411,21 +411,21 @@ test("/scout route: messages are in Spanish on an esMX client", () => {
 });
 
 test("the placeholder Route.lua and the TOC load order are in place", () => {
-  const dir = path.join(__dirname, "..", "addon", "ForeverScout");
-  const toc = fs.readFileSync(path.join(dir, "ForeverScout.toc"), "utf8").split(/\r?\n/);
-  assert.ok(toc.indexOf("Route.lua") >= 0 && toc.indexOf("Route.lua") < toc.indexOf("ForeverScout.lua"),
-    "Route.lua must be listed before ForeverScout.lua");
+  const dir = path.join(__dirname, "..", "addon", "TrailScout");
+  const toc = fs.readFileSync(path.join(dir, "TrailScout.toc"), "utf8").split(/\r?\n/);
+  assert.ok(toc.indexOf("Route.lua") >= 0 && toc.indexOf("Route.lua") < toc.indexOf("TrailScout.lua"),
+    "Route.lua must be listed before TrailScout.lua");
   assert.doesNotThrow(() => luaparse.parse(fs.readFileSync(path.join(dir, "Route.lua"), "utf8"), { luaVersion: "5.1" }));
 });
 
 test("talents carry their description and whether a point can go there", () => {
   withAddon(ONE_ITEM + `STUB.talentPoints = 1`, LOGIN + `
     login()
-    local node = ForeverScoutDB.talents.trees[1].nodes[1]
+    local node = TrailScoutDB.talents.trees[1].nodes[1]
     assert(node.name == "Endurance Training" and node.rank == 3 and node.max == 5)
     assert(node.desc == "Increases the Health of your pet by 15%.", "talent description missing")
     assert(node.canBuy == true and node.open == true)
-    assert(ForeverScoutDB.traitApi and ForeverScoutDB.traitApi.C_Traits, "API names must be saved while no other system is found")
+    assert(TrailScoutDB.traitApi and TrailScoutDB.traitApi.C_Traits, "API names must be saved while no other system is found")
   `);
 });
 
@@ -436,48 +436,48 @@ test("other trait systems (legacy perks) are saved with their own points", () =>
     STUB.spellText[902] = "Skinning yields extra leather."
   `, LOGIN + `
     login()
-    local systems = ForeverScoutDB.traitSystems
+    local systems = TrailScoutDB.traitSystems
     assert(#systems == 1, "expected one extra trait system, got " .. #systems)
     assert(systems[1].name == "Legacy" and systems[1].systemID == 7)
     local tree = systems[1].trees[1]
     assert(tree.currencies[1].available == 3 and tree.currencies[1].spent == 2)
     assert(#tree.nodes == 2 and tree.nodes[1].name == "Well Rested" and tree.nodes[1].canBuy == true)
     assert(tree.nodes[2].desc == "Skinning yields extra leather.")
-    assert(ForeverScoutDB.traitApi == nil, "API names are only needed while nothing is found")
+    assert(TrailScoutDB.traitApi == nil, "API names are only needed while nothing is found")
   `);
 });
 
 test("talent text that loads late is picked up by a later snapshot", () => {
   withAddon(ONE_ITEM + `STUB.spellText[900] = nil`, LOGIN + `
     login()
-    assert(ForeverScoutDB.talents.trees[1].nodes[1].desc == nil)
+    assert(TrailScoutDB.talents.trees[1].nodes[1].desc == nil)
     STUB.spellText[900] = "Increases the Health of your pet by 15%."
     STUB.advance(20)
-    assert(ForeverScoutDB.talents.trees[1].nodes[1].desc ~= nil, "description was never retried")
+    assert(TrailScoutDB.talents.trees[1].nodes[1].desc ~= nil, "description was never retried")
   `);
 });
 
 test("spending a talent point refreshes the cached talents", () => {
   withAddon(ONE_ITEM + `STUB.talentPoints = 1`, LOGIN + `
     login()
-    assert(ForeverScoutDB.talents.trees[1].currencies[1].available == 1)
+    assert(TrailScoutDB.talents.trees[1].currencies[1].available == 1)
     STUB.talentPoints = 0
     STUB.advance(20)
-    assert(ForeverScoutDB.talents.trees[1].currencies[1].available == 1, "talents are cached between events")
+    assert(TrailScoutDB.talents.trees[1].currencies[1].available == 1, "talents are cached between events")
     STUB.fire("TRAIT_CONFIG_UPDATED")
     STUB.advance(20)
-    assert(ForeverScoutDB.talents.trees[1].currencies[1].available == 0, "TRAIT_CONFIG_UPDATED did not refresh talents")
+    assert(TrailScoutDB.talents.trees[1].currencies[1].available == 0, "TRAIT_CONFIG_UPDATED did not refresh talents")
   `);
 });
 
 test("perk trees that load after login are picked up without an event", () => {
   withAddon(ONE_ITEM, LOGIN + `
     login()
-    assert(#ForeverScoutDB.traitSystems == 0)
+    assert(#TrailScoutDB.traitSystems == 0)
     STUB.legacy = { points = 1 }
     STUB.spellText[901], STUB.spellText[902] = "a", "b"
     STUB.advance(40)
-    assert(#ForeverScoutDB.traitSystems == 1, "late perk trees were cached as empty")
+    assert(#TrailScoutDB.traitSystems == 1, "late perk trees were cached as empty")
   `);
 });
 
@@ -490,47 +490,47 @@ const QUESTIE = `
 
 test("/whereis: finds an NPC, sets the arrow and offers the map", () => {
   withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom()`, `
-    SlashCmdList.FOREVERSCOUTWHERE("lydon")
+    SlashCmdList.TRAILSCOUTWHERE("lydon")
     assert(STUB.said("Apothecary Lydon (2216)") and STUB.said("61.4, 19.1") and STUB.said("40 yd"))
     assert(STUB.arrow == "Apothecary Lydon", "arrow not set")
-    assert(STUB.said("|Haddon:ForeverScout:map|h[Show on map]|h"), "map link missing from the chat line")
+    assert(STUB.said("|Haddon:TrailScout:map|h[Show on map]|h"), "map link missing from the chat line")
 
     -- Clicking the link, or typing /whereis map, opens the world map on the spawn's zone.
-    STUB.clickLink("addon:ForeverScout:map")
+    STUB.clickLink("addon:TrailScout:map")
     assert(STUB.mapOpened == 1267, "the link did not open the map")
     STUB.mapOpened = nil
-    SlashCmdList.FOREVERSCOUTWHERE("map")
+    SlashCmdList.TRAILSCOUTWHERE("map")
     assert(STUB.mapOpened == 1267, "/whereis map did not open the map")
   `);
 });
 
 test("/whereis: also finds world objects by name", () => {
   withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom()`, `
-    SlashCmdList.FOREVERSCOUTWHERE("mudsnout")
+    SlashCmdList.TRAILSCOUTWHERE("mudsnout")
     assert(STUB.said("Mudsnout Blossom (1728)") and STUB.said("64.4, 61.3"), "object not found")
     assert(STUB.arrow == "Mudsnout Blossom")
     -- A number is an NPC id: object 1728 must not be picked by "/whereis 1728".
     STUB.clearChat()
-    SlashCmdList.FOREVERSCOUTWHERE("1728")
+    SlashCmdList.TRAILSCOUTWHERE("1728")
     assert(STUB.said("nothing matches"), "an object was matched by NPC id")
   `);
 });
 
 test("/whereis: works without TomTom (no arrow), and explains an empty map request", () => {
   withAddon(ONE_ITEM + QUESTIE, `
-    SlashCmdList.FOREVERSCOUTWHERE("map")
+    SlashCmdList.TRAILSCOUTWHERE("map")
     assert(STUB.said("nothing to show yet"))
-    SlashCmdList.FOREVERSCOUTWHERE("lydon")
+    SlashCmdList.TRAILSCOUTWHERE("lydon")
     assert(STUB.said("Apothecary Lydon (2216)") and STUB.said("TomTom is not enabled"))
-    SlashCmdList.FOREVERSCOUTWHERE("map")
+    SlashCmdList.TRAILSCOUTWHERE("map")
     assert(STUB.mapOpened == 1267)
   `);
 });
 
 test("/whereis: old aliases still work and the link is translated on esMX", () => {
   withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom() STUB.locale = "esMX"`, `
-    assert(SLASH_FOREVERSCOUTWHERE1 == "/whereis" and SLASH_FOREVERSCOUTWHERE2 == "/where" and SLASH_FOREVERSCOUTWHERE3 == "/donde")
-    SlashCmdList.FOREVERSCOUTWHERE("lydia")
+    assert(SLASH_TRAILSCOUTWHERE1 == "/whereis" and SLASH_TRAILSCOUTWHERE2 == "/where" and SLASH_TRAILSCOUTWHERE3 == "/donde")
+    SlashCmdList.TRAILSCOUTWHERE("lydia")
     assert(STUB.said("otro continente") and STUB.said("[Ver en mapa]"))
   `);
 });
@@ -542,7 +542,7 @@ test("pet happiness is read from C_PetInfo on Forever, with the pet's diet", () 
   `, LOGIN + `
     login()
     assert(STUB.said("Pet is unhappy"), "the unhappy alert must fire from C_PetInfo data")
-    local pet = ForeverScoutDB.pet
+    local pet = TrailScoutDB.pet
     assert(pet.happiness == 1 and pet.damagePercent == 75, "happiness missing from the snapshot")
     assert(pet.foodTypes[1] == "Meat" and pet.foodTypes[2] == "Fish", "diet missing from the snapshot")
     STUB.clearChat()
@@ -558,7 +558,7 @@ test("recipes are filed under their own profession, not the window that was open
     STUB.recipeIDs[2] = { name = "Wool Bandage", profession = "First Aid", difficulty = 1 }
     STUB.openProfession = "First Aid"
     STUB.fire("TRADE_SKILL_SHOW")
-    local recipes = ForeverScoutHistory.recipes
+    local recipes = TrailScoutHistory.recipes
     assert(#recipes["First Aid"].list == 2)
 
     -- Fishing has no recipes: the client keeps answering with the First Aid list.
@@ -572,14 +572,14 @@ test("recipes are filed under their own profession, not the window that was open
 test("recipe lists copied to the wrong profession by older versions are cleaned at login", () => {
   withAddon(ONE_ITEM + `
     local bandages = { { name = "Linen Bandage", color = 3 }, { name = "Wool Bandage", color = 1 } }
-    ForeverScoutHistory = { recipes = {
+    TrailScoutHistory = { recipes = {
       ["First Aid"] = { at = "2026-11-15 20:17", list = bandages },
       ["Fishing"] = { at = "2026-11-15 20:18", list = { { name = "Linen Bandage", color = 3 }, { name = "Wool Bandage", color = 1 } } },
       ["Cooking"] = { at = "2026-11-15 20:18", list = { { name = "Charred Wolf Meat", color = 0 } } },
     } }
   `, LOGIN + `
     login()
-    local recipes = ForeverScoutHistory.recipes
+    local recipes = TrailScoutHistory.recipes
     assert(recipes["Fishing"] == nil, "the copied list was kept")
     assert(recipes["First Aid"] and recipes["Cooking"], "a real list was dropped")
   `);

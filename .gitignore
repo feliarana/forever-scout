@@ -16,7 +16,7 @@ SavedVariables*
 # Third-party addons (QuestieDB, Questie, etc.) are read live from the game, never copied here.
 # Only our own addon lives in addon/.
 addon/*
-!addon/ForeverScout/
+!addon/TrailScout/
 QuestieDB*/
 Questie*/
 

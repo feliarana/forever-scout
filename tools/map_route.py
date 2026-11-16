@@ -20,7 +20,7 @@ Options:
   --clear         remove the layer instead of setting it
   --tomtom        print TomTom "/way" lines instead of a map layer
   --out FILE      append the map command to FILE (default: $WOW_AI_MAP_FILE, else stdout)
-  --addon         write the route into the installed ForeverScout addon (Route.lua); after a
+  --addon         write the route into the installed TrailScout addon (Route.lua); after a
                   /reload, "/scout route" walks it with TomTom. With --clear it empties it
 
 Output is one JSON map command per line, the format the wow-ai bridge reads from
@@ -225,8 +225,8 @@ def to_lua(command, created_at):
     """Contents of the addon's Route.lua for a map command (None empties the route).
     `created_at` identifies the route, so the addon can tell a new one from a resumed one."""
     if not command or command.get("op") != "set":
-        return ROUTE_FILE_HEADER + "ForeverScoutRoute = nil\n"
-    lines = [ROUTE_FILE_HEADER + "ForeverScoutRoute = {",
+        return ROUTE_FILE_HEADER + "TrailScoutRoute = nil\n"
+    lines = [ROUTE_FILE_HEADER + "TrailScoutRoute = {",
              f"  title = {lua_string(command['title'])},",
              f"  createdAt = {lua_string(created_at)},",
              f"  loop = {'true' if command.get('loop') else 'false'},",
@@ -240,9 +240,9 @@ def to_lua(command, created_at):
 
 def write_addon_route(command):
     """Write Route.lua into the installed addon. Returns the path written."""
-    folder = config.ADDONS_DIR / "ForeverScout"
+    folder = config.ADDONS_DIR / "TrailScout"
     if not folder.is_dir():
-        sys.exit(f"ForeverScout is not installed in {config.ADDONS_DIR}: install the addon first")
+        sys.exit(f"TrailScout is not installed in {config.ADDONS_DIR}: install the addon first")
     path = folder / "Route.lua"
     existed = path.exists()
     path.write_text(to_lua(command, datetime.now().strftime("%Y-%m-%d %H:%M:%S")), encoding="utf-8")

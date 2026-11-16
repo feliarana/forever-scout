@@ -85,7 +85,7 @@ class AddonRouteTest(unittest.TestCase):
         import lupa
         lua = lupa.LuaRuntime(unpack_returned_tuples=True)
         lua.execute(source)
-        return lua.globals().ForeverScoutRoute
+        return lua.globals().TrailScoutRoute
 
     def test_route_file_round_trips_through_lua(self):
         stops = map_route.merge_stops([stop(64.4, 61.3, 'Flores "Morrobarro" \\ñ', "loot"),
@@ -106,7 +106,7 @@ class AddonRouteTest(unittest.TestCase):
 
     def test_the_addon_route_file_is_loadable(self):
         # Tracked as an empty placeholder; locally it may hold the last route written.
-        path = Path(__file__).resolve().parent.parent / "addon" / "ForeverScout" / "Route.lua"
+        path = Path(__file__).resolve().parent.parent / "addon" / "TrailScout" / "Route.lua"
         route = self.load(path.read_text(encoding="utf-8"))
         if route is not None:
             self.assertGreater(len(route.points), 0)

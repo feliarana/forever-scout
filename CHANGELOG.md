@@ -3,9 +3,15 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
-## ForeverScout 1.4.2
+## TrailScout 1.5.0
 
 First public release. Works with any class and faction on World of Warcraft: Forever.
+
+Before this release the addon was called ForeverScout. It was renamed because another addon
+on CurseForge already has that name. If you had the earlier version: delete the old
+`Interface/AddOns/ForeverScout` folder and install `TrailScout`. The game keeps addon data
+per addon name, so in-game settings (your stat weights, the alerts switch) start fresh; the
+offline tools still read the history saved under the old name.
 
 ### Ask an AI about your character
 - `/scout` opens a box with a summary of your character (level, zone, quests with progress, bags, gear, party, friends online). Press Ctrl+C and paste it into any AI chat.

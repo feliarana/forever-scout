@@ -1,9 +1,9 @@
 {
-  "name": "forever-scout",
-  "version": "1.4.2",
+  "name": "trail-scout",
+  "version": "1.5.0",
   "private": true,
   "license": "MIT",
-  "description": "Development tooling for the ForeverScout addon: runs the addon in a Lua VM against a stub of the WoW client.",
+  "description": "Development tooling for the TrailScout addon: runs the addon in a Lua VM against a stub of the WoW client.",
   "scripts": {
     "test": "node --test tests/addon_test.js"
   },

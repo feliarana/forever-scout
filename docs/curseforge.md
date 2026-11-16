@@ -1,20 +1,20 @@
 # CurseForge listing
 
-Texts for the ForeverScout project page. The logo is `assets/logo-400.png`
+Texts for the TrailScout project page. The logo is `assets/logo-400.png`
 (`assets/make_logo.py` redraws it).
 
 ## Create-project form
 
 | Field | Value |
 |---|---|
-| Project name | Forever Scout |
+| Project name | Trail Scout (slug `trail-scout`). Not ForeverScout: another project already has that name |
 | Logo | `assets/logo-400.png` |
 | Summary | Character snapshot for AI assistants, plus NPC arrows, route waypoints, upkeep alerts and loot advice. |
 | Main category | Quests & Leveling |
 | Additional categories | Map & Minimap, Data Export, Tooltip |
 | Allow comments | yes |
 | Unlisted | yes until friends have tested it, then listed |
-| Social links | Source: https://github.com/feliarana/forever-scout |
+| Social links | Source: https://github.com/feliarana/trail-scout-wow |
 
 Optional dependencies to declare on the page: Questie and TomTom (only `/whereis` and
 `/scout route` use them).
@@ -27,12 +27,12 @@ no hard wraps, because some Markdown editors turn every line break into a visibl
 
 ## Uploading a release
 
-1. Bump `## Version:` in `addon/ForeverScout/ForeverScout.toc` and `version` in `package.json`.
+1. Bump `## Version:` in `addon/TrailScout/TrailScout.toc` and `version` in `package.json`.
    Add the version's section at the top of `CHANGELOG.md`.
 2. Run the tests (`npm test` and the Python suite), then
-   `.venv/bin/python tools/build_release.py`. It writes `dist/ForeverScout-<version>.zip`.
+   `.venv/bin/python tools/build_release.py`. It writes `dist/TrailScout-<version>.zip`.
 3. On the project page: **Files → Upload file**, pick the zip.
-   - Display name: `ForeverScout <version>`.
+   - Display name: `TrailScout <version>`.
    - Release type: Beta until other players have confirmed it works, then Release.
    - Game version: the World of Warcraft: Forever version the TOC targets (Interface 16001).
    - Changelog: the section of that version in `CHANGELOG.md` (Markdown).

@@ -2,12 +2,12 @@
 
 Usage: build_release.py [--out DIR]
 
-Writes DIR/ForeverScout-<version>.zip (default DIR: dist/), with one folder at the root:
+Writes DIR/TrailScout-<version>.zip (default DIR: dist/), with one folder at the root:
 
-    ForeverScout/ForeverScout.toc, ForeverScout.lua, Route.lua, README.md, LICENSE
+    TrailScout/TrailScout.toc, TrailScout.lua, Route.lua, README.md, LICENSE
 
 That is the layout the game expects under Interface/AddOns/. The version comes from the TOC.
-Files are taken from the working tree, limited to what git tracks in addon/ForeverScout, and
+Files are taken from the working tree, limited to what git tracks in addon/TrailScout, and
 Route.lua always ships empty: a route loaded locally with map_route.py never ends up in a
 release.
 """
@@ -20,22 +20,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import map_route  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
-ADDON = REPO / "addon" / "ForeverScout"
-FOLDER = "ForeverScout"
+ADDON = REPO / "addon" / "TrailScout"
+FOLDER = "TrailScout"
 # Fixed timestamp so the same sources always give the same zip.
 ZIP_DATE = (2026, 1, 1, 0, 0, 0)
 
 
 def addon_version():
-    for line in (ADDON / "ForeverScout.toc").read_text(encoding="utf-8").splitlines():
+    for line in (ADDON / "TrailScout.toc").read_text(encoding="utf-8").splitlines():
         if line.startswith("## Version:"):
             return line.split(":", 1)[1].strip()
-    sys.exit("No '## Version:' line in ForeverScout.toc")
+    sys.exit("No '## Version:' line in TrailScout.toc")
 
 
 def tracked_files():
     """Names of the files git tracks in the addon folder (so stray local files stay out)."""
-    out = subprocess.run(["git", "-C", str(REPO), "ls-files", "addon/ForeverScout"],
+    out = subprocess.run(["git", "-C", str(REPO), "ls-files", "addon/TrailScout"],
                          capture_output=True, text=True, check=True).stdout
     return sorted(Path(line).name for line in out.splitlines() if line.strip())
 
@@ -49,7 +49,7 @@ def release_files():
         else:
             files[name] = (ADDON / name).read_bytes()
     files["LICENSE"] = (REPO / "LICENSE").read_bytes()
-    toc = files["ForeverScout.toc"].decode("utf-8")
+    toc = files["TrailScout.toc"].decode("utf-8")
     listed = [line.strip() for line in toc.splitlines() if line.strip() and not line.startswith("#")]
     missing = [name for name in listed if name not in files]
     if missing:

@@ -1,4 +1,4 @@
--- Minimal stand-in for the WoW Forever client, enough to load ForeverScout.lua in a plain
+-- Minimal stand-in for the WoW Forever client, enough to load TrailScout.lua in a plain
 -- Lua VM and drive it from tests/addon_test.js. Only what the addon touches is modelled.
 -- Tests change the STUB table (class, level, bags, target...) and read back what the addon
 -- did (chat lines, saved variables).

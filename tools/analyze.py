@@ -1,4 +1,4 @@
-"""Character summary + quest planning from the live ForeverScout snapshot.
+"""Character summary + quest planning from the live TrailScout snapshot.
 
 Usage: analyze.py [--char NAME] [zoneID|zoneName ...]
   Zones default to the player's current zone plus its neighbors (config.NEIGHBORS).

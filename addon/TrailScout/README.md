@@ -1,16 +1,16 @@
-# ForeverScout
+# TrailScout
 
 In-game addon for WoW Forever (Interface 16001), for any class and faction.
 
-ForeverScout takes a snapshot of your character (quests, gear, bags, talents, professions,
+TrailScout takes a snapshot of your character (quests, gear, bags, talents, professions,
 party and online friends) so an AI assistant can read it and plan your next steps with you.
 On its own it also points an arrow at NPCs and party members, warns you about full bags, low
 durability and unspent talent points, and scores gear against what you wear.
 
 ## Quick start
 
-1. Copy the `ForeverScout` folder into the game's `_forever_/Interface/AddOns/`, enable it in
-   the AddOns list and log in. Chat shows `ForeverScout: loaded. Type /scout help...` the first
+1. Copy the `TrailScout` folder into the game's `_forever_/Interface/AddOns/`, enable it in
+   the AddOns list and log in. Chat shows `TrailScout: loaded. Type /scout help...` the first
    time.
 2. Type `/scout help` for the list of commands, in English or Spanish to match your client.
 3. To ask an AI about your character, pick one:
@@ -18,7 +18,7 @@ durability and unspent talent points, and scores gear against what you wear.
      into any AI chat with your question.
    - **Full detail:** type `/reload` so the game writes the whole snapshot to disk, then let
      an AI assistant read it with the offline tools from the
-     [forever-scout repository](https://github.com/feliarana/forever-scout) (needs Python).
+     [trail-scout-wow repository](https://github.com/feliarana/trail-scout-wow) (needs Python).
 
 The game only writes addon data to disk on `/reload`, logout or character switch. That is why
 the full snapshot needs a `/reload`.
@@ -50,7 +50,7 @@ the addon sends nothing anywhere.
 
 The game never installs one addon for another: install Questie (Forever version) and TomTom
 yourself if you want `/whereis`. They are declared as optional (`## OptionalDeps`) on purpose: a
-required dependency would stop ForeverScout from loading at all without them.
+required dependency would stop TrailScout from loading at all without them.
 
 ## Slash commands
 
@@ -85,7 +85,7 @@ Limits of `/whereis`:
 ## Routes
 
 `/scout route` walks a route made outside the game by `tools/map_route.py --addon` (from the
-[forever-scout repository](https://github.com/feliarana/forever-scout)). The tool writes the
+[trail-scout-wow repository](https://github.com/feliarana/trail-scout-wow)). The tool writes the
 stops into `Route.lua` in this folder; the game reads that file on every `/reload`, and chat
 says `new route loaded` when there is one. Needs TomTom.
 
@@ -107,7 +107,7 @@ torn down) never overwrites a good one.
 Each section is built on its own: an API that fails only empties its section, and the error
 is stored under `errors`.
 
-`ForeverScoutDB` (per character, replaced on every snapshot):
+`TrailScoutDB` (per character, replaced on every snapshot):
 
 | Key | Content |
 |---|---|
@@ -140,7 +140,7 @@ is stored under `errors`.
 | `apiDiagnostics` | Which APIs exist on the client; only collected while talents or skills come back empty |
 | `errors` | Error message per failed section |
 
-`ForeverScoutHistory` (per character, kept across sessions): running XP total, level-ups with
+`TrailScoutHistory` (per character, kept across sessions): running XP total, level-ups with
 date and zone, deaths with place and level (killer taken from a hostile target, best effort; left empty when unknown),
 dungeon runs with XP gained, flight paths, recipes, the XP pacing session (`pace`), your own
 stat weights (`weights`) and the upkeep alert setting (`alerts`).
@@ -169,7 +169,7 @@ talent changes, and every 20 seconds.
 | Low durability | Any equipped item below 25% | Repair |
 
 Ammo is counted from the bag stacks (quiver included), since the ammo slot only references
-them. Thresholds live in `ALERT_LIMITS` in `ForeverScout.lua`.
+them. Thresholds live in `ALERT_LIMITS` in `TrailScout.lua`.
 
 ## Loot advisor and tooltip score
 
@@ -192,10 +192,10 @@ is the comparison; a two-hander is compared to main hand plus off hand.
 - **Loot rolls**: when a roll starts (or on `/scout <item link>`), the verdict (NEED or GREED,
   a reason and the score difference) is printed in chat and stored in `lastRolls`.
 - **Tooltips**: every gear tooltip (bags, quest rewards, vendors, chat links) gets one line:
-  - `ForeverScout: +12.3 vs equipped (score 45.1)`: green above +0.5, red below -0.5, gray in
+  - `TrailScout: +12.3 vs equipped (score 45.1)`: green above +0.5, red below -0.5, gray in
     between; adds `needs level N` when the item requires a higher level.
-  - `ForeverScout: equipped, score N` on the item you are wearing.
-  - `ForeverScout: not for you (...)` on gear your class cannot use.
+  - `TrailScout: equipped, score N` on the item you are wearing.
+  - `TrailScout: not for you (...)` on gear your class cannot use.
   - No line on non-gear items (materials, ammo, bags, shirts). Comparison tooltips are left
     alone.
 
@@ -211,14 +211,17 @@ in English, whatever the client language, since it is meant for an AI chat.
 ## Languages
 
 Chat messages, alerts and tooltip lines follow the game client: Spanish on esMX and esES,
-English everywhere else. Translations live in the `L` table at the top of `ForeverScout.lua`.
+English everywhere else. Translations live in the `L` table at the top of `TrailScout.lua`.
 
 ## For developers
 
-In the author's setup the game's `Interface/AddOns/ForeverScout` folder is a symlink to this
+In the author's setup the game's `Interface/AddOns/TrailScout` folder is a symlink to this
 directory.
 
-Formerly called **FeliExport**. The game keeps addon data in a file named after the addon, so
-after the rename each character starts a new `SavedVariables/ForeverScout.lua`. The offline
-tools still read the old `FeliExport.lua` and merge its history (deaths, dungeon runs,
-level-ups, flight paths, recipes) with the new one, so nothing recorded before is lost.
+Formerly called **FeliExport**, then **ForeverScout** (renamed because another addon on
+CurseForge already has that name). The game keeps addon data in a file named after the addon,
+so after each rename every character starts a new `SavedVariables/TrailScout.lua`, and
+in-game settings such as your stat weights start fresh. The offline tools still read the older
+`ForeverScout.lua` and `FeliExport.lua` and merge their history (deaths, dungeon runs,
+level-ups, flight paths, recipes) with the new one, so nothing recorded before is lost. A
+`ForeverScout.lua` written by the other addon of that name is recognised and ignored.

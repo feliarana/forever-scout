@@ -7,7 +7,7 @@ Usage: inventory.py [--all]
   --all also lists items with no price data at all.
 
 Sources (read live):
-  * ForeverScout snapshots (every character that has one): item type and vendor price.
+  * TrailScout snapshots (every character that has one): item type and vendor price.
   * Syndicator: bags, bank tabs and mail of every character on the account.
   * Auctionator: AH price database (CBOR blob per realm key) and vendor price cache.
 Rules:

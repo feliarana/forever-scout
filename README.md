@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="assets/logo.png" alt="ForeverScout logo: a folded map with a numbered route and a guide arrow" width="160">
+  <img src="assets/logo.png" alt="TrailScout logo: a folded map with a numbered route and a guide arrow" width="160">
 </p>
 
-# ForeverScout
+# TrailScout
 
 **An addon for World of Warcraft: Forever that lets an AI help you level.**
 
 You know the moment: thirty quests in the log, bags half full, a talent point you forgot, and
-no idea where to go next. ForeverScout packs your whole character into a summary an AI
+no idea where to go next. TrailScout packs your whole character into a summary an AI
 assistant can read (quests, gear, bags, talents, professions, who is online), so you can
 simply ask *"what should I do next?"* and get an answer about **your** character.
 
@@ -35,10 +35,10 @@ and reminders. Any class, Horde or Alliance. English and Spanish.
 ## Install
 
 1. Download this page: green **Code** button → **Download ZIP**, then unzip it.
-2. Copy the `addon/ForeverScout` folder into your game's `_forever_/Interface/AddOns/` folder.
-   You should end up with `Interface/AddOns/ForeverScout/ForeverScout.toc`.
-3. Start the game, tick **ForeverScout** in the AddOns list on the character screen, and log
-   in. Chat says `ForeverScout: loaded. Type /scout help`.
+2. Copy the `addon/TrailScout` folder into your game's `_forever_/Interface/AddOns/` folder.
+   You should end up with `Interface/AddOns/TrailScout/TrailScout.toc`.
+3. Start the game, tick **TrailScout** in the AddOns list on the character screen, and log
+   in. Chat says `TrailScout: loaded. Type /scout help`.
 
 Optional but recommended: **Questie** (Forever version) and **TomTom**. `/whereis` and
 `/scout route` need them; everything else works without. For the offline tools, **Syndicator**
@@ -69,7 +69,7 @@ for another, so get those two yourself.
 | `/scout addons` | Lists addons you have that do the same job twice. |
 | `/reload` | Saves the full snapshot to disk (only needed for the offline tools below). |
 
-Full reference, with every detail: [addon README](addon/ForeverScout/README.md).
+Full reference, with every detail: [addon README](addon/TrailScout/README.md).
 
 ## What works for each class
 
@@ -204,14 +204,14 @@ Paths live in `config.py` and can be overridden with environment variables:
 |---|---|
 | `WOW_DIR` | game folder holding `Interface/` and `WTF/` |
 | `WOW_ACCOUNT` | auto-detected (the only, or most recently used, `WTF/Account/<name>`) |
-| `WOW_CHAR` | highest-level character with a ForeverScout snapshot |
-| `FOREVERSCOUT_SNAPSHOT` | explicit snapshot file (overrides `WOW_CHAR`) |
+| `WOW_CHAR` | highest-level character with a TrailScout snapshot |
+| `TRAILSCOUT_SNAPSHOT` | explicit snapshot file (overrides `WOW_CHAR`) |
 | `WOW_AUCTION_REALM` | every Auctionator price database key |
 
 ## Characters
 
 Characters are discovered from `WTF/Account/<account>/<realm>/<character>/`, so any number of
-mains, alts and bank alts works. Install ForeverScout and log in once with each character
+mains, alts and bank alts works. Install TrailScout and log in once with each character
 (`/scout` or `/reload`) so it gets a snapshot.
 
 - `analyze.py`, `guide.py` and `route_check.py` work on one character: `--char NAME`
@@ -249,8 +249,8 @@ mains, alts and bank alts works. Install ForeverScout and log in once with each 
   the bridge sets `WOW_AI_MAP_FILE` and `map_route.py` appends the route to it. The route shows
   as numbered pins joined by lines, with wow-ai's navigator arrow walking from stop to stop.
   `map_route.py --clear` removes it.
-- **ForeverScout + TomTom**: `--addon` writes the route into the installed addon
-  (`Interface/AddOns/ForeverScout/Route.lua`). `/reload`, then `/scout route` adds every stop
+- **TrailScout + TomTom**: `--addon` writes the route into the installed addon
+  (`Interface/AddOns/TrailScout/Route.lua`). `/reload`, then `/scout route` adds every stop
   as a TomTom waypoint and points the arrow at the first; `/scout route next` moves on. No
   pasting, and a `/reload` resumes where you were.
 - **TomTom alone**: `--tomtom` prints one `/way` line per stop to paste into the game chat.
@@ -269,13 +269,13 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 - `QuestieDB/support/Forever/QuestXP/xpDB-traces.lua` — real quest XP on Forever.
 - `QuestieDB/support/Forever/Zones/uiMapIdToAreaId.lua` — map ID → zone.
 - `QuestieDB/support/Forever/DropTables/classicItemDrops.lua` — drop rates.
-- `WTF/.../SavedVariables/ForeverScout.lua` and `ShortestPathForever.lua` — snapshot and known flight paths.
+- `WTF/.../SavedVariables/TrailScout.lua` and `ShortestPathForever.lua` — snapshot and known flight paths.
 - `WTF/<account>/SavedVariables/Syndicator.lua` — bags, bank and mail of every character.
 - `WTF/<account>/SavedVariables/Auctionator.lua` — AH price database (run a full scan to refresh) and vendor price cache.
 
 ## What is in this repository
 
-- `addon/ForeverScout/` — the in-game addon ([addon README](addon/ForeverScout/README.md)).
+- `addon/TrailScout/` — the in-game addon ([addon README](addon/TrailScout/README.md)).
 - `tools/` — Python scripts that cross the live snapshot with the installed QuestieDB.
 - `tests/` — tests for the addon and the tools that run outside the game.
 - `guide/` — the author's troll hunter leveling guide (work in progress).
@@ -289,13 +289,13 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 To pick up updates automatically, link the addon folder instead of copying it:
 
 - Windows (Command Prompt as admin):
-  `mklink /D "C:\...\_forever_\Interface\AddOns\ForeverScout" "C:\...\forever-scout\addon\ForeverScout"`
-- Linux / macOS: `ln -s /path/to/forever-scout/addon/ForeverScout /path/to/_forever_/Interface/AddOns/ForeverScout`
+  `mklink /D "C:\...\_forever_\Interface\AddOns\TrailScout" "C:\...\trail-scout-wow\addon\TrailScout"`
+- Linux / macOS: `ln -s /path/to/trail-scout-wow/addon/TrailScout /path/to/_forever_/Interface/AddOns/TrailScout`
 
 ## Development
 
 The addon has a test suite that runs outside the game: `tests/addon_test.js` loads
-`ForeverScout.lua` in a Lua VM ([fengari](https://github.com/fengari-lua/fengari)) against
+`TrailScout.lua` in a Lua VM ([fengari](https://github.com/fengari-lua/fengari)) against
 `tests/wow_stub.lua`, a small stand-in for the WoW client, and checks the snapshot, the loot
 advisor, the alerts, the slash commands and the Spanish translations. It also parses the file
 as Lua 5.1, the version the game runs.
@@ -306,9 +306,9 @@ npm test
 .venv/bin/python -m unittest discover -s tests -p "test_*.py"   # offline tools
 ```
 
-`addon/ForeverScout/Route.lua` is tracked as an empty placeholder (the client only finds addon
+`addon/TrailScout/Route.lua` is tracked as an empty placeholder (the client only finds addon
 files that exist at launch) and `map_route.py --addon` rewrites it. To keep your own routes
-out of `git status`: `git update-index --skip-worktree addon/ForeverScout/Route.lua`.
+out of `git status`: `git update-index --skip-worktree addon/TrailScout/Route.lua`.
 
 Run it before every `/reload` on a change to the addon; CI runs it on every push
 (`.github/workflows/test.yml`). When the addon calls a client API the stub does not model
@@ -317,10 +317,10 @@ yet, add it to `tests/wow_stub.lua`.
 ## Releasing
 
 ```bash
-.venv/bin/python tools/build_release.py   # writes dist/ForeverScout-<version>.zip
+.venv/bin/python tools/build_release.py   # writes dist/TrailScout-<version>.zip
 ```
 
-The zip has the `ForeverScout/` folder at its root, ready for `Interface/AddOns/` and for a
+The zip has the `TrailScout/` folder at its root, ready for `Interface/AddOns/` and for a
 CurseForge upload. The version comes from `## Version:` in the TOC: bump it there (and in
 `package.json`) before building. `Route.lua` always ships empty. The steps on the CurseForge
 side are in [docs/curseforge.md](docs/curseforge.md).

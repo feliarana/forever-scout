@@ -1,4 +1,4 @@
--- ForeverScout: writes a per-character snapshot into SavedVariables.
+-- TrailScout: writes a per-character snapshot into SavedVariables.
 -- WoW only flushes SavedVariables to disk on /reload, character switch or logout,
 -- so /scout builds the snapshot and the following /reload writes it to disk.
 --
@@ -30,7 +30,7 @@ end
 
 -- Every chat message goes through here so it carries the addon name.
 local function say(text)
-  DEFAULT_CHAT_FRAME:AddMessage("|cFF54E33BForeverScout|r: " .. text)
+  DEFAULT_CHAT_FRAME:AddMessage("|cFF54E33BTrailScout|r: " .. text)
 end
 
 -- Localization: the English text is the key, so a missing translation falls back to English.
@@ -119,8 +119,8 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["not installed or disabled"] = "no instalado o desactivado"
   L["Optional addons, only needed for /whereis: Questie %s, TomTom %s."] = "Addons opcionales, solo necesarios para /whereis: Questie %s, TomTom %s."
   L["loaded. Type /scout help to see what it does."] = "cargado. Escribí /scout help para ver qué hace."
-  L["ForeverScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps."] =
-    "ForeverScout guarda una foto de tu personaje (misiones, equipo, bolsas, talentos, amigos) que un asistente de IA o las herramientas offline pueden leer para planificar tus próximos pasos."
+  L["TrailScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps."] =
+    "TrailScout guarda una foto de tu personaje (misiones, equipo, bolsas, talentos, amigos) que un asistente de IA o las herramientas offline pueden leer para planificar tus próximos pasos."
   L["/scout [question]: build the snapshot and open a box to copy a summary into an AI chat."] =
     "/scout [pregunta]: arma la foto y abre una caja para copiar un resumen a un chat de IA."
   L["/reload: writes the full snapshot to disk (the game only saves addon data on reload or logout)."] =
@@ -207,7 +207,7 @@ end
 -- so a Need/Greed decision can be made in chat without a /reload.
 -- Weights per class token. `dps` is melee weapon DPS, `rdps` ranged weapon DPS. Only classes
 -- with a sourced set are listed (hunter: RestedXP, levels 20-29); any player can set their own
--- with "/scout weights", saved per character in ForeverScoutHistory.weights.
+-- with "/scout weights", saved per character in TrailScoutHistory.weights.
 local CLASS_WEIGHTS = {
   HUNTER = { agi = 2.33, spi = 1.12, sta = 0.75, int = 0.55, str = 0.20, armor = 0.035,
              ap = 0.8, rap = 0.8, crit = 10, hit = 10, dps = 3, rdps = 14 },
@@ -222,7 +222,7 @@ end
 
 -- Weights in use: the character's own, else the class default, else nil (no loot advice).
 local function activeWeights()
-  local h = ForeverScoutHistory
+  local h = TrailScoutHistory
   if h and type(h.weights) == "table" and next(h.weights) then return h.weights, "yours" end
   local weights = CLASS_WEIGHTS[playerClass()]
   if weights then return weights, "class default" end
@@ -389,12 +389,12 @@ local function addTooltipScore(tooltip)
   if not e or e.skip then return end
   local text
   if e.unusable then
-    text = "|cff808080ForeverScout: " .. string.format(T("not for you (%s)"), e.unusable) .. "|r"
+    text = "|cff808080TrailScout: " .. string.format(T("not for you (%s)"), e.unusable) .. "|r"
   elseif e.equipped then
-    text = "|cff808080ForeverScout: " .. string.format(T("equipped, score %.1f"), e.score) .. "|r"
+    text = "|cff808080TrailScout: " .. string.format(T("equipped, score %.1f"), e.score) .. "|r"
   else
     local color = e.delta > 0.5 and "|cff00ff00" or (e.delta < -0.5 and "|cffff4040" or "|cffbbbbbb")
-    text = color .. "ForeverScout: " .. string.format(T("%+.1f vs equipped"), e.delta) .. "|r |cff808080"
+    text = color .. "TrailScout: " .. string.format(T("%+.1f vs equipped"), e.delta) .. "|r |cff808080"
       .. string.format(T("(score %.1f)"), e.score) .. "|r"
     if e.reqLevel and e.reqLevel > UnitLevel("player") then
       text = text .. " |cffff8000" .. string.format(T("needs level %d"), e.reqLevel) .. "|r"
@@ -860,8 +860,8 @@ end
 -- Flight masters: the client only lists known nodes while the flight map is open,
 -- so they are stored in the per-character history and kept across sessions.
 local function captureTaxi()
-  local h = ForeverScoutHistory or {}
-  ForeverScoutHistory = h
+  local h = TrailScoutHistory or {}
+  TrailScoutHistory = h
   h.flights = h.flights or {}
   for i = 1, (try(NumTaxiNodes) or 0) do
     local name = try(TaxiNodeName, i)
@@ -908,8 +908,8 @@ local function dropDuplicateRecipes(recipes)
 end
 
 local function captureTradeSkill()
-  local h = ForeverScoutHistory or {}
-  ForeverScoutHistory = h
+  local h = TrailScoutHistory or {}
+  TrailScoutHistory = h
   h.recipes = h.recipes or {}
   local now = date("%Y-%m-%d %H:%M")
   local byProfession = {}
@@ -1084,8 +1084,8 @@ local MAX_ENTRIES = 60
 local tracker = { lastXP = nil, lastXPMax = nil, lastLevel = nil }
 
 local function history()
-  ForeverScoutHistory = ForeverScoutHistory or {}
-  local h = ForeverScoutHistory
+  TrailScoutHistory = TrailScoutHistory or {}
+  local h = TrailScoutHistory
   h.levelUps = h.levelUps or {}
   h.deaths = h.deaths or {}
   h.runs = h.runs or {}
@@ -1543,8 +1543,8 @@ local function buildSnapshot()
   section("pet", getPet)
   section("hearth", getHearth)
   section("upkeep", getUpkeep)
-  section("flights", function() return ForeverScoutHistory and ForeverScoutHistory.flights end)
-  section("recipes", function() return ForeverScoutHistory and ForeverScoutHistory.recipes end)
+  section("flights", function() return TrailScoutHistory and TrailScoutHistory.flights end)
+  section("recipes", function() return TrailScoutHistory and TrailScoutHistory.recipes end)
   section("buffs", function() return getAuras("player", "HELPFUL") end)
   section("debuffs", function() return getAuras("player", "HARMFUL") end)
   heavySection("spellbook", getSpellbook)
@@ -1566,7 +1566,7 @@ local function buildSnapshot()
   -- never overwrite a good snapshot with one of those.
   local valid = (snap.xpMax or 0) > 0 and type(snap.bags) == "table" and next(snap.bags) ~= nil
   if valid then
-    ForeverScoutDB = snap
+    TrailScoutDB = snap
   end
   return valid
 end
@@ -1605,7 +1605,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
   if event == "PLAYER_LOGIN" then
     -- Clean recipe lists saved under the wrong profession by older versions.
     pcall(function()
-      if ForeverScoutHistory and ForeverScoutHistory.recipes then dropDuplicateRecipes(ForeverScoutHistory.recipes) end
+      if TrailScoutHistory and TrailScoutHistory.recipes then dropDuplicateRecipes(TrailScoutHistory.recipes) end
     end)
     onXPUpdate()
     requestRosters()
@@ -1712,7 +1712,7 @@ end
 local copyFrame
 local function showCopyBox(text)
   if not copyFrame then
-    copyFrame = CreateFrame("Frame", "ForeverScoutCopyFrame", UIParent, "BackdropTemplate")
+    copyFrame = CreateFrame("Frame", "TrailScoutCopyFrame", UIParent, "BackdropTemplate")
     copyFrame:SetSize(520, 88)
     copyFrame:SetPoint("TOP", UIParent, "TOP", 0, -120)
     copyFrame:SetFrameStrata("DIALOG")
@@ -1724,7 +1724,7 @@ local function showCopyBox(text)
     end
     local label = copyFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("TOP", 0, -8)
-    label:SetText("ForeverScout: " .. T("Ctrl+C to copy, then paste it into your AI chat. Esc to close."))
+    label:SetText("TrailScout: " .. T("Ctrl+C to copy, then paste it into your AI chat. Esc to close."))
     -- Second line: says what the text is, since the one-line box only shows a slice of it.
     local info = copyFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     info:SetPoint("TOP", 0, -24)
@@ -1842,7 +1842,7 @@ end
 local function setArrow(mapID, x, y, title, silent)
   if arrowUid and TomTom.RemoveWaypoint then pcall(TomTom.RemoveWaypoint, TomTom, arrowUid) end
   arrowUid = try(TomTom.AddWaypoint, TomTom, mapID, x / 100, y / 100,
-    { title = title, crazy = true, persistent = false, silent = silent, from = "ForeverScout" })
+    { title = title, crazy = true, persistent = false, silent = silent, from = "TrailScout" })
   return arrowUid ~= nil
 end
 
@@ -1884,7 +1884,7 @@ end
 -- be judged at a glance. Reached by a clickable chat link (an "addon:" hyperlink, delivered
 -- by the client through the SetItemRef event) or by "/whereis map".
 local lastWhere
-local MAP_LINK = "addon:ForeverScout:map"
+local MAP_LINK = "addon:TrailScout:map"
 
 local function showOnMap()
   if not lastWhere then
@@ -1913,7 +1913,7 @@ if EventRegistry and EventRegistry.RegisterCallback then
         return
       end
     end
-  end, "ForeverScout")
+  end, "TrailScout")
 end
 
 local function targetNpcId()
@@ -2002,7 +2002,7 @@ local function where(msg)
 end
 
 -- /scout route: walks a route written by "tools/map_route.py --addon" into Route.lua (the
--- global ForeverScoutRoute, read again on every /reload). Every remaining stop becomes a
+-- global TrailScoutRoute, read again on every /reload). Every remaining stop becomes a
 -- TomTom waypoint and the arrow points at the current one. Waypoint stops ("poi") advance on
 -- arrival; quest stops wait for "/scout route next", since killing or looting takes a while.
 -- The current stop is saved, so a /reload resumes the same route where it was.
@@ -2010,7 +2010,7 @@ local ROUTE_ARRIVE = 1.5  -- map percent around a stop that counts as being ther
 local routeUids, routeIndex, routeTicker, routeArrived = {}, nil, nil, nil
 
 local function routeData()
-  local route = ForeverScoutRoute
+  local route = TrailScoutRoute
   if type(route) == "table" and type(route.points) == "table" and #route.points > 0 then return route end
   return nil
 end
@@ -2034,7 +2034,7 @@ local function routeAddWaypoint(index, arrow)
   local point = routeData().points[index]
   routeRemoveWaypoint(index)
   routeUids[index] = try(TomTom.AddWaypoint, TomTom, point.m, point.x / 100, point.y / 100,
-    { title = point.label, crazy = arrow, persistent = false, silent = true, from = "ForeverScout" })
+    { title = point.label, crazy = arrow, persistent = false, silent = true, from = "TrailScout" })
 end
 
 -- Point the arrow at stop `index`; past the last stop the route ends, or restarts on a loop.
@@ -2119,10 +2119,10 @@ local function routeCommand(arg)
   end
 end
 
-SLASH_FOREVERSCOUTWHERE1 = "/whereis"
-SLASH_FOREVERSCOUTWHERE2 = "/where"
-SLASH_FOREVERSCOUTWHERE3 = "/donde"  -- former name, kept so old habits still work
-SlashCmdList.FOREVERSCOUTWHERE = where
+SLASH_TRAILSCOUTWHERE1 = "/whereis"
+SLASH_TRAILSCOUTWHERE2 = "/where"
+SLASH_TRAILSCOUTWHERE3 = "/donde"  -- former name, kept so old habits still work
+SlashCmdList.TRAILSCOUTWHERE = where
 
 -- Upkeep alerts: a raid-warning style message, a sound and a chat line when ammo, the pet,
 -- bag space or durability need attention. Each alert fires when its condition starts and
@@ -2278,7 +2278,7 @@ end
 
 -- "/scout help": what the addon is for and every command, for someone who never used it.
 local HELP_LINES = {
-  "ForeverScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps.",
+  "TrailScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps.",
   "/scout [question]: build the snapshot and open a box to copy a summary into an AI chat.",
   "/reload: writes the full snapshot to disk (the game only saves addon data on reload or logout).",
   "/whereis <npc | object | party member>: finds it, with an arrow (TomTom) and a link to see it on the map. /whereis map opens the map again, /whereis off clears the arrow. Needs Questie.",
@@ -2386,10 +2386,10 @@ local function command(msg)
   invalidateHeavy()  -- an explicit /scout always rebuilds everything
   buildSnapshot()
   -- Show the copy box right away; /reload is still available for the full detailed file.
-  showCopyBox(compactText(ForeverScoutDB or {}))
+  showCopyBox(compactText(TrailScoutDB or {}))
 end
 
-SLASH_FOREVERSCOUT1 = "/scout"
-SLASH_FOREVERSCOUT2 = "/wow"
-SLASH_FOREVERSCOUT3 = "/feli"
-SlashCmdList.FOREVERSCOUT = command
+SLASH_TRAILSCOUT1 = "/scout"
+SLASH_TRAILSCOUT2 = "/wow"
+SLASH_TRAILSCOUT3 = "/feli"
+SlashCmdList.TRAILSCOUT = command

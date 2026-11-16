@@ -1,4 +1,4 @@
-**ForeverScout** takes a snapshot of your character so an AI assistant can plan your next steps with you: quests with objectives, gear, bags, talents, professions, party and online friends. It works for every class and faction on **World of Warcraft: Forever**.
+**TrailScout** takes a snapshot of your character so an AI assistant can plan your next steps with you: quests with objectives, gear, bags, talents, professions, party and online friends. It works for every class and faction on **World of Warcraft: Forever**.
 
 ## What you get in game
 
@@ -11,12 +11,12 @@
 
 ## Quick start
 
-1. Install the addon and log in. Chat shows `ForeverScout: loaded. Type /scout help`.
+1. Install the addon and log in. Chat shows `TrailScout: loaded. Type /scout help`.
 2. Type `/scout`, press Ctrl+C in the box that opens, and paste the line into your AI chat with a question like *"what should I do next?"*.
 
 ## Going further
 
-`/reload` writes the full snapshot to disk. The free tools in the [forever-scout repository](https://github.com/feliarana/forever-scout) read it together with your installed Questie database and tell an AI assistant where every quest objective and turn-in is, what is on your way, what to sell, where your talent and legacy points can go and which route to take. That part needs Python and is optional.
+`/reload` writes the full snapshot to disk. The free tools in the [trail-scout-wow repository](https://github.com/feliarana/trail-scout-wow) read it together with your installed Questie database and tell an AI assistant where every quest objective and turn-in is, what is on your way, what to sell, where your talent and legacy points can go and which route to take. That part needs Python and is optional.
 
 ## Good to know
 
@@ -26,4 +26,4 @@
 - The game only saves addon data on `/reload` or logout, so the full snapshot needs a `/reload`.
 - Messages are in Spanish on esMX / esES clients and in English everywhere else.
 
-Source, issues and the offline tools: [github.com/feliarana/forever-scout](https://github.com/feliarana/forever-scout). MIT license.
+Source, issues and the offline tools: [github.com/feliarana/trail-scout-wow](https://github.com/feliarana/trail-scout-wow). MIT license.

@@ -1,8 +1,8 @@
-# forever-scout — guide for AI assistants
+# trail-scout-wow — guide for AI assistants
 
 This file is for any AI agent (Claude Code, Codex, Cursor, Gemini CLI, Copilot…) opened on
 this folder. You are helping a WoW Forever player use this toolkit: the in-game addon
-ForeverScout plus the offline Python tools that read its snapshot. You need to be able to read
+TrailScout plus the offline Python tools that read its snapshot. You need to be able to read
 files and run commands here; if you cannot, say so and fall back to the `/scout` copy box
 (README → *Your first five minutes*).
 
@@ -14,7 +14,7 @@ two files.
 
 `README.md` is the source of truth for commands, paths and features; this file says what to do
 and in which order. The addon's own reference (slash commands, snapshot fields, alerts) is
-`addon/ForeverScout/README.md`.
+`addon/TrailScout/README.md`.
 
 ## First session: onboarding
 
@@ -28,7 +28,7 @@ passes.
    Done when `PLAYER.md` exists with every field filled.
 2. **Addon.** Guide the player through README → *Install* for their operating
    system, including Questie (Forever version) and TomTom. Done when the player confirms that
-   ForeverScout is enabled in game and they ran `/reload` with their main character.
+   TrailScout is enabled in game and they ran `/reload` with their main character.
 3. **Tools.** Guide README → *Install the offline tools*, with `WOW_DIR` set to their game
    folder. Prefer setting `WOW_DIR` in the environment over editing `config.py`, which holds
    the author's defaults. Done when `tools/analyze.py` prints their own character name and a
@@ -119,7 +119,7 @@ English or the client language (`17`, `barrens`, `"Mil Agujas"`).
 ## Class notes
 
 Only hunters have built-in stat weights (`STAT_WEIGHTS` in `config.py`, `CLASS_WEIGHTS` in
-`addon/ForeverScout/ForeverScout.lua`); the ammo and pet alerts are hunter-only too. For any
+`addon/TrailScout/TrailScout.lua`); the ammo and pet alerts are hunter-only too. For any
 other class:
 
 - In game, the loot advisor and the tooltip score stay off until the player sets weights.
@@ -134,5 +134,5 @@ Write code, comments, script output and docs in English. Personal settings and r
 `PLAYER.md` or environment variables, never in tracked files; `CLAUDE.md` stays a pointer to
 this file and `PLAYER.md`.
 
-After any change to `addon/ForeverScout/ForeverScout.lua`, run `npm test` (see README →
+After any change to `addon/TrailScout/TrailScout.lua`, run `npm test` (see README →
 *Development*) before asking the player to `/reload`.
