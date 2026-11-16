@@ -6,11 +6,19 @@ STOP is one of:
   ZONE:X,Y[=label]   a waypoint (ZONE is a zone ID or partial English/esMX name)
   QUESTID            the unfinished objectives of that quest and its turn-in
   turnin:QUESTID     only the turn-in of that quest
-With no STOP, the route covers every logged quest that has something to do in --zone; a
-turn-in is only included when the quest is complete or can be completed on that route.
+With no STOP, the route covers the whole of --zone and follows quest chains:
+  * every logged quest with something to do there (a turn-in only when the quest is complete
+    or can be completed on the route)
+  * the quests each turn-in unlocks, picked up on the spot and carried through the chain
+  * new quests that can be done from start to finish in the zone, while the log has room
+Each stop waits for what it needs: accept before objectives, objectives before turn-in, a
+turn-in before its follow-up. A turn-in that unlocks nothing is left for a later pass by town.
 
 Options:
   --zone ZONE     zone for quest stops and the no-STOP mode (default: where the character is)
+  --no-chains     no-STOP mode: do not add the quests that turn-ins unlock
+  --no-accept     no-STOP mode: do not add new quests to pick up
+  --skip ID,ID    no-STOP mode: leave these quests out, and whatever only they unlock
   --optimize      reorder the stops by nearest neighbour from the character's position
                   (always on in the no-STOP mode). Without it, stops keep the order given,
                   with every turn-in moved to the end
@@ -37,8 +45,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import common  # noqa: E402  (puts the repo root on sys.path for config)
 import config  # noqa: E402
 from common import (  # noqa: E402
-    cluster, dist, load_q, load_snapshot, npc_name, object_name, objective_targets, player_pos,
-    quest_name, resolve_zone, spawns_of, take_char_arg, zone_name,
+    cluster, dist, fits_character, is_horde_ok, load_q, load_snapshot, npc_name, object_name,
+    objective_targets, player_pos, prereqs_met, quest_name, resolve_zone, spawns_of, take_char_arg,
+    xp_at_level, zone_name,
 )
 
 # Stops closer than this (map percent) are shown as one pin with both labels.
@@ -61,7 +70,7 @@ def ui_map_of(Q, zone):
 
 def short_name(label):
     """Client-language half of an "English / esMX" label, to keep pin labels short."""
-    return label.split(" / ")[-1]
+    return common.client_name(label)
 
 
 def stop(zone, point, label, kind, phase):
@@ -87,6 +96,10 @@ def objective_stops(Q, q, log_quest, zone):
             finishable = False
             continue
         _, centre = cluster(points)[0]
+        # Say so when every source is elite: that stop usually needs a group.
+        npcs = [src for src in target["sources"] if src["kind"] == "npc"]
+        if npcs and all(src.get("elite") for src in npcs):
+            name += " (elite)"
         stops.append(stop(zone, centre, name, PIN_KINDS[target["kind"]], 0))
     return stops, finishable
 
@@ -123,6 +136,178 @@ def quest_stops(Q, snap, qid, zone, near, turnin_only=False, strict=False):
     if strict and not finishable:
         return stops
     return stops + turnin_stops(Q, q, zone, near)
+
+
+# -- chains: quests to pick up on the way and what turning one in unlocks ---------------
+# A turn-in that unlocks nothing waits this many map units behind other work, so the route
+# does not run back to town between quests.
+TURNIN_DELAY = 25.0
+MAX_CHAIN_DEPTH = 6
+# Lowest share of its full XP a quest must still pay to be worth routing: a quest you are
+# about to unlock in a chain you already hold, and a brand new one.
+MIN_XP_PCT_FOLLOW_UP, MIN_XP_PCT_NEW = 40, 60
+
+
+def _tag(stops, role, quest_id, needs=()):
+    """Give stops their place in the dependency graph: a key, what must come first."""
+    for i, s in enumerate(stops):
+        s.update(role=role, quest=quest_id, needs=set(needs),
+                 key=(role, quest_id, i) if role == "objective" else (role, quest_id))
+    return stops
+
+
+def start_stop(Q, q, zone, near):
+    """Where a quest is picked up in `zone` (nearest start NPC or object), or None."""
+    best = None
+    for kind, ids, namer in (("npc", q["start_npcs"], npc_name), ("obj", q["start_objects"], object_name)):
+        for eid in ids or []:
+            points = spawns_of(Q, kind, eid).get(zone)
+            if not points:
+                continue
+            point = min(points, key=lambda p: dist(p, near)) if near else points[0]
+            d = dist(point, near) if near else 0
+            if best is None or d < best[0]:
+                best = (d, point, short_name(namer(Q, eid)))
+    if not best:
+        return None
+    return stop(zone, best[1], f"accept from {best[2]}: {short_name(quest_name(Q, q['id']))}", "quest", 0)
+
+
+def takeable(Q, q, level, done, in_log, min_pct):
+    """Can the character pick this quest up now, and is it still worth its XP?"""
+    if q["id"] in done or q["id"] in in_log or not fits_character(q) or not is_horde_ok(Q, q):
+        return False
+    if q["level"] == 0 or q["req_level"] > level:
+        return False
+    if any(e in done or e in in_log for e in q["exclusive_to"]):
+        return False
+    xp, pct, _ = xp_at_level(q, level)
+    return pct is None or pct >= min_pct
+
+
+def unlocked_by(Q, quest_id, done_after):
+    """Quests that turning `quest_id` in makes available (its chain successor, and quests
+    that list it as a prerequisite and have every other prerequisite met)."""
+    found = []
+    nxt = Q["quests"].get(quest_id, {}).get("next")
+    if nxt and nxt in Q["quests"]:
+        found.append(nxt)
+    for q in Q["quests"].values():
+        if quest_id in q["prereq_all"] or quest_id in q["prereq_any"]:
+            if q["id"] not in found and prereqs_met(q, done_after):
+                found.append(q["id"])
+    return found
+
+
+def new_quest_stops(Q, q, zone, near, needs=()):
+    """Stops for a quest that is not in the log yet: accept, objectives in `zone`, turn-in.
+    Returns [] when it cannot be picked up in `zone`. A quest whose objectives are not all
+    in the zone is accept-only; one with no listed objectives (a delivery or a talk-to) is
+    accept plus turn-in."""
+    accept = start_stop(Q, q, zone, near)
+    if not accept:
+        return []
+    stops = _tag([accept], "accept", q["id"], needs)
+    targets = objective_targets(Q, q)
+    objectives, finishable = objective_stops(Q, q, {}, zone)
+    if targets and not finishable:
+        accept["label"] += " (continues elsewhere)"
+        return stops
+    _tag(objectives, "objective", q["id"], [accept["key"]])
+    turnin = turnin_stops(Q, q, zone, near)
+    if not targets and turnin:
+        turnin[0]["label"] += " (no listed objective: read the quest)"
+    _tag(turnin, "turnin", q["id"], [accept["key"]] + [o["key"] for o in objectives])
+    if not turnin:
+        accept["label"] += " (turned in elsewhere)"
+    return stops + objectives + turnin
+
+
+def chain_plan(Q, snap, zone, near, chains=True, accept_new=True, skip=()):
+    """Every stop of a zone with its dependencies: the logged quests, the quests their
+    turn-ins unlock (and what those unlock), and the new quests worth picking up there.
+    Quest IDs in `skip` are left out entirely, and so is whatever only they would unlock."""
+    level = snap.get("level") or 1
+    done = set(snap.get("completedQuests") or [])
+    skip = set(skip)
+    log = [lq for lq in snap.get("quests") or [] if lq.get("id") in Q["quests"]]
+    in_log = {lq["id"] for lq in log}
+    stops = []
+    for lq in log:
+        if lq["id"] in skip:
+            continue
+        q = dict(Q["quests"][lq["id"]], id=lq["id"])
+        objectives, finishable = ([], True) if lq.get("complete") else objective_stops(Q, q, lq, zone)
+        _tag(objectives, "objective", q["id"])
+        stops += objectives
+        if finishable:
+            stops += _tag(turnin_stops(Q, q, zone, near), "turnin", q["id"], [o["key"] for o in objectives])
+
+    planned = set(in_log) | skip
+    if chains:
+        frontier = [s["quest"] for s in stops if s["role"] == "turnin"]
+        for _ in range(MAX_CHAIN_DEPTH):
+            turned_in = {s["quest"] for s in stops if s["role"] == "turnin"}
+            nxt_frontier = []
+            for quest_id in frontier:
+                for follow_id in unlocked_by(Q, quest_id, done | turned_in):
+                    q = dict(Q["quests"][follow_id], id=follow_id)
+                    if follow_id in planned or not takeable(Q, q, level, done, in_log, MIN_XP_PCT_FOLLOW_UP):
+                        continue
+                    added = new_quest_stops(Q, q, zone, near, needs=[("turnin", quest_id)])
+                    if not added:
+                        continue
+                    planned.add(follow_id)
+                    for s in added:
+                        s["follow_up"] = True
+                    for s in stops:
+                        if s["key"] == ("turnin", quest_id):
+                            s["unlocks"] = True
+                    stops += added
+                    if any(s["role"] == "turnin" for s in added):
+                        nxt_frontier.append(follow_id)
+            frontier = nxt_frontier
+            if not frontier:
+                break
+
+    if accept_new:
+        for q in Q["quests"].values():
+            if q["id"] in planned or not prereqs_met(q, done) or not takeable(Q, q, level, done, in_log, MIN_XP_PCT_NEW):
+                continue
+            q = dict(q)
+            added = new_quest_stops(Q, q, zone, near)
+            # Only quests that can be done from start to finish in this zone are picked up.
+            if any(s["role"] == "turnin" for s in added) and any(s["role"] == "objective" for s in added):
+                planned.add(q["id"])
+                stops += added
+    return stops
+
+
+def schedule(stops, start, start_zone, free_slots):
+    """Order stops by nearest neighbour while respecting what each one needs first, and the
+    room left in the quest log. Returns (ordered, dropped): dropped stops could not be
+    reached, typically quests there is no log slot for."""
+    present = {s["key"] for s in stops}
+    pool, ordered, done = list(stops), [], set()
+    here, here_zone = start, start_zone
+    while pool:
+        ready = [s for s in pool if (s["needs"] & present) <= done
+                 and (s["role"] != "accept" or free_slots > 0)]
+        if not ready:
+            break
+        other_work = any(s["role"] != "turnin" for s in ready)
+
+        def cost(s):
+            far = 0 if s["zone"] == here_zone else 1000
+            wait = TURNIN_DELAY if s["role"] == "turnin" and not s.get("unlocks") and other_work else 0
+            return far + wait + (dist((s["x"], s["y"]), here) if here else 0)
+        nxt = min(ready, key=cost)
+        pool.remove(nxt)
+        ordered.append(nxt)
+        done.add(nxt["key"])
+        free_slots += {"accept": -1, "turnin": 1}.get(nxt["role"], 0)
+        here, here_zone = (nxt["x"], nxt["y"]), nxt["zone"]
+    return ordered, pool
 
 
 def parse_stop(Q, snap, arg, zone, near):
@@ -282,6 +467,13 @@ def main():
     tomtom = take_option(args, "--tomtom", False)
     clear = take_option(args, "--clear", False)
     addon = take_option(args, "--addon", False)
+    no_chains = take_option(args, "--no-chains", False)
+    no_accept = take_option(args, "--no-accept", False)
+    skip_arg = take_option(args, "--skip")
+    try:
+        skip = {int(v) for v in (skip_arg or "").split(",") if v.strip()}
+    except ValueError:
+        sys.exit(f"--skip takes quest IDs separated by commas, got: {skip_arg}")
     unknown = [a for a in args if a.startswith("--")]
     if unknown:
         sys.exit(f"Unknown option: {unknown[0]}")
@@ -298,15 +490,22 @@ def main():
         # Distances only make sense from the character when it stands in the route's zone.
         start = (x, y) if x is not None and zone == here_zone else None
 
+        dropped = []
         if args:
             stops = [s for arg in args for s in parse_stop(Q, snap, arg, zone, start)]
+            stops = order_stops(stops, start, zone) if optimize else phase_order(stops)
         else:
-            optimize = True
-            stops = [s for lq in snap.get("quests") or [] if lq.get("id") in Q["quests"]
-                     for s in quest_stops(Q, snap, lq["id"], zone, start, strict=True)]
+            # The whole zone: logged quests, what their turn-ins unlock, new quests to pick up.
+            size = snap.get("questLog") or {}
+            free = size["max"] - size.get("count", 0) if size.get("max") else 99
+            stops = chain_plan(Q, snap, zone, start, chains=not no_chains, accept_new=not no_accept, skip=skip)
+            stops, dropped = schedule(stops, start, zone, free)
+            if dropped:
+                names = sorted({short_name(quest_name(Q, d["quest"])) for d in dropped if d["role"] == "accept"})
+                print(f"Not routed, no free quest log slot ({free} free at the start): " + ", ".join(names),
+                      file=sys.stderr)
         if not stops:
             sys.exit(f"Nothing to route in {zone_name(Q, zone)}")
-        stops = order_stops(stops, start, zone) if optimize else phase_order(stops)
         stops = merge_stops(stops)
         if len(stops) > MAX_POINTS:
             sys.exit(f"{len(stops)} stops is too many for one route (max {MAX_POINTS}): pick quests or a zone")
