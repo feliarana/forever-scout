@@ -131,6 +131,7 @@ is stored under `errors`.
 | `spellbook`, `actionBars` | Known spells with rank, and what sits in each action slot |
 | `pet` | Name, family, level, XP, happiness (1 unhappy, 2 content, 3 happy) with its damage percentage, loyalty and the food types it eats |
 | `hearth` | Hearthstone bind location and cooldown left |
+| `mapSizes` | Width and height in yards of every zone map the client knows, so the offline tools can turn map percent into walking time |
 | `upkeep` | Free bag slots and durability |
 | `flights` | Known flight paths (recorded whenever the flight map opens) |
 | `buffs`, `debuffs` | Active auras with stacks and time left |

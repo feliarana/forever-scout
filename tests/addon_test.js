@@ -605,3 +605,15 @@ test("logged quests carry the client's own XP, next waypoint and quest giver", (
     assert(second.giver and second.giver.name == nil and second.giver.x == 61, "an NPC-less accept still records the place")
   `);
 });
+
+test("zone sizes in yards are saved for every zone the client knows", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    login()
+    local sizes = TrailScoutDB.mapSizes
+    assert(sizes[1424].w == 3200 and sizes[1424].h == 2133, "Hillsbrad size wrong or missing")
+    assert(sizes[1413].w == 10133, "a zone the player is not in must be measured too")
+    local count = 0
+    for _ in pairs(sizes) do count = count + 1 end
+    assert(count == 2, "only zone maps belong in the table, got " .. count)
+  `);
+});

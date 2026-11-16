@@ -2,7 +2,7 @@
 ## Title: TrailScout
 ## Notes: Saves a snapshot of your character (quests, gear, bags, talents, friends) for an AI assistant to read. Type /scout help.
 ## Author: Feli
-## Version: 1.5.1
+## Version: 1.5.2
 ## OptionalDeps: Questie, TomTom
 ## X-License: MIT
 ## X-Website: https://github.com/feliarana/trail-scout-wow

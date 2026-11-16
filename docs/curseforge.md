@@ -25,6 +25,22 @@ The page description is [curseforge-description.md](curseforge-description.md): 
 whole file with the editor set to Markdown. It is kept one paragraph or bullet per line, with
 no hard wraps, because some Markdown editors turn every line break into a visible one.
 
+## Moderation policies that shaped this page
+
+From CurseForge's moderation policies (read November 2026):
+
+- **Name** in English, without the game name, a class or a version, and distinct from other
+  projects. That is why it is Trail Scout and not ForeverScout.
+- **Summary** is one sentence and does not copy the description.
+- **Description** says concretely what the addon does.
+- **Logo** is exactly 400x400, not WebP, not a solid colour, no copyrighted imagery.
+- **No external download links for files.** The description links the source repository once,
+  at the bottom, as source and issue tracker, not as a place to download the addon. Personal
+  and cross-hosting links belong after the description.
+- **Every file needs a changelog** describing what changed since the previous one.
+- **Showcase images** that are AI-generated or edited in a way that could misrepresent the
+  addon need a visible disclaimer: use real in-game screenshots in the gallery.
+
 ## Uploading a release
 
 1. Bump `## Version:` in `addon/TrailScout/TrailScout.toc` and `version` in `package.json`.

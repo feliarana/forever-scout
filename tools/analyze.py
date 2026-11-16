@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import advice  # noqa: E402
+import quest_value  # noqa: E402
 import stash  # noqa: E402
 import config  # noqa: E402
 from common import (  # noqa: E402
@@ -251,6 +252,19 @@ def build(snap):
         print("\n".join(lines))
 
 
+def value(Q, snap):
+    """Quests of the current zone ranked by estimated XP per minute."""
+    rows = quest_value.rank(Q, snap, quest_value.ui_map_lookup(Q))
+    here = [r for r in rows if r[1]["minutes"] is not None and not r[1].get("elsewhere")]
+    if not here:
+        return
+    section("Quest value here (estimate, XP per minute)")
+    print("\n".join(quest_value.lines(Q, here)))
+    rest = len(rows) - len(here)
+    print(f"Each quest is timed on its own; kills use Classic's XP formula. {rest} more quests are in other "
+          "zones or cannot be timed: tools/quest_value.py lists them.")
+
+
 def stashed(Q, snap, me):
     """Bank, mail and other characters: coverage, and quest items that are not in the bags."""
     import time
@@ -375,6 +389,7 @@ def main():
     gear(snap)
     build(snap)
     stashed(Q, snap, me)
+    value(Q, snap)
     quests(Q, snap, zones)
 
 

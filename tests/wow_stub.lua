@@ -191,7 +191,22 @@ function GetBindLocation() return "Splintertree Post" end
 
 C_Map = {}
 function C_Map.GetBestMapForUnit() return STUB.mapID end
-function C_Map.GetMapInfo() return { name = STUB.zone } end
+-- STUB.zoneMaps[uiMapID] = { width, height } in yards: the zones the client knows.
+STUB.zoneMaps = { [1424] = { 3200, 2133 }, [1413] = { 10133, 6756 } }
+function C_Map.GetMapInfo(mapID)
+  if mapID == nil or mapID == STUB.mapID or STUB.zoneMaps[mapID] then
+    return { name = STUB.zone, mapType = STUB.zoneMaps[mapID or STUB.mapID] and 3 or 0 }
+  end
+end
+function CreateVector2D(x, y)
+  return { x = x, y = y, GetXY = function(self) return self.x, self.y end }
+end
+-- World position of a map position: (top, left) grow towards the map's top-left corner.
+function C_Map.GetWorldPosFromMapPos(mapID, position)
+  local size = STUB.zoneMaps[mapID]
+  if not size then return nil end
+  return 1, CreateVector2D(5000 - position.y * size[2], 8000 - position.x * size[1])
+end
 function C_Map.GetPlayerMapPosition()
   return { GetXY = function() return STUB.x, STUB.y end }
 end

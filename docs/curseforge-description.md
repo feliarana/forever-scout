@@ -16,7 +16,7 @@
 
 ## Going further
 
-`/reload` writes the full snapshot to disk. The free tools in the [trail-scout-wow repository](https://github.com/feliarana/trail-scout-wow) read it together with your installed Questie database and tell an AI assistant where every quest objective and turn-in is, what is on your way, what to sell, where your talent and legacy points can go and which route to take. That part needs Python and is optional.
+`/reload` writes the full snapshot to disk. Free companion tools (in the source repository linked at the bottom of this page) read it together with your installed Questie database and tell an AI assistant where every quest objective and turn-in is, what is on your way, what to sell, where your talent and legacy points can go and which route to take. That part needs Python and is optional.
 
 ## Good to know
 
@@ -26,4 +26,4 @@
 - The game only saves addon data on `/reload` or logout, so the full snapshot needs a `/reload`.
 - Messages are in Spanish on esMX / esES clients and in English everywhere else.
 
-Source, issues and the offline tools: [github.com/feliarana/trail-scout-wow](https://github.com/feliarana/trail-scout-wow). MIT license.
+Source code, issue tracker and the optional companion tools: [github.com/feliarana/trail-scout-wow](https://github.com/feliarana/trail-scout-wow). MIT license.

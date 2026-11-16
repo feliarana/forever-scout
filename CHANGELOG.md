@@ -3,6 +3,10 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.5.2
+
+- The snapshot now includes the size of every zone in yards, measured from the game client. The offline tools use it to estimate walking time and rank your quests by XP per minute.
+
 ## TrailScout 1.5.1
 
 - The snapshot now records what the game client itself says each quest in your log pays in XP at your level. This covers Forever's new quests, which quest databases do not have yet.

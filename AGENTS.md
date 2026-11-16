@@ -61,7 +61,10 @@ as this routine:
    is bound and its cooldown are in the snapshot (`hearth`), and it pays off when the route
    ends far from the turn-ins.
 6. Before telling them to skip or abandon a quest, run `tools/route_check.py` with their
-   planned route. A quest whose objectives sit on the route gets done on the way.
+   planned route. A quest whose objectives sit on the route gets done on the way. Use the
+   *Quest value here* section (estimated XP per minute, each quest timed alone) to rank what
+   is left: a low number backs a skip, but say it is an estimate and name its caveats
+   (assumed drop rate, elite, gray mobs).
 7. When you propose a route, also draw it: if `WOW_AI_MAP_FILE` is set (a wow-ai chat), run
    `tools/map_route.py` with the quest IDs and waypoints of your plan; otherwise, for players
    with TomTom, run `tools/map_route.py --addon` and tell them to `/reload` and type
@@ -115,6 +118,7 @@ English or the client language (`17`, `barrens`, `"Mil Agujas"`).
 | `tools/analyze.py [--char NAME] [zone …]` | Character summary, where talent and perk points can go, professions, bank and mail, turn-ins, progress, unlocks, available quests |
 | `tools/guide.py [--char NAME] <questID …>` | Start, turn-in, text, objectives with levels, ELITE and spawn clusters |
 | `tools/route_check.py [--char NAME] ZONE:X,Y …` | Distance of each logged quest to a route, and XP at the current level |
+| `tools/quest_value.py [--char NAME]` | Every logged quest ranked by estimated XP per minute, with minutes, quest XP and kill XP; other zones are timed from arriving there |
 | `tools/map_route.py [--char NAME] [--addon \| --tomtom] [QUESTID \| turnin:QUESTID \| ZONE:X,Y=label …]` | Numbered route for the in-game map (objectives first, turn-ins last); no stops = every quest in the current zone. `--addon` writes it for `/scout route`; writes to `$WOW_AI_MAP_FILE` when set |
 | `tools/inventory.py [--all]` | Vendor / auction / use / keep / turn-in for every character's bags, bank and mail (Syndicator + Auctionator). Ask for an Auctionator full scan and a `/reload` when prices are stale. Keep list: `config.KEEP_ITEMS` |
 | `tools/build_q.py` | Rebuild the `data/Q.pkl` cache from QuestieDB (the other tools do it when it is stale) |

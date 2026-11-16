@@ -1494,6 +1494,34 @@ local function invalidateHeavy()
   for key in pairs(heavyFresh) do heavyFresh[key] = nil end
 end
 
+-- Size of every zone map in yards, so the offline tools can turn map percent into walking
+-- time. The client converts map positions to world positions for any map, so all zones are
+-- measured once per session without visiting them. Map IDs are probed in a range because
+-- Forever adds zones whose IDs are not listed anywhere.
+local MAP_ID_PROBE = 2600
+local function getMapSizes()
+  if not (C_Map and C_Map.GetWorldPosFromMapPos and C_Map.GetMapInfo and CreateVector2D) then return nil end
+  local zoneType = Enum and Enum.UIMapType and Enum.UIMapType.Zone or 3
+  local topLeft, bottomRight = CreateVector2D(0, 0), CreateVector2D(1, 1)
+  local sizes = {}
+  for mapID = 1, MAP_ID_PROBE do
+    local info = try(C_Map.GetMapInfo, mapID)
+    if info and info.mapType == zoneType then
+      pcall(function()
+        local _, a = C_Map.GetWorldPosFromMapPos(mapID, topLeft)
+        local _, b = C_Map.GetWorldPosFromMapPos(mapID, bottomRight)
+        local top, left = a:GetXY()
+        local bottom, right = b:GetXY()
+        local width, height = math.abs(left - right), math.abs(top - bottom)
+        if width > 0 and height > 0 then
+          sizes[mapID] = { w = math.floor(width + 0.5), h = math.floor(height + 0.5) }
+        end
+      end)
+    end
+  end
+  return sizes
+end
+
 -- Build each section independently so one failing API cannot wipe the whole snapshot.
 -- Any error message is stored under `errors` to help debugging.
 local function buildSnapshot()
@@ -1603,6 +1631,7 @@ local function buildSnapshot()
   section("lastRolls", function() return session.lastRolls end)
   section("locale", function() return GetLocale() end)
   heavySection("addons", getAddons)  -- the loaded addon list cannot change without a /reload
+  heavySection("mapSizes", getMapSizes)  -- zone sizes never change within a session
   -- Only collect API diagnostics while some section is still empty.
   local talentsFound = snap.talents and ((snap.talents.trees and #snap.talents.trees > 0) or (snap.talents.tabs and #snap.talents.tabs > 0))
   if not talentsFound or not (snap.skills and #snap.skills > 0) then
