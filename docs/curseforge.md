@@ -64,3 +64,16 @@ Python and is optional.
 - The game only saves addon data on `/reload` or logout, so the full snapshot needs a
   `/reload`.
 - Messages are in Spanish on esMX / esES clients and in English everywhere else.
+
+## Uploading a release
+
+1. Bump `## Version:` in `addon/ForeverScout/ForeverScout.toc` and `version` in `package.json`.
+2. Run the tests (`npm test` and the Python suite), then
+   `.venv/bin/python tools/build_release.py`. It writes `dist/ForeverScout-<version>.zip`.
+3. On the project page: **Files → Upload file**, pick the zip.
+   - Display name: `ForeverScout <version>`.
+   - Release type: Beta until other players have confirmed it works, then Release.
+   - Game version: the World of Warcraft: Forever version the TOC targets (Interface 16001).
+   - Changelog: the commit subjects since the last upload.
+4. License on the project settings: MIT, the same as `LICENSE` in the repository.
+5. Relations: Questie and TomTom as optional dependencies.

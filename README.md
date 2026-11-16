@@ -280,6 +280,7 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 - `tests/` — tests for the addon and the tools that run outside the game.
 - `guide/` — the author's troll hunter leveling guide (work in progress).
 - `docs/curseforge.md`, `assets/` — texts and logo for the CurseForge page.
+- `LICENSE` — MIT.
 - `AGENTS.md` — guide for any AI assistant helping a player set up and use the toolkit.
 - `CLAUDE.md` — pointer for Claude Code to `AGENTS.md` and the player's private `PLAYER.md`.
 
@@ -310,6 +311,21 @@ out of `git status`: `git update-index --skip-worktree addon/ForeverScout/Route.
 Run it before every `/reload` on a change to the addon; CI runs it on every push
 (`.github/workflows/test.yml`). When the addon calls a client API the stub does not model
 yet, add it to `tests/wow_stub.lua`.
+
+## Releasing
+
+```bash
+.venv/bin/python tools/build_release.py   # writes dist/ForeverScout-<version>.zip
+```
+
+The zip has the `ForeverScout/` folder at its root, ready for `Interface/AddOns/` and for a
+CurseForge upload. The version comes from `## Version:` in the TOC: bump it there (and in
+`package.json`) before building. `Route.lua` always ships empty. The steps on the CurseForge
+side are in [docs/curseforge.md](docs/curseforge.md).
+
+## License
+
+[MIT](LICENSE).
 
 ## Credits
 

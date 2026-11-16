@@ -28,3 +28,6 @@ PLAYER.md
 
 # Node (addon tests)
 node_modules/
+
+# Release zips built by tools/build_release.py
+dist/

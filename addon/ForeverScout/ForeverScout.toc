@@ -2,8 +2,11 @@
 ## Title: ForeverScout
 ## Notes: Saves a snapshot of your character (quests, gear, bags, talents, friends) for an AI assistant to read. Type /scout help.
 ## Author: Feli
-## Version: 1.4.1
+## Version: 1.4.2
 ## OptionalDeps: Questie, TomTom
+## X-License: MIT
+## X-Website: https://github.com/feliarana/forever-scout
+## X-Curse-Project-ID: 1810026
 ## SavedVariablesPerCharacter: ForeverScoutDB, ForeverScoutHistory
 
 Route.lua
