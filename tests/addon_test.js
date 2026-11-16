@@ -176,7 +176,7 @@ test("first login prints the welcome line once", () => {
 test("/scout help lists the commands, in the client language", () => {
   withAddon(ONE_ITEM, LOGIN + `
     slash("help")
-    assert(STUB.said("/scout weights") and STUB.said("/donde") and STUB.said("Privacy:"))
+    assert(STUB.said("/scout weights") and STUB.said("/whereis") and STUB.said("Privacy:"))
     assert(#STUB.chat == 11, "help should be eleven lines for a class with weights, got " .. #STUB.chat)
     assert(STUB.said("/scout route"))
     assert(STUB.said("Questie not installed or disabled, TomTom not installed or disabled"))

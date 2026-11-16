@@ -28,7 +28,7 @@ the full snapshot needs a `/reload`.
 | Feature | Hunter | Other classes |
 |---|---|---|
 | Snapshot, copy box, session history, XP pace | yes | yes |
-| `/donde` NPC and party arrow | yes | yes |
+| `/whereis` NPC and party arrow | yes | yes |
 | `/scout route` waypoints from the offline tools | yes | yes |
 | Alerts: bags, durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
@@ -43,12 +43,12 @@ the addon sends nothing anywhere.
 ## Requirements
 
 - Required: none. The snapshot, the copy box, the alerts and the loot advice work alone.
-- Optional: **Questie** (NPC spawn data for `/donde`) and **TomTom** (arrow and live distance
-  for `/donde`). Only `/donde` needs them, and it tells you which one is missing.
+- Optional: **Questie** (NPC spawn data for `/whereis`) and **TomTom** (arrow and live distance
+  for `/whereis`). Only `/whereis` needs them, and it tells you which one is missing.
   `/scout help` shows whether each one is loaded.
 
 The game never installs one addon for another: install Questie (Forever version) and TomTom
-yourself if you want `/donde`. They are declared as optional (`## OptionalDeps`) on purpose: a
+yourself if you want `/whereis`. They are declared as optional (`## OptionalDeps`) on purpose: a
 required dependency would stop ForeverScout from loading at all without them.
 
 ## Slash commands
@@ -65,13 +65,13 @@ required dependency would stop ForeverScout from loading at all without them.
 | `/scout help` (or `?`, `ayuda`) | What the addon does and every command. |
 | `/scout weights` | Shows the stat weights in use and the stats you can set. |
 | `/scout weights agi=2.3 sta=0.7 …` | Sets your own stat weights for this character (merged over the ones in use). `/scout weights reset` goes back to the class default. |
-| `/donde <npc name>` (alias `/where`) | TomTom arrow to the nearest spawn of the NPC, with distance in yards and meters. Partial names work and accents are optional (`jabali` matches `Jabalí`). With several matches the nearest spawn wins and the others are listed with their IDs. |
-| `/donde <npc id>` | Same, by NPC ID. |
-| `/donde` | Same, for the NPC currently targeted (`/target jabalí`, then `/donde`). |
-| `/donde <party member>` | Arrow that follows a party member's live position (refreshed every 2 seconds). |
-| `/donde off` (or `clear`) | Clears the arrow. |
+| `/whereis <npc name>` (alias `/where`) | TomTom arrow to the nearest spawn of the NPC, with distance in yards and meters. Partial names work and accents are optional (`jabali` matches `Jabalí`). With several matches the nearest spawn wins and the others are listed with their IDs. |
+| `/whereis <npc id>` | Same, by NPC ID. |
+| `/whereis` | Same, for the NPC currently targeted (`/target jabalí`, then `/whereis`). |
+| `/whereis <party member>` | Arrow that follows a party member's live position (refreshed every 2 seconds). |
+| `/whereis off` (or `clear`) | Clears the arrow. |
 
-Limits of `/donde`:
+Limits of `/whereis`:
 
 - The arrow points at the spawn point from Questie's database, not at the live mob: the
   client does not expose NPC positions.

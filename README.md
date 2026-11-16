@@ -1,54 +1,124 @@
-# forever-scout
+<p align="center">
+  <img src="assets/logo.png" alt="ForeverScout logo: a folded map with a numbered route and a guide arrow" width="160">
+</p>
 
-Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), for any class and
-faction: an in-game addon takes a snapshot of your character and offline tools let an AI
-assistant read it to plan your next steps. It started as the author's troll hunter setup, so
-hunters get the most out of the box.
+# ForeverScout
 
-New here? Install the addon ([step 1](#1-the-addon-any-class)), type `/scout help` in game, and
-read the [addon README](addon/ForeverScout/README.md).
+**An addon for World of Warcraft: Forever that lets an AI help you level.**
 
-- `addon/ForeverScout/` — in-game addon: character snapshot, loot advisor, tooltip score, upkeep alerts and NPC arrow
-  ([addon README](addon/ForeverScout/README.md)). The game's `Interface/AddOns/ForeverScout` is a
-  symlink to this folder.
-- `tools/` — Python scripts that cross the live snapshot with the installed QuestieDB.
-- `guide/` — the author's troll hunter leveling guide (work in progress).
-- `tests/` — addon tests that run outside the game (`npm test`).
-- `AGENTS.md` — guide for any AI assistant helping a player set up and use the toolkit.
-- `CLAUDE.md` — the author's personal rules for Claude.
+You know the moment: thirty quests in the log, bags half full, a talent point you forgot, and
+no idea where to go next. ForeverScout packs your whole character into a summary an AI
+assistant can read (quests, gear, bags, talents, professions, who is online), so you can
+simply ask *"what should I do next?"* and get an answer about **your** character.
 
-## Features
+It also helps on its own while you play: arrows to NPCs, routes with waypoints, loot advice
+and reminders. Any class, Horde or Alliance. English and Spanish.
 
-### In game (ForeverScout)
+> CurseForge page: coming soon. Until then, install it from this page (two minutes, below).
 
-- **Snapshot** — quests, location, gear, bags, talents, spellbook, action bars, pet,
-  professions, buffs, hearthstone, durability, party and online friends, refreshed every 20
-  seconds and written to disk on `/reload`. `/scout [question]` also opens a copy box with a
-  one-line summary to paste into a chat.
-- **Online friends** — friend list, Battle.net friends playing WoW, guild and community
-  members, with level and zone; guild name and rank, communities; party members with map
-  position.
-- **Session history** — XP total, level-ups, deaths (with place), dungeon runs with XP gained,
-  known flight paths and recipes.
-- **Window capture** — last quest reward window, trainer and vendor opened, with stats and
-  costs.
-- **Loot advisor** — NEED / GREED verdict on every loot roll, or with
-  `/scout <item link>`, using stat weights against the equipped item. Hunters have built-in
-  weights; other classes set their own with `/scout weights`.
-- **Tooltip score** — every gear tooltip shows the weighted score difference against what is
-  equipped (green upgrade, red downgrade), or why your class cannot use the item.
-- **Addon overlap check** — `/scout addons` lists loaded addons that do the same job, to trim
-  long addon lists.
-- **Upkeep alerts** — on-screen warning and sound for low ammo (with a hint to equip another
-  stack), dead / unhappy / content / missing pet, nearly full bags, low durability and unspent
-  talent points. `/scout alerts on|off`.
-- **In-game help and languages** — `/scout help` explains every command; messages are in
-  Spanish on esMX / esES clients and English elsewhere.
-- **NPC arrow** — `/donde <npc name | id | party member>` puts a TomTom arrow on the nearest
-  spawn (Questie database) and prints the distance in yards and meters; with no argument it
-  uses the NPC target, and it follows party members live. `/donde off` clears it.
+## What it does for you
 
-### Offline tools
+- **Ask an AI about your character.** Type `/scout`, press Ctrl+C, paste into ChatGPT, Claude
+  or any AI chat and ask your question. No setup, nothing to install besides the addon.
+- **Find any NPC.** `/whereis Lydon` puts an arrow on the nearest one and tells you how far
+  it is. It also follows a party member: `/whereis Mauro`.
+- **Follow a route.** `/scout route` walks you stop by stop with waypoints: objectives first,
+  turn-ins last.
+- **Know what to roll.** NEED or GREED in chat on every loot roll, and a line on every gear
+  tooltip saying how much better or worse it is than what you wear.
+- **Stop forgetting things.** A warning when your bags are almost full, your gear is about to
+  break or you have a talent point to spend. Hunters also get low ammo and pet warnings.
+- **Trim your addon list.** `/scout addons` shows which of your addons do the same job twice.
+
+## Install
+
+1. Download this page: green **Code** button → **Download ZIP**, then unzip it.
+2. Copy the `addon/ForeverScout` folder into your game's `_forever_/Interface/AddOns/` folder.
+   You should end up with `Interface/AddOns/ForeverScout/ForeverScout.toc`.
+3. Start the game, tick **ForeverScout** in the AddOns list on the character screen, and log
+   in. Chat says `ForeverScout: loaded. Type /scout help`.
+
+Optional but recommended: **Questie** (Forever version) and **TomTom**. `/whereis` and
+`/scout route` need them; everything else works without. The game never installs one addon
+for another, so get those two yourself.
+
+## Your first five minutes
+
+| Type this | What happens |
+|---|---|
+| `/scout help` | The list of commands, in your game's language. |
+| `/scout` | A box with a summary of your character, already selected. Ctrl+C, then paste it into an AI chat with your question. |
+| `/scout is this ring good for me?` | Same, with your question included in the summary. |
+| `/whereis <npc name>` | An arrow to that NPC. `/whereis off` removes it. |
+| Shift-click an item after typing `/scout ` | NEED or GREED for that item against what you wear. |
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `/scout [question]` | Summary of your character to copy into an AI chat. |
+| `/scout help` | Every command, explained. |
+| `/whereis <npc \| party member>` | Arrow to an NPC or a party member. `/whereis` alone uses your target. |
+| `/scout route` | Start (or resume) the loaded route. `/scout route next` moves on, `/scout route clear` removes it. |
+| `/scout <item link>` | NEED or GREED for that item. |
+| `/scout weights` | Show or set the stat weights behind the loot advice. |
+| `/scout alerts on` / `off` | Turn the reminders on or off. |
+| `/scout addons` | Lists addons you have that do the same job twice. |
+| `/reload` | Saves the full snapshot to disk (only needed for the offline tools below). |
+
+Full reference, with every detail: [addon README](addon/ForeverScout/README.md).
+
+## What works for each class
+
+| Feature | Hunter | Other classes |
+|---|---|---|
+| Summary for an AI (`/scout`) and full snapshot | yes | yes |
+| `/whereis` NPC and party arrow, `/scout route` | yes | yes |
+| Online friends, guild and communities in the summary | yes | yes |
+| Alerts: bags almost full, low durability, unspent talent points | yes | yes |
+| Alerts: ammo and pet | yes | — |
+| Loot NEED / GREED advice and tooltip score | yes, ready to use | after one line: `/scout weights int=1 sta=0.5 …` |
+
+The addon started as a troll hunter's setup, so hunters have stat weights built in. Any other
+class sets its own once: ask your AI *"what are good leveling stat weights for my class?"* and
+type them with `/scout weights`.
+
+## Questions
+
+**Do I need to know programming or install Python?**
+No. The addon alone gives you everything above. Python is only for the optional offline tools.
+
+**Does it play for me, or break the rules?**
+No. It only reads what any addon can read and shows you information. It never moves, targets
+or casts for you.
+
+**Is my data sent anywhere?**
+No. The addon cannot use the internet. The summary stays on your computer until you paste it
+somewhere yourself. Note that it includes the names of your party, friends, guild and
+communities.
+
+**Why do I sometimes need `/reload`?**
+The game only writes addon data to disk on `/reload` or logout. `/scout` and the copy box do
+not need it; the offline tools do.
+
+**It is in Spanish / English and I want the other one.**
+Messages follow your game client: Spanish on esMX and esES, English everywhere else.
+
+**Something is wrong or I have an idea.**
+Open an issue on this page (the **Issues** tab).
+
+---
+
+## Going further: let the AI read everything
+
+The copy box is a summary. The **offline tools** give an AI assistant the full picture: they
+read the complete snapshot together with your installed Questie database and answer things
+like *where is every objective and turn-in*, *which quests are on my way*, *what should I
+sell*, *how fast am I leveling* and *what route should I take*. This part is optional and needs Python.
+
+The easiest way to use them is with a coding assistant (Claude Code, Codex, Cursor…): open
+this folder with it and ask it to read `AGENTS.md`. It walks you through setup, asks about
+your character and keeps your profile in a private `PLAYER.md`.
 
 | Script | What it gives |
 |---|---|
@@ -61,33 +131,9 @@ read the [addon README](addon/ForeverScout/README.md).
 
 Nothing from the game is copied here: tools always read the live files under `WOW_DIR`.
 
-## Install
+Nothing from the game is copied here: tools always read the live files under `WOW_DIR`.
 
-### 1. The addon (any class)
-
-1. Get the repo (clone it, or *Code → Download ZIP* on GitHub and unzip it).
-2. Copy the `addon/ForeverScout` folder into the game's `_forever_/Interface/AddOns/`, so the
-   game has `Interface/AddOns/ForeverScout/ForeverScout.toc`.
-   - To pick up updates automatically, link it instead of copying:
-     - Windows (Command Prompt as admin):
-       `mklink /D "C:\...\_forever_\Interface\AddOns\ForeverScout" "C:\...\forever-scout\addon\ForeverScout"`
-     - Linux / macOS: `ln -s /path/to/forever-scout/addon/ForeverScout /path/to/_forever_/Interface/AddOns/ForeverScout`
-3. Optional, recommended: install **Questie** (Forever version, with QuestieDB) and **TomTom**.
-   `/donde` needs both.
-4. In game, enable ForeverScout in the AddOns list and `/reload`. Type `/scout help`.
-
-What works for each class:
-
-| Feature | Hunter | Other classes |
-|---|---|---|
-| Snapshot (`/scout`, `/reload`), copy box, session history | yes | yes |
-| `/donde` NPC and party arrow | yes | yes |
-| Online friends, guild and communities | yes | yes |
-| Alerts: bags almost full, low durability, unspent talent points | yes | yes |
-| Alerts: ammo and pet | yes | — |
-| Loot roll NEED / GREED advice and tooltip score | yes, built-in weights | after setting your own with `/scout weights` |
-
-### 2. The offline tools (optional)
+### Install the offline tools
 
 Needs Python 3.10+ and the Forever QuestieDB addon installed in the game.
 
@@ -189,6 +235,22 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 - `WTF/.../SavedVariables/ForeverScout.lua` and `ShortestPathForever.lua` — snapshot and known flight paths.
 - `WTF/<account>/SavedVariables/Syndicator.lua` — bags, bank and mail of every character.
 - `WTF/<account>/SavedVariables/Auctionator.lua` — AH price database (run a full scan to refresh) and vendor price cache.
+
+## What is in this repository
+
+- `addon/ForeverScout/` — the in-game addon ([addon README](addon/ForeverScout/README.md)).
+- `tools/` — Python scripts that cross the live snapshot with the installed QuestieDB.
+- `tests/` — tests for the addon and the tools that run outside the game.
+- `guide/` — the author's troll hunter leveling guide (work in progress).
+- `docs/curseforge.md`, `assets/` — texts and logo for the CurseForge page.
+- `AGENTS.md` — guide for any AI assistant helping a player set up and use the toolkit.
+- `CLAUDE.md` — the author's personal rules for Claude.
+
+To pick up updates automatically, link the addon folder instead of copying it:
+
+- Windows (Command Prompt as admin):
+  `mklink /D "C:\...\_forever_\Interface\AddOns\ForeverScout" "C:\...\forever-scout\addon\ForeverScout"`
+- Linux / macOS: `ln -s /path/to/forever-scout/addon/ForeverScout /path/to/_forever_/Interface/AddOns/ForeverScout`
 
 ## Development
 

@@ -5,7 +5,7 @@
 -- Usage: /scout [optional question]  -> saves snapshot + question and shows a copy box;
 -- type /reload to write the full snapshot to disk. See README.md for every feature.
 -- It also remembers the last quest reward window, trainer and vendor you opened.
--- /donde <npc | party member> points a TomTom arrow at it (see where()).
+-- /whereis <npc | party member> points a TomTom arrow at it (see where()).
 -- Upkeep alerts warn about ammo, pet, bags and durability (see checkAlerts(), /scout alerts).
 -- Gear tooltips get a weighted score line against what is equipped (see addTooltipScore()).
 
@@ -72,13 +72,13 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["Ctrl+C to copy, then paste it into your AI chat. Esc to close."] = "Ctrl+C para copiar y pegalo en tu chat de IA. Esc para cerrar."
   L["Summary of your character (%d characters), already selected: just press Ctrl+C."] =
     "Resumen de tu personaje (%d caracteres), ya seleccionado: solo apretá Ctrl+C."
-  -- /donde
+  -- /whereis
   L["%s left the party; arrow cleared."] = "%s salió del grupo; flecha borrada."
   L["%s: position hidden (instance or other continent)."] = "%s: posición oculta (instancia u otro continente)."
   L["arrow cleared."] = "flecha borrada."
   L["TomTom is not enabled; enable it to get the arrow."] = "TomTom no está activado; activalo para tener la flecha."
-  L["usage: /donde <npc name or id | party member>, /donde off. With no argument it uses your NPC target."] =
-    "uso: /donde <nombre o id de npc | miembro del grupo>, /donde off. Sin argumento usa el NPC que tenés de objetivo."
+  L["usage: /whereis <npc name or id | party member>, /whereis off. With no argument it uses your NPC target."] =
+    "uso: /whereis <nombre o id de npc | miembro del grupo>, /whereis off. Sin argumento usa el NPC que tenés de objetivo."
   L["following %s (party member)."] = "siguiendo a %s (miembro del grupo)."
   L["Questie is not loaded yet; try again in a few seconds."] = "Questie todavía no cargó; probá de nuevo en unos segundos."
   L["no NPC matches \"%s\". Other players can only be tracked while in your party."] =
@@ -86,7 +86,7 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["%s: no known spawn in the database."] = "%s: sin aparición conocida en la base de datos."
   L["%s: spawn zone %s has no map."] = "%s: la zona de aparición %s no tiene mapa."
   L["other continent"] = "otro continente"
-  L["%d matches, nearest chosen. Others: %s. Use /donde <id>."] = "%d coincidencias, se eligió la más cercana. Otras: %s. Usá /donde <id>."
+  L["%d matches, nearest chosen. Others: %s. Use /whereis <id>."] = "%d coincidencias, se eligió la más cercana. Otras: %s. Usá /whereis <id>."
   -- Upkeep alerts
   L["No ammo equipped: drag arrows to the ammo slot."] = "Sin munición equipada: arrastrá flechas a la ranura de munición."
   L["No ammo: buy arrows."] = "Sin munición: comprá flechas."
@@ -115,7 +115,7 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   -- Help and welcome
   L["loaded"] = "cargado"
   L["not installed or disabled"] = "no instalado o desactivado"
-  L["Optional addons, only needed for /donde: Questie %s, TomTom %s."] = "Addons opcionales, solo necesarios para /donde: Questie %s, TomTom %s."
+  L["Optional addons, only needed for /whereis: Questie %s, TomTom %s."] = "Addons opcionales, solo necesarios para /whereis: Questie %s, TomTom %s."
   L["loaded. Type /scout help to see what it does."] = "cargado. Escribí /scout help para ver qué hace."
   L["ForeverScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps."] =
     "ForeverScout guarda una foto de tu personaje (misiones, equipo, bolsas, talentos, amigos) que un asistente de IA o las herramientas offline pueden leer para planificar tus próximos pasos."
@@ -123,8 +123,8 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "/scout [pregunta]: arma la foto y abre una caja para copiar un resumen a un chat de IA."
   L["/reload: writes the full snapshot to disk (the game only saves addon data on reload or logout)."] =
     "/reload: escribe la foto completa al disco (el juego solo guarda datos de addons al recargar o salir)."
-  L["/donde <npc | party member> (or /where): arrow to an NPC or a party member. Needs Questie and TomTom. /donde off clears it."] =
-    "/donde <npc | miembro del grupo> (o /where): flecha hacia un NPC o un miembro del grupo. Necesita Questie y TomTom. /donde off la borra."
+  L["/whereis <npc | party member> (or /where): arrow to an NPC or a party member. Needs Questie and TomTom. /whereis off clears it."] =
+    "/whereis <npc | miembro del grupo> (o /where): flecha hacia un NPC o un miembro del grupo. Necesita Questie y TomTom. /whereis off la borra."
   L["/scout <shift-clicked item>: NEED or GREED verdict against what you wear."] =
     "/scout <item con shift-clic>: veredicto de NECESIDAD o CODICIA contra lo que tenés puesto."
   L["/scout weights: show or set the stat weights used for loot advice and tooltips."] =
@@ -1546,9 +1546,9 @@ local function showCopyBox(text)
   copyFrame.box:HighlightText()
 end
 
--- /donde <npc name | npc id | party member>: points a TomTom arrow at the nearest spawn of an
+-- /whereis <npc name | npc id | party member>: points a TomTom arrow at the nearest spawn of an
 -- NPC from Questie's database, or follows a party member's live position. With no argument it
--- uses the current target's NPC id. "/donde off" clears the arrow.
+-- uses the current target's NPC id. "/whereis off" clears the arrow.
 -- Questie (spawn data) and TomTom (arrow and live distance) must be enabled.
 local YARD_IN_METERS = 0.9144
 
@@ -1684,7 +1684,7 @@ local function where(msg)
   if msg == "" then
     local id = targetNpcId()
     if not id then
-      say(T("usage: /donde <npc name or id | party member>, /donde off. With no argument it uses your NPC target."))
+      say(T("usage: /whereis <npc name or id | party member>, /whereis off. With no argument it uses your NPC target."))
       return
     end
     msg = tostring(id)
@@ -1735,7 +1735,7 @@ local function where(msg)
     for i = 1, math.min(#found, 6) do
       if found[i] ~= best.entry then others[#others + 1] = found[i].name .. " (" .. found[i].id .. ")" end
     end
-    say(string.format(T("%d matches, nearest chosen. Others: %s. Use /donde <id>."), #found, table.concat(others, ", ") .. (#found > 6 and ", ..." or "")))
+    say(string.format(T("%d matches, nearest chosen. Others: %s. Use /whereis <id>."), #found, table.concat(others, ", ") .. (#found > 6 and ", ..." or "")))
   end
 end
 
@@ -1857,8 +1857,9 @@ local function routeCommand(arg)
   end
 end
 
-SLASH_FOREVERSCOUTWHERE1 = "/donde"
+SLASH_FOREVERSCOUTWHERE1 = "/whereis"
 SLASH_FOREVERSCOUTWHERE2 = "/where"
+SLASH_FOREVERSCOUTWHERE3 = "/donde"  -- former name, kept so old habits still work
 SlashCmdList.FOREVERSCOUTWHERE = where
 
 -- Upkeep alerts: a raid-warning style message, a sound and a chat line when ammo, the pet,
@@ -2018,7 +2019,7 @@ local HELP_LINES = {
   "ForeverScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps.",
   "/scout [question]: build the snapshot and open a box to copy a summary into an AI chat.",
   "/reload: writes the full snapshot to disk (the game only saves addon data on reload or logout).",
-  "/donde <npc | party member> (or /where): arrow to an NPC or a party member. Needs Questie and TomTom. /donde off clears it.",
+  "/whereis <npc | party member> (or /where): arrow to an NPC or a party member. Needs Questie and TomTom. /whereis off clears it.",
   "/scout <shift-clicked item>: NEED or GREED verdict against what you wear.",
   "/scout weights: show or set the stat weights used for loot advice and tooltips.",
   "/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters.",
@@ -2029,9 +2030,9 @@ local HELP_LINES = {
 
 local function helpCommand()
   for _, line in ipairs(HELP_LINES) do say(T(line)) end
-  -- Questie and TomTom are optional: only /donde uses them. Say which ones are loaded.
+  -- Questie and TomTom are optional: only /whereis uses them. Say which ones are loaded.
   local function status(loaded) return loaded and T("loaded") or T("not installed or disabled") end
-  say(string.format(T("Optional addons, only needed for /donde: Questie %s, TomTom %s."),
+  say(string.format(T("Optional addons, only needed for /whereis: Questie %s, TomTom %s."),
     status(QuestieLoader ~= nil), status(TomTom ~= nil)))
   if not hasWeights() then say(T(NO_WEIGHTS_HELP)) end
 end

@@ -18,16 +18,16 @@ passes.
    (`_forever_`, holding `Interface/` and `WTF/`), operating system, and whether they level
    with friends. Write the answers to `PLAYER.md` at the repo root (git-ignored, personal).
    Done when `PLAYER.md` exists with every field filled.
-2. **Addon.** Guide the player through README → *Install → 1. The addon* for their operating
+2. **Addon.** Guide the player through README → *Install* for their operating
    system, including Questie (Forever version) and TomTom. Done when the player confirms that
    ForeverScout is enabled in game and they ran `/reload` with their main character.
-3. **Tools.** Guide README → *Install → 2. The offline tools*, with `WOW_DIR` set to their game
+3. **Tools.** Guide README → *Install the offline tools*, with `WOW_DIR` set to their game
    folder. Prefer setting `WOW_DIR` in the environment over editing `config.py`, which holds
    the author's defaults. Done when `tools/analyze.py` prints their own character name and a
    snapshot time from today.
 4. **Tour.** Show the player what works for their class (README → *What works for each
-   class*) and the in-game commands they will use most: `/scout`, `/reload`, `/donde`,
-   `/scout alerts`. Done when the player has tried `/donde` on one NPC.
+   class*) and the in-game commands they will use most: `/scout`, `/reload`, `/whereis`,
+   `/scout alerts`. Done when the player has tried `/whereis` on one NPC.
 
 ## Every session: "read"
 

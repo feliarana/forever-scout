@@ -16,7 +16,7 @@ Texts for the ForeverScout project page. The logo is `assets/logo-400.png`
 | Unlisted | yes until friends have tested it, then listed |
 | Social links | Source: https://github.com/feliarana/forever-scout |
 
-Optional dependencies to declare on the page: Questie and TomTom (only `/donde` and
+Optional dependencies to declare on the page: Questie and TomTom (only `/whereis` and
 `/scout route` use them).
 
 ## Description
@@ -29,16 +29,22 @@ friends. It works for every class and faction on **World of Warcraft: Forever**.
 
 - **`/scout`** — a one-line summary of your character in a copy box. Press Ctrl+C and paste it
   into any AI chat together with your question.
-- **`/donde <npc>`** — an arrow to the nearest spawn of an NPC, or to a party member (needs
+- **`/whereis <npc>`** — an arrow to the nearest spawn of an NPC, or to a party member (needs
   Questie and TomTom).
 - **`/scout route`** — walks a route stop by stop with TomTom waypoints (routes come from the
   offline tools).
 - **Alerts** — nearly full bags, low durability, unspent talent points; for hunters also low
-  ammo and an unhappy, dead or missing pet.
+  ammo and a dead or missing pet.
 - **Loot advice** — NEED or GREED on every roll, and a score line on gear tooltips, against
   what you wear. Hunters have built-in stat weights; every other class sets its own with
   `/scout weights`.
 - **`/scout help`** — every command, in English or Spanish to match your client.
+
+### Quick start
+
+1. Install the addon and log in. Chat shows `ForeverScout: loaded. Type /scout help`.
+2. Type `/scout`, press Ctrl+C in the box that opens, and paste the line into your AI chat
+   with a question like *"what should I do next?"*.
 
 ### Going further
 
@@ -50,9 +56,10 @@ Python and is optional.
 
 ### Good to know
 
-- Questie and TomTom are optional. Without them everything except `/donde` and `/scout route`
+- Questie and TomTom are optional. Without them everything except `/whereis` and `/scout route`
   works.
 - The snapshot and the copy box include the names of party members, friends, guild and
   communities. Nothing leaves your computer unless you paste or share it.
 - The game only saves addon data on `/reload` or logout, so the full snapshot needs a
   `/reload`.
+- Messages are in Spanish on esMX / esES clients and in English everywhere else.

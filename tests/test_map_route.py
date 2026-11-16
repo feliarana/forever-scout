@@ -104,9 +104,12 @@ class AddonRouteTest(unittest.TestCase):
         self.assertIsNone(self.load(map_route.to_lua(None, "x")))
         self.assertIsNone(self.load(map_route.to_lua({"op": "clear", "layer": "route"}, "x")))
 
-    def test_the_tracked_placeholder_matches_an_empty_route(self):
-        placeholder = Path(__file__).resolve().parent.parent / "addon" / "ForeverScout" / "Route.lua"
-        self.assertEqual(placeholder.read_text(encoding="utf-8"), map_route.to_lua(None, "x"))
+    def test_the_addon_route_file_is_loadable(self):
+        # Tracked as an empty placeholder; locally it may hold the last route written.
+        path = Path(__file__).resolve().parent.parent / "addon" / "ForeverScout" / "Route.lua"
+        route = self.load(path.read_text(encoding="utf-8"))
+        if route is not None:
+            self.assertGreater(len(route.points), 0)
 
 
 if __name__ == "__main__":
