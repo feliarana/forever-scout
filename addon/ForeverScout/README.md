@@ -123,7 +123,8 @@ is stored under `errors`.
 | `pace` | XP pacing: session start, seconds and XP, `xpPerHour` for the session and `recentXPPerHour` over about the last hour. A session survives `/reload` and ends after 30 minutes without a snapshot; rates appear after 5 minutes |
 | `equipment`, `bags` | Equipped items and bag contents, with stats |
 | `skills`, `recipes` | Professions and the recipes seen in each profession window |
-| `talents`, `unspentTalentPoints` | Full talent trees (trait system, classic API as fallback). Trait nodes carry `open` (prerequisites met) and `canBuy` (a point can be spent on it now) |
+| `talents`, `unspentTalentPoints` | Full talent trees (trait system, classic API as fallback). Trait nodes carry `desc` (the game's description), `open` (prerequisites met) and `canBuy` (a point can be spent on it now) |
+| `traitSystems`, `traitApi` | Every other trait system the client exposes, such as the Legacy perk trees, in the same shape as `talents`. While none is found, `traitApi` lists the client's trait-related API names so the gap can be diagnosed |
 | `spellbook`, `actionBars` | Known spells with rank, and what sits in each action slot |
 | `pet` | Name, family, level, XP and happiness |
 | `hearth` | Hearthstone bind location and cooldown left |

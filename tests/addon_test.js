@@ -417,3 +417,66 @@ test("the placeholder Route.lua and the TOC load order are in place", () => {
     "Route.lua must be listed before ForeverScout.lua");
   assert.doesNotThrow(() => luaparse.parse(fs.readFileSync(path.join(dir, "Route.lua"), "utf8"), { luaVersion: "5.1" }));
 });
+
+test("talents carry their description and whether a point can go there", () => {
+  withAddon(ONE_ITEM + `STUB.talentPoints = 1`, LOGIN + `
+    login()
+    local node = ForeverScoutDB.talents.trees[1].nodes[1]
+    assert(node.name == "Endurance Training" and node.rank == 3 and node.max == 5)
+    assert(node.desc == "Increases the Health of your pet by 15%.", "talent description missing")
+    assert(node.canBuy == true and node.open == true)
+    assert(ForeverScoutDB.traitApi and ForeverScoutDB.traitApi.C_Traits, "API names must be saved while no other system is found")
+  `);
+});
+
+test("other trait systems (legacy perks) are saved with their own points", () => {
+  withAddon(ONE_ITEM + `
+    STUB.legacy = { points = 3 }
+    STUB.spellText[901] = "Rested experience lasts 10% longer."
+    STUB.spellText[902] = "Skinning yields extra leather."
+  `, LOGIN + `
+    login()
+    local systems = ForeverScoutDB.traitSystems
+    assert(#systems == 1, "expected one extra trait system, got " .. #systems)
+    assert(systems[1].name == "Legacy" and systems[1].systemID == 7)
+    local tree = systems[1].trees[1]
+    assert(tree.currencies[1].available == 3 and tree.currencies[1].spent == 2)
+    assert(#tree.nodes == 2 and tree.nodes[1].name == "Well Rested" and tree.nodes[1].canBuy == true)
+    assert(tree.nodes[2].desc == "Skinning yields extra leather.")
+    assert(ForeverScoutDB.traitApi == nil, "API names are only needed while nothing is found")
+  `);
+});
+
+test("talent text that loads late is picked up by a later snapshot", () => {
+  withAddon(ONE_ITEM + `STUB.spellText[900] = nil`, LOGIN + `
+    login()
+    assert(ForeverScoutDB.talents.trees[1].nodes[1].desc == nil)
+    STUB.spellText[900] = "Increases the Health of your pet by 15%."
+    STUB.advance(20)
+    assert(ForeverScoutDB.talents.trees[1].nodes[1].desc ~= nil, "description was never retried")
+  `);
+});
+
+test("spending a talent point refreshes the cached talents", () => {
+  withAddon(ONE_ITEM + `STUB.talentPoints = 1`, LOGIN + `
+    login()
+    assert(ForeverScoutDB.talents.trees[1].currencies[1].available == 1)
+    STUB.talentPoints = 0
+    STUB.advance(20)
+    assert(ForeverScoutDB.talents.trees[1].currencies[1].available == 1, "talents are cached between events")
+    STUB.fire("TRAIT_CONFIG_UPDATED")
+    STUB.advance(20)
+    assert(ForeverScoutDB.talents.trees[1].currencies[1].available == 0, "TRAIT_CONFIG_UPDATED did not refresh talents")
+  `);
+});
+
+test("perk trees that load after login are picked up without an event", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    login()
+    assert(#ForeverScoutDB.traitSystems == 0)
+    STUB.legacy = { points = 1 }
+    STUB.spellText[901], STUB.spellText[902] = "a", "b"
+    STUB.advance(40)
+    assert(#ForeverScoutDB.traitSystems == 1, "late perk trees were cached as empty")
+  `);
+});

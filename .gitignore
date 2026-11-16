@@ -20,7 +20,7 @@ addon/*
 QuestieDB*/
 Questie*/
 
-# The global git ignore excludes CLAUDE.md; this repo tracks it.
+# The global git ignore excludes CLAUDE.md; this repo tracks it (a pointer to AGENTS.md).
 !CLAUDE.md
 
 # Personal player profile written by AI assistants (see AGENTS.md)

@@ -146,6 +146,15 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "Privacidad: la foto y la caja de copiar incluyen nombres de miembros del grupo, amigos, hermandad y comunidades. Queda en tu computadora hasta que la pegues o compartas."
 end
 
+-- A string value that is safe to store: client APIs can return restricted ("secret") values,
+-- and any operation on one raises an error, so a value that survives a comparison inside
+-- pcall is a plain one.
+local function plainText(value)
+  if type(value) ~= "string" then return nil end
+  local ok = pcall(function() return value == value end)
+  return ok and value or nil
+end
+
 local function itemIdFromLink(link)
   if not link then return nil end
   return tonumber(link:match("item:(%d+)"))
@@ -564,6 +573,77 @@ local function spellName(spellID)
   return (try(GetSpellInfo, spellID))
 end
 
+-- Talent text as the tooltip shows it, without colour codes; nil while the client has not
+-- loaded it yet. Lets an assistant recommend talents for any class without a guide.
+local talentsIncomplete = false
+local function spellDescription(spellID)
+  if not spellID then return nil end
+  local text = (C_Spell and try(C_Spell.GetSpellDescription, spellID)) or try(GetSpellDescription, spellID)
+  text = plainText(text)
+  if type(text) ~= "string" or text == "" then
+    talentsIncomplete = true
+    return nil
+  end
+  text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("%s+", " ")
+  if #text > 300 then text = text:sub(1, 297) .. "..." end
+  return text
+end
+
+-- One trait tree: its point currencies and every node with rank, position, description and
+-- whether a point can go there (open: prerequisites met; canBuy: open and a point is free).
+local function readTraitTree(configID, treeID)
+  local tree = { treeID = treeID, nodes = {} }
+  local currencies = try(C_Traits.GetTreeCurrencyInfo, configID, treeID, false)
+  if type(currencies) == "table" then
+    tree.currencies = {}
+    for _, c in ipairs(currencies) do
+      tree.currencies[#tree.currencies + 1] = { id = c.traitCurrencyID, spent = c.spent, available = c.quantity, max = c.maxQuantity }
+    end
+  end
+  local nodes = try(C_Traits.GetTreeNodes, treeID) or {}
+  tree.nodeCount = #nodes
+  for index, nodeID in ipairs(nodes) do
+    local node = try(C_Traits.GetNodeInfo, configID, nodeID)
+    -- Diagnostics for a tree the client lists but does not describe: keep the plain fields
+    -- of its first node so the cause can be read from the saved file.
+    if index == 1 and type(node) == "table" then
+      tree.firstNode = { nodeID = nodeID }
+      for key, value in pairs(node) do
+        local kind = type(value)
+        if kind == "number" or kind == "boolean" or kind == "string" then
+          pcall(function() if value == value then tree.firstNode[key] = value end end)
+        end
+      end
+    end
+    if node and node.ID and node.ID ~= 0 then
+      local entryID = (node.activeEntry and node.activeEntry.entryID) or (node.entryIDs and node.entryIDs[1])
+      local name, desc
+      if entryID then
+        local entry = try(C_Traits.GetEntryInfo, configID, entryID)
+        if entry and entry.definitionID then
+          local def = try(C_Traits.GetDefinitionInfo, entry.definitionID)
+          if def then
+            name = def.overrideName or spellName(def.spellID)
+            desc = def.overrideDescription or spellDescription(def.spellID)
+          end
+        end
+      end
+      -- Read defensively: these flags may be restricted values.
+      local open, canBuy
+      pcall(function()
+        open = (node.isAvailable == true) or nil
+        canBuy = (node.canPurchaseRank == true) or nil
+      end)
+      tree.nodes[#tree.nodes + 1] = {
+        name = name, desc = desc, rank = node.activeRank or node.currentRank, max = node.maxRanks,
+        x = node.posX, y = node.posY, open = open, canBuy = canBuy,
+      }
+    end
+  end
+  if #tree.nodes > 0 then tree.firstNode = nil end
+  return tree
+end
+
 local function getTraitTalents()
   if not (C_ClassTalents and C_Traits) then return nil end
   local configID = try(C_ClassTalents.GetActiveConfigID)
@@ -572,43 +652,59 @@ local function getTraitTalents()
   if not config or not config.treeIDs then return nil end
   local result = { configID = configID, trees = {} }
   for _, treeID in ipairs(config.treeIDs) do
-    local tree = { treeID = treeID, nodes = {} }
-    local currencies = try(C_Traits.GetTreeCurrencyInfo, configID, treeID, false)
-    if type(currencies) == "table" then
-      tree.currencies = {}
-      for _, c in ipairs(currencies) do
-        tree.currencies[#tree.currencies + 1] = { id = c.traitCurrencyID, spent = c.spent, available = c.quantity, max = c.maxQuantity }
-      end
-    end
-    local nodes = try(C_Traits.GetTreeNodes, treeID) or {}
-    for _, nodeID in ipairs(nodes) do
-      local node = try(C_Traits.GetNodeInfo, configID, nodeID)
-      if node and node.ID and node.ID ~= 0 then
-        local entryID = (node.activeEntry and node.activeEntry.entryID) or (node.entryIDs and node.entryIDs[1])
-        local name
-        if entryID then
-          local entry = try(C_Traits.GetEntryInfo, configID, entryID)
-          if entry and entry.definitionID then
-            local def = try(C_Traits.GetDefinitionInfo, entry.definitionID)
-            if def then name = def.overrideName or spellName(def.spellID) end
-          end
-        end
-        -- open: prerequisites met (row gate and parent talents). canBuy: open and a point is
-        -- free right now. Read defensively: these flags may be restricted values.
-        local open, canBuy
-        pcall(function()
-          open = (node.isAvailable == true) or nil
-          canBuy = (node.canPurchaseRank == true) or nil
-        end)
-        tree.nodes[#tree.nodes + 1] = {
-          name = name, rank = node.activeRank or node.currentRank, max = node.maxRanks,
-          x = node.posX, y = node.posY, open = open, canBuy = canBuy,
-        }
-      end
-    end
-    result.trees[#result.trees + 1] = tree
+    result.trees[#result.trees + 1] = readTraitTree(configID, treeID)
   end
   return result
+end
+
+-- Every other trait system the client exposes besides the class talents: on Forever that is
+-- where account-wide perks such as the Legacy trees live. System IDs are not documented for
+-- this client, so a small range is probed and whatever answers is recorded as it is. On
+-- Forever 1.60 the Legacy trees are system 45 (trees 1187-1189, one shared point currency).
+local TRAIT_SYSTEM_PROBE = 100
+local function getTraitSystems()
+  if not (C_Traits and C_Traits.GetConfigIDBySystemID) then return nil end
+  local classConfigID = C_ClassTalents and try(C_ClassTalents.GetActiveConfigID)
+  local systems, seen = {}, {}
+  for systemID = 1, TRAIT_SYSTEM_PROBE do
+    local configID = try(C_Traits.GetConfigIDBySystemID, systemID)
+    if type(configID) == "number" and configID ~= classConfigID and not seen[configID] then
+      seen[configID] = true
+      local config = try(C_Traits.GetConfigInfo, configID)
+      if config and type(config.treeIDs) == "table" and #config.treeIDs > 0 then
+        local system = { systemID = systemID, configID = configID, name = plainText(config.name),
+                         configType = config.type, trees = {} }
+        for _, treeID in ipairs(config.treeIDs) do
+          system.trees[#system.trees + 1] = readTraitTree(configID, treeID)
+        end
+        systems[#systems + 1] = system
+      end
+    end
+  end
+  return systems
+end
+
+-- Names of the client APIs that could hold talent-like systems, so a missing one (legacy
+-- points on a client build that keeps them elsewhere) can be found from the saved file.
+local function getTraitApiNames()
+  local found = {}
+  for name, value in pairs(_G) do
+    if type(name) == "string" and (name:find("Trait") or name:find("Legacy") or name:find("Perk")) then
+      if type(value) == "table" and name:match("^C_") then
+        local fns = {}
+        for fnName, fn in pairs(value) do
+          if type(fn) == "function" then fns[#fns + 1] = fnName end
+        end
+        table.sort(fns)
+        found[name] = fns
+      elseif type(value) == "function" then
+        found.globals = found.globals or {}
+        found.globals[#found.globals + 1] = name
+      end
+    end
+  end
+  if found.globals then table.sort(found.globals) end
+  return found
 end
 
 local function getTalents()
@@ -1262,8 +1358,11 @@ end
 -- their bindings, the addon list) are cached and only rebuilt after an event that can change
 -- them, so the periodic refresh stays cheap. A section missing from `heavyFresh` is rebuilt.
 local heavyCache, heavyFresh = {}, {}
+local talentRetries, perkRetries = 0, 0
 local HEAVY_EVENTS = {
   QUEST_TURNED_IN = "completedQuests",
+  TRAIT_CONFIG_UPDATED = "talents", TRAIT_TREE_CURRENCY_INFO_UPDATED = "talents",
+  PLAYER_LEVEL_UP = "talents", PLAYER_TALENT_UPDATE = "talents",
   SPELLS_CHANGED = "spellbook", LEARNED_SPELL_IN_TAB = "spellbook",
   ACTIONBAR_SLOT_CHANGED = "actionBars", UPDATE_BINDINGS = "actionBars",
 }
@@ -1339,7 +1438,32 @@ local function buildSnapshot()
   section("equipment", getEquipment)
   section("bags", getBags)
   section("skills", getSkills)
-  section("talents", getTalents)
+  -- Talent text arrives late from the server: rebuild on the next snapshots until it is all
+  -- there (a few tries, since some talents have no description at all).
+  talentsIncomplete = false
+  local talentsWereFresh = heavyFresh.talents
+  heavySection("talents", getTalents)
+  heavySection("traitSystems", getTraitSystems)
+  if not talentsWereFresh and talentsIncomplete and talentRetries < 5 then
+    talentRetries = talentRetries + 1
+    heavyFresh.talents, heavyFresh.traitSystems = nil, nil
+  end
+  -- Keep the API names until some other trait system comes back with readable nodes.
+  local perksFound = false
+  for _, system in ipairs(snap.traitSystems or {}) do
+    for _, tree in ipairs(system.trees or {}) do
+      if #tree.nodes > 0 then perksFound = true end
+    end
+  end
+  if not perksFound then
+    heavySection("traitApi", getTraitApiNames)
+    -- Perk trees (legacy) arrive some time after login: probe again on the next snapshots,
+    -- for about five minutes, instead of caching the empty answer.
+    if perkRetries < 15 then
+      perkRetries = perkRetries + 1
+      heavyFresh.traitSystems = nil
+    end
+  end
   section("unspentTalentPoints", function() return try(UnitCharacterPoints, "player") end)
   section("pet", getPet)
   section("hearth", getHearth)
@@ -1398,9 +1522,10 @@ for event in pairs(ALERT_EVENTS) do pcall(frame.RegisterEvent, frame, event) end
 for event in pairs(HEAVY_EVENTS) do pcall(frame.RegisterEvent, frame, event) end
 frame:SetScript("OnEvent", function(_, event, arg1, arg2)
   if HEAVY_EVENTS[event] then
-    -- Only mark the section stale; the next snapshot rebuilds it.
+    -- Only mark the section stale; the next snapshot rebuilds it. Trait systems (legacy
+    -- perks) change together with talents.
     heavyFresh[HEAVY_EVENTS[event]] = nil
-    return
+    if HEAVY_EVENTS[event] == "talents" then heavyFresh.traitSystems, talentRetries, perkRetries = nil, 0, 0 end
   end
   if event == "PLAYER_LOGIN" then
     onXPUpdate()

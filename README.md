@@ -116,13 +116,42 @@ read the complete snapshot together with your installed Questie database and ans
 like *where is every objective and turn-in*, *which quests are on my way*, *what should I
 sell*, *how fast am I leveling* and *what route should I take*. This part is optional and needs Python.
 
-The easiest way to use them is with a coding assistant (Claude Code, Codex, Cursor…): open
-this folder with it and ask it to read `AGENTS.md`. It walks you through setup, asks about
-your character and keeps your profile in a private `PLAYER.md`.
+### Play with an AI at your side (how the author uses it)
+
+There are two ways to bring an AI in, and they need different kinds of AI:
+
+| | Any chat AI (ChatGPT, Claude, Gemini… in the browser) | An AI agent working in this folder |
+|---|---|---|
+| What you do | `/scout` in game, paste the summary, ask | `/reload` in game, tell the agent **"read"** |
+| What the AI sees | The one-line summary | Everything: full snapshot, quest database, auction prices |
+| What it can do | Advise from the summary | Run the tools, check your route, write a route for `/scout route` |
+| Setup | None | Once, about ten minutes, guided by the AI itself |
+
+The second way is the one this project was built for. It works with any agent that can read
+files and run commands on your computer: Claude Code, Codex, Cursor, Gemini CLI, Copilot's
+agent mode and similar. A chat window in the browser cannot do it, because it cannot run the
+tools.
+
+1. **Open this folder as the project** in your agent (the folder you unzipped or cloned, the
+   one that holds `AGENTS.md`).
+2. **First time**, say: *"Read AGENTS.md and set me up."* It asks about your character,
+   professions and game folder, installs what is missing and saves your answers to a private
+   `PLAYER.md` that never leaves your computer.
+3. **While you play**, keep the agent open next to the game. When you want advice: `/reload`
+   in game, then tell the agent **"read"**. It reads your fresh snapshot and answers with what
+   to turn in, where to go next, what to sell and what you forgot (talent points, repairs,
+   full bags).
+4. **Ask for the route**: it writes the stops into the addon; `/reload` and `/scout route`
+   put them on your map.
+
+`AGENTS.md` is the instruction file for the AI, the same for every agent. Most agents load it
+by themselves when they open the folder; if yours does not seem to know the project, tell it
+to read `AGENTS.md` first. Talk to it in your own language: it answers in yours and names
+quests and NPCs the way your game client shows them.
 
 | Script | What it gives |
 |---|---|
-| `analyze.py` | Character summary (XP, rested XP, location, hearthstone, gold, bags, durability, pet, unspent talent points and where they can go, XP pace, PvP flag, party with distance, online friends, deaths at this level, flight paths), gear and consumables (ranged weapon, ammo, food, bag upgrades by stat weights), quest log size against its cap, quests ready to turn in with NPC and location, quests in progress with objectives, quests unlocked by turning in, and quests available in the current and neighboring zones |
+| `analyze.py` | Character summary (XP, rested XP, location, hearthstone, gold, bags, durability, pet, unspent talent points and where they can go, XP pace, PvP flag, party with distance, online friends, deaths at this level, flight paths), gear and consumables (ranged weapon, ammo, food, bag upgrades by stat weights), where talent and perk (legacy) points can go with the game's descriptions, professions (cap warnings, skill-up recipes, skinning reach), quest log size against its cap, quests ready to turn in with NPC and location, quests in progress with objectives, quests unlocked by turning in, and quests available in the current and neighboring zones |
 | `guide.py` | Per quest: start and turn-in NPCs, quest text, objectives with mob levels, elite flags and spawn clusters |
 | `route_check.py` | Distance from every logged quest's objectives and turn-in to a planned route (on route / short detour / off route) and real XP at the current level |
 | `map_route.py` | A numbered route for the in-game world map from quests and waypoints: objectives first (nearest-neighbour order), turn-ins last, one pin per spot. Writes it into the addon for `/scout route` (`--addon`), as a [wow-ai](https://github.com/chelinho139/wow-ai) map layer, or as TomTom `/way` lines (`--tomtom`) |
@@ -162,7 +191,7 @@ Log in once with each character and `/reload` so it gets a snapshot.
 
 Using an AI assistant (Claude Code, Codex, Cursor…)? Ask it to read `AGENTS.md`: it walks you
 through setup and daily use, and keeps your personal profile in a git-ignored `PLAYER.md`.
-`CLAUDE.md` holds the author's own rules.
+`CLAUDE.md` only points Claude Code at `AGENTS.md` and your `PLAYER.md`.
 
 ### Configuration
 
@@ -244,7 +273,7 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 - `guide/` — the author's troll hunter leveling guide (work in progress).
 - `docs/curseforge.md`, `assets/` — texts and logo for the CurseForge page.
 - `AGENTS.md` — guide for any AI assistant helping a player set up and use the toolkit.
-- `CLAUDE.md` — the author's personal rules for Claude.
+- `CLAUDE.md` — pointer for Claude Code to `AGENTS.md` and the player's private `PLAYER.md`.
 
 To pick up updates automatically, link the addon folder instead of copying it:
 

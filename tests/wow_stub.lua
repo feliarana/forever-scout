@@ -273,18 +273,53 @@ function C_QuestLog.GetMaxNumQuestsCanAccept() return STUB.questCap end
 C_ClassTalents = {}
 function C_ClassTalents.GetActiveConfigID() return 1 end
 
+-- Config 1 is the class tree (tree 10, one node). STUB.legacy adds a second trait system
+-- (system 7, config 2, tree 20) with its own points, like the Legacy perk trees.
+-- STUB.spellText[spellID] is the talent description; nil means "not loaded yet".
+STUB.spellText = { [900] = "Increases the Health of your pet by 15%." }
+STUB.legacy = nil  -- { points = n }
+
+local NODES = {
+  [100] = { tree = 10, name = "Endurance Training", spell = 900, rank = 3, max = 5 },
+  [200] = { tree = 20, name = "Well Rested", spell = 901, rank = 0, max = 5 },
+  [201] = { tree = 20, name = "Skilled Skinner", spell = 902, rank = 2, max = 3 },
+}
+
 C_Traits = {}
-function C_Traits.GetConfigInfo() return { treeIDs = { 10 } } end
-function C_Traits.GetTreeCurrencyInfo()
+function C_Traits.GetConfigIDBySystemID(systemID)
+  if systemID == 7 and STUB.legacy then return 2 end
+end
+function C_Traits.GetConfigInfo(configID)
+  if configID == 1 then return { treeIDs = { 10 } } end
+  if configID == 2 and STUB.legacy then return { name = "Legacy", treeIDs = { 20 } } end
+end
+function C_Traits.GetTreeCurrencyInfo(configID)
+  if configID == 2 then
+    return { { traitCurrencyID = 2, spent = 2, quantity = STUB.legacy.points, maxQuantity = 16 } }
+  end
   return { { traitCurrencyID = 1, spent = 20, quantity = STUB.talentPoints, maxQuantity = 21 } }
 end
-function C_Traits.GetTreeNodes() return { 100 } end
-function C_Traits.GetNodeInfo()
-  return { ID = 100, activeRank = 3, maxRanks = 5, posX = 10, posY = 20, entryIDs = { 500 },
-           isAvailable = true, canPurchaseRank = STUB.talentPoints > 0 }
+function C_Traits.GetTreeNodes(treeID)
+  local ids = {}
+  for id, node in pairs(NODES) do
+    if node.tree == treeID then ids[#ids + 1] = id end
+  end
+  table.sort(ids)
+  return ids
 end
-function C_Traits.GetEntryInfo() return { definitionID = 7 } end
-function C_Traits.GetDefinitionInfo() return { overrideName = "Endurance Training" } end
+function C_Traits.GetNodeInfo(configID, nodeID)
+  local node = NODES[nodeID]
+  local points = configID == 2 and STUB.legacy.points or STUB.talentPoints
+  return { ID = nodeID, activeRank = node.rank, maxRanks = node.max, posX = 10, posY = nodeID, entryIDs = { nodeID },
+           isAvailable = true, canPurchaseRank = points > 0 and node.rank < node.max }
+end
+function C_Traits.GetEntryInfo(_, entryID) return { definitionID = entryID } end
+function C_Traits.GetDefinitionInfo(definitionID)
+  local node = NODES[definitionID]
+  return { overrideName = node.name, spellID = node.spell }
+end
+C_Spell = {}
+function C_Spell.GetSpellDescription(spellID) return STUB.spellText[spellID] end
 function GetNumUnspentTalents() return 0 end
 
 ----------------------------------------------------------------------------------------

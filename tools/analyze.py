@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import advice  # noqa: E402
 import config  # noqa: E402
 from common import (  # noqa: E402
     char_name, fits_character, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot, main_character, snapshots, take_char_arg, IDENTITY,
@@ -115,14 +116,7 @@ def character(Q, snap, hist):
     if picked:
         print(f"Talents {spent}/{total}: " + ", ".join(picked))
     if unspent:
-        print(f"!! Unspent talent points: {unspent}")
-        # canBuy comes from the trait API: prerequisites met and a point free right now.
-        buyable = [f"{n.get('name')} {n.get('rank') or 0}/{n.get('max')}"
-                   for tree in (snap.get("talents") or {}).get("trees") or []
-                   for n in sorted(tree.get("nodes") or [], key=lambda n: (n.get("y") or 0, n.get("x") or 0))
-                   if n.get("canBuy")]
-        if buyable:
-            print("   Can spend now on: " + ", ".join(buyable))
+        print(f"!! Unspent talent points: {unspent} (options under Talents and perk trees)")
     pace = snap.get("pace") or {}
     if pace:
         to_go = xp_max - xp
@@ -239,6 +233,18 @@ def gear(snap):
         print("No upgrades in bags by stat weights.")
 
 
+def build(snap):
+    """Where talent and perk points can go, and what each profession needs next."""
+    lines = advice.talent_lines(snap)
+    if lines:
+        section("Talents and perk trees")
+        print("\n".join(lines))
+    lines = advice.profession_lines(snap, snap.get("level"))
+    if lines:
+        section("Professions")
+        print("\n".join(lines))
+
+
 def quests(Q, snap, zones):
     level = snap.get("level") or 0
     zid, x, y = player_pos(Q, snap)
@@ -337,6 +343,7 @@ def main():
         zones = ({zid} | config.NEIGHBORS.get(zid, set())) if zid else set()
     character(Q, snap, hist)
     gear(snap)
+    build(snap)
     quests(Q, snap, zones)
 
 
