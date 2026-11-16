@@ -3,6 +3,11 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.6.1
+
+- A floating TrailScout button that you can drag anywhere on screen, besides the one on the minimap. Each has its own switch in Settings.
+- Window layout fixes: no button runs past the edge any more, and the stat weights line is full width and shown from its start.
+
 ## TrailScout 1.6.0
 
 - New TrailScout window: click the button on the minimap. It opens by itself the first time you log in with a character, so nothing has to be typed.

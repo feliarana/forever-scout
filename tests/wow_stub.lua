@@ -74,6 +74,13 @@ function Methods.SetText(self, text) self.text = text; self.cursor = #tostring(t
 function Methods.SetCursorPosition(self, position) self.cursor = position end
 function Methods.CreateFontString() return newObject() end
 function Methods.CreateTexture() return newObject() end
+-- Anchors: the last SetPoint is kept so tests can read where a frame was placed.
+function Methods.SetPoint(self, point, relativeTo, relativePoint, x, y)
+  self.point = { point, relativeTo, relativePoint, x, y }
+end
+function Methods.GetPoint(self)
+  if self.point then return self.point[1], self.point[2], self.point[3], self.point[4], self.point[5] end
+end
 function Methods.IsShown(self) return self.shown end
 function Methods.SetShown(self, shown) self.shown = shown and true or false end
 function Methods.SetChecked(self, checked) self.checked = checked and true or false end

@@ -627,12 +627,13 @@ test("/scout config opens a window with a switch per feature and the help", () =
     assert(frame and frame.shown, "the window did not open")
     assert(frame.pages.settings.shown and not frame.pages.help.shown, "it must open on the settings page")
     for _, key in ipairs({ "alerts", "alert_bags", "alert_durability", "alert_talents", "alert_ammo", "alert_pet",
-                           "lootAdvice", "tooltip", "minimap" }) do
+                           "lootAdvice", "tooltip", "minimap", "floating" }) do
       assert(frame.checks[key], "no switch for " .. key)
       assert(frame.checks[key].checked == true, key .. " must start switched on")
     end
     assert(frame.checks.alert_bags.label.text == "Bags almost full")
     assert(frame.weights.text:find("agi=2.33", 1, true), "the hunter's stat weights must be shown for editing")
+    assert(frame.weights.cursor == 0, "the weights line must show its start")
 
     -- The Help tab explains every feature.
     STUB.click(frame.tabs.help)
@@ -736,7 +737,7 @@ test("the settings window is in Spanish on an esMX client", () => {
     slash("opciones")
     local frame = TrailScoutOptionsFrame
     assert(frame.checks.alert_bags.label.text == "Bolsas casi llenas")
-    assert(frame.tabs.help.text == "Ayuda" and frame.actions[1].text == "Copiar resumen para una IA")
+    assert(frame.tabs.help.text == "Ayuda" and frame.actions[1].text == "Copiar resumen")
     assert(frame.helpText.text:find("Para qué sirve TrailScout", 1, true))
     assert(not frame.helpText.text:find("What TrailScout is for", 1, true), "help topics must be translated")
   `);
@@ -850,5 +851,33 @@ test("Start page: the search box finds things without typing a command", () => {
     login()
     assert(TrailScoutOptionsFrame.findHelp.text:find("Questie (not installed or disabled)", 1, true),
       "the page must say when Questie is missing")
+  `);
+});
+
+test("floating button: shown at login, opens the window, remembers where it was dragged, can be hidden", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    login()
+    local button = TrailScoutFloatButton
+    assert(button and button.shown, "no floating button after login")
+    assert(button.point[1] == "LEFT" and button.point[4] == 24, "default place is the left edge of the screen")
+    TrailScoutOptionsFrame:Hide()
+    STUB.click(button, "LeftButton")
+    assert(TrailScoutOptionsFrame.shown and TrailScoutOptionsFrame.page == "start")
+    STUB.click(button, "RightButton")
+    assert(TrailScoutCopyFrame.shown, "right-click must open the copy box")
+
+    -- Dragging: the game moves the frame; on release the addon saves the new anchor.
+    button.scripts.OnDragStart(button)
+    button.point = { "TOPLEFT", UIParent, "TOPLEFT", 315.4, -8.6 }
+    button.scripts.OnDragStop(button)
+    local saved = TrailScoutHistory.floatPos
+    assert(saved[1] == "TOPLEFT" and saved[3] == 315 and saved[4] == -9, "the dragged place was not saved")
+
+    login()   -- a /reload puts it back where it was left
+    assert(button.point[1] == "TOPLEFT" and button.point[4] == 315)
+
+    STUB.click(TrailScoutOptionsFrame.checks.floating)
+    assert(not button.shown and TrailScoutHistory.settings.floating == false)
+    assert(TrailScoutMinimapButton.shown, "hiding one launcher must not hide the other")
   `);
 });

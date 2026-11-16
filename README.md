@@ -50,7 +50,7 @@ for another, so get those two yourself.
 
 | Type this | What happens |
 |---|---|
-| Click the **minimap button** | The TrailScout window: ready-made questions to copy into an AI chat, a search box for NPCs and objects, a switch for every feature and a Help page. It opens by itself the first time, so nothing has to be typed. |
+| Click the **TrailScout button** (on the minimap, or the floating one you can drag anywhere) | The TrailScout window: ready-made questions to copy into an AI chat, a search box for NPCs and objects, a switch for every feature and a Help page. It opens by itself the first time, so nothing has to be typed. |
 | `/scout help` | The list of commands in chat, in your game's language. |
 | `/scout` | A box with a summary of your character, already selected. Ctrl+C, then paste it into an AI chat with your question. |
 | `/scout is this ring good for me?` | Same, with your question included in the summary. |

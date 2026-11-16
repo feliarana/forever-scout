@@ -129,6 +129,7 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["same job twice: keep one per line (Leatrix Plus / ElvUI only clash if that option is on)."] =
     "mismo trabajo dos veces: deja uno por línea (Leatrix Plus / ElvUI solo chocan si esa opción está activa)."
   -- Settings and help window
+  L["Floating button (drag it anywhere on screen)"] = "Botón flotante (arrástralo a cualquier lugar de la pantalla)"
   L["Start"] =
     "Inicio"
   L["Copy with my question"] =
@@ -201,8 +202,8 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "Botón del minimapa"
   L["Stat weights (%s). Stats: %s"] =
     "Pesos de estadísticas (%s). Estadísticas: %s"
-  L["Copy summary for an AI"] =
-    "Copiar resumen para una IA"
+  L["Copy summary"] =
+    "Copiar resumen"
   L["Start route"] =
     "Iniciar ruta"
   L["Clear route"] =
@@ -290,7 +291,7 @@ end
 
 -- Per-character switches, changed from the settings window ("/scout config"). Stored in
 -- TrailScoutHistory.settings; a feature is on unless its key was explicitly set to false.
---   tooltip, lootAdvice, minimap, alert_ammo, alert_pet, alert_bags, alert_durability,
+--   tooltip, lootAdvice, minimap, floating, alert_ammo, alert_pet, alert_bags, alert_durability,
 --   alert_talents
 local function setting(key)
   local h = TrailScoutHistory
@@ -2587,7 +2588,7 @@ end
 -- does is explained on the Help page, and every switch is on the Settings page.
 local command  -- defined below; the window's buttons call it
 local optionsFrame, minimapButton
-local updateMinimapButton
+local updateMinimapButton, updateFloatButton
 
 -- Settings page switches, top to bottom. "alerts" is the master switch kept by
 -- "/scout alerts on|off"; the others are setting() keys.
@@ -2601,6 +2602,7 @@ local OPTION_CHECKS = {
   { key = "lootAdvice", label = "NEED / GREED advice in chat when a loot roll starts" },
   { key = "tooltip", label = "Score line on gear tooltips" },
   { key = "minimap", label = "Minimap button" },
+  { key = "floating", label = "Floating button (drag it anywhere on screen)" },
 }
 
 -- Help page: one entry per feature, title then explanation.
@@ -2646,6 +2648,7 @@ local function setOption(key, value)
   -- A reminder switched back on should be able to fire right away.
   for k in pairs(alertState) do alertState[k] = nil end
   if key == "minimap" and updateMinimapButton then updateMinimapButton() end
+  if key == "floating" and updateFloatButton then updateFloatButton() end
   if value then scheduleAlerts() end
 end
 
@@ -2698,6 +2701,7 @@ local function refreshOptions()
     status(QuestieLoader ~= nil), status(TomTom ~= nil)))
   for key, check in pairs(optionsFrame.checks) do check:SetChecked(optionValue(key)) end
   optionsFrame.weights:SetText(weightsText())
+  optionsFrame.weights:SetCursorPosition(0)  -- show the start of the line, not its end
   local _, source = activeWeights()
   optionsFrame.weightsSource:SetText(string.format(T("Stat weights (%s). Stats: %s"), T(source), table.concat(WEIGHT_STATS, " ")))
 end
@@ -2780,14 +2784,14 @@ local function buildOptions()
     frame.questions[i] = b
   end
   frame.ownQuestion = make("EditBox", nil, start, "InputBoxTemplate")
-  frame.ownQuestion:SetSize(430, 24)
+  frame.ownQuestion:SetSize(380, 24)
   frame.ownQuestion:SetPoint("TOPLEFT", 6, -204)
   frame.ownQuestion:SetAutoFocus(false)
   frame.ownQuestion:SetMaxLetters(0)
   frame.ownQuestion:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   local function askOwn() ask(frame.ownQuestion:GetText() or "") end
   frame.ownQuestion:SetScript("OnEnterPressed", askOwn)
-  frame.askOwn = button(start, T("Copy with my question"), 150, askOwn)
+  frame.askOwn = button(start, T("Copy with my question"), 172, askOwn)
   frame.askOwn:SetPoint("LEFT", frame.ownQuestion, "RIGHT", 8, 0)
 
   heading(T("Find an NPC, an object or a party member"), -252)
@@ -2837,7 +2841,7 @@ local function buildOptions()
   frame.weightsSource:SetWidth(560)
   frame.weightsSource:SetJustifyH("LEFT")
   frame.weights = make("EditBox", nil, page, "InputBoxTemplate")
-  frame.weights:SetSize(380, 24)
+  frame.weights:SetSize(552, 24)
   frame.weights:SetPoint("TOPLEFT", 6, y - 46)
   frame.weights:SetAutoFocus(false)
   frame.weights:SetMaxLetters(0)
@@ -2849,7 +2853,7 @@ local function buildOptions()
   end
   frame.weights:SetScript("OnEnterPressed", applyWeights)
   frame.applyWeights = button(page, T("Apply"), 80, applyWeights)
-  frame.applyWeights:SetPoint("LEFT", frame.weights, "RIGHT", 8, 0)
+  frame.applyWeights:SetPoint("TOPLEFT", 0, y - 76)
   frame.resetWeights = button(page, T("Reset"), 80, function()
     weightsCommand("reset")
     refreshOptions()
@@ -2858,7 +2862,7 @@ local function buildOptions()
 
   -- The things you would otherwise type.
   local actions = {
-    { "Copy summary for an AI", function() frame:Hide(); command("") end },
+    { "Copy summary", function() frame:Hide(); command("") end },
     { "Start route", function() routeCommand("") end },
     { "Clear route", function() routeCommand("clear") end },
     { "Check my addons", function() addonsCommand() end },
@@ -2866,7 +2870,7 @@ local function buildOptions()
   frame.actions = {}
   local previous
   for i, action in ipairs(actions) do
-    local b = button(page, T(action[1]), 136, action[2])
+    local b = button(page, T(action[1]), 137, action[2])
     if previous then b:SetPoint("LEFT", previous, "RIGHT", 6, 0) else b:SetPoint("BOTTOMLEFT", 0, 4) end
     previous = b
     frame.actions[i] = b
@@ -2927,13 +2931,66 @@ updateMinimapButton = function()
   minimapButton:SetShown(setting("minimap"))
 end
 
+-- What both launcher buttons (minimap and floating) do: left-click opens the window,
+-- right-click copies the summary, and the tooltip says so.
+local function wireLauncher(b, anchor)
+  b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  b:SetScript("OnClick", function(_, mouseButton)
+    if mouseButton == "RightButton" then command("") else toggleOptions("start") end
+  end)
+  b:SetScript("OnEnter", function(self)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(self, anchor)
+    GameTooltip:AddLine("TrailScout")
+    GameTooltip:AddLine(T("Left-click: ask an AI, find things, settings and help"), 1, 1, 1)
+    GameTooltip:AddLine(T("Right-click: copy the summary for an AI"), 1, 1, 1)
+    GameTooltip:AddLine(T("Drag: move this button"), 0.7, 0.7, 0.7)
+    GameTooltip:Show()
+  end)
+  b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+end
+
+-- Floating button: the same launcher as a free-standing icon that can be dragged anywhere
+-- on screen, for players who hide or crowd their minimap. Its place is saved per character.
+local FLOAT_DEFAULT = { "LEFT", "LEFT", 24, 140 }
+local floatButton
+updateFloatButton = function()
+  if not floatButton then return end
+  local pos = history().floatPos or FLOAT_DEFAULT
+  floatButton:ClearAllPoints()
+  floatButton:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
+  floatButton:SetShown(setting("floating"))
+end
+
+local function buildFloatButton()
+  local b = CreateFrame("Button", "TrailScoutFloatButton", UIParent)
+  b:SetSize(36, 36)
+  b:SetFrameStrata("MEDIUM")
+  b:SetMovable(true)
+  b:SetClampedToScreen(true)
+  b:RegisterForDrag("LeftButton")
+  local icon = b:CreateTexture(nil, "ARTWORK")
+  icon:SetTexture("Interface\\Icons\\INV_Misc_Map_01")
+  icon:SetAllPoints(b)
+  b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
+  wireLauncher(b, "ANCHOR_RIGHT")
+  b:SetScript("OnDragStart", b.StartMoving)
+  b:SetScript("OnDragStop", function(self)
+    self:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = self:GetPoint()
+    if point and x and y then
+      history().floatPos = { point, relativePoint or point, math.floor(x + 0.5), math.floor(y + 0.5) }
+    end
+  end)
+  return b
+end
+
 local function buildMinimapButton()
   if not Minimap then return nil end
   local b = CreateFrame("Button", "TrailScoutMinimapButton", Minimap)
   b:SetSize(31, 31)
   b:SetFrameStrata("MEDIUM")
   b:SetFrameLevel(8)
-  b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   b:RegisterForDrag("LeftButton")
   local icon = b:CreateTexture(nil, "BACKGROUND")
   icon:SetTexture("Interface\\Icons\\INV_Misc_Map_01")
@@ -2944,19 +3001,7 @@ local function buildMinimapButton()
   border:SetSize(53, 53)
   border:SetPoint("TOPLEFT", 0, 0)
   b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-  b:SetScript("OnClick", function(_, mouseButton)
-    if mouseButton == "RightButton" then command("") else toggleOptions("start") end
-  end)
-  b:SetScript("OnEnter", function(self)
-    if not GameTooltip then return end
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("TrailScout")
-    GameTooltip:AddLine(T("Left-click: ask an AI, find things, settings and help"), 1, 1, 1)
-    GameTooltip:AddLine(T("Right-click: copy the summary for an AI"), 1, 1, 1)
-    GameTooltip:AddLine(T("Drag: move this button"), 0.7, 0.7, 0.7)
-    GameTooltip:Show()
-  end)
-  b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  wireLauncher(b, "ANCHOR_LEFT")
   local atan2 = math.atan2 or math.atan
   b:SetScript("OnDragStart", function(self)
     self:SetScript("OnUpdate", function()
@@ -2975,6 +3020,8 @@ end
 setupUi = function()
   if not minimapButton then minimapButton = buildMinimapButton() end
   updateMinimapButton()
+  if not floatButton then floatButton = buildFloatButton() end
+  updateFloatButton()
   -- First login of a character: open the window on its Start page, so a new player sees
   -- what the addon does without having to find a command.
   local h = history()

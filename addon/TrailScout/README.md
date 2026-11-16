@@ -105,9 +105,11 @@ the minimap button opens it on **Start**, and `/scout config` on **Settings**. T
   route, check your addons).
 - **Help**: every feature explained in a few sentences, with its commands.
 
-The minimap button: left-click opens the window on Start, right-click opens the copy box, and it can
+Two launcher buttons do the same thing, and each has its own switch: one on the minimap and
+a **floating** one that can be dragged anywhere on screen (it starts at the left edge), for
+players who hide or crowd their minimap. Left-click opens the window on Start, right-click opens the copy box, and it can
 be dragged around the minimap. Esc closes the window. Every choice is saved per character
-(`settings`, `minimapAngle` and `introduced` in `TrailScoutHistory`). On clients with an addon compartment,
+(`settings`, `minimapAngle`, `floatPos` and `introduced` in `TrailScoutHistory`). On clients with an addon compartment,
 TrailScout is listed there too.
 
 ## Routes
