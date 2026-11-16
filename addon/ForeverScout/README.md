@@ -28,7 +28,7 @@ the full snapshot needs a `/reload`.
 | Feature | Hunter | Other classes |
 |---|---|---|
 | Snapshot, copy box, session history, XP pace | yes | yes |
-| `/whereis` NPC and party arrow | yes | yes |
+| `/whereis` for NPCs, objects and party members | yes | yes |
 | `/scout route` waypoints from the offline tools | yes | yes |
 | Alerts: bags, durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
@@ -43,8 +43,9 @@ the addon sends nothing anywhere.
 ## Requirements
 
 - Required: none. The snapshot, the copy box, the alerts and the loot advice work alone.
-- Optional: **Questie** (NPC spawn data for `/whereis`) and **TomTom** (arrow and live distance
-  for `/whereis`). Only `/whereis` needs them, and it tells you which one is missing.
+- Optional: **Questie** (spawn data for `/whereis`) and **TomTom** (arrow and live distance for
+  `/whereis`, waypoints for `/scout route`). With Questie alone, `/whereis` still finds the
+  place and shows it on the map, without the arrow.
   `/scout help` shows whether each one is loaded.
 
 The game never installs one addon for another: install Questie (Forever version) and TomTom
@@ -66,9 +67,11 @@ required dependency would stop ForeverScout from loading at all without them.
 | `/scout weights` | Shows the stat weights in use and the stats you can set. |
 | `/scout weights agi=2.3 sta=0.7 …` | Sets your own stat weights for this character (merged over the ones in use). `/scout weights reset` goes back to the class default. |
 | `/whereis <npc name>` (alias `/where`) | TomTom arrow to the nearest spawn of the NPC, with distance in yards and meters. Partial names work and accents are optional (`jabali` matches `Jabalí`). With several matches the nearest spawn wins and the others are listed with their IDs. |
+| `/whereis <object name>` | Same, for things in the world from Questie's object table: chests, plants, quest objects (`/whereis mudsnout`). |
 | `/whereis <npc id>` | Same, by NPC ID. |
 | `/whereis` | Same, for the NPC currently targeted (`/target jabalí`, then `/whereis`). |
 | `/whereis <party member>` | Arrow that follows a party member's live position (refreshed every 2 seconds). |
+| `/whereis map` (or `mapa`) | Opens the world map on the zone of the last result. The chat line of every result ends with a clickable **[Show on map]** link that does the same; with TomTom the spot carries its waypoint pin. |
 | `/whereis off` (or `clear`) | Clears the arrow. |
 
 Limits of `/whereis`:

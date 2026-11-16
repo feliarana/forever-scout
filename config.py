@@ -157,5 +157,17 @@ KEEP_ITEMS = {
     954: "Scroll (use)", 955: "Scroll (use)", 1180: "Scroll (use)", 1181: "Scroll (use)",
 }
 
+# Items assembled in game from other items: {result: [parts]}. QuestieDB does not record
+# these, so the parts of a quest objective would look like junk to sell. Classic data, not
+# verified on Forever: Shredder Operating Manual chapters are made of four pages each.
+ITEM_PARTS = {
+    16642: [16645, 16646, 16647, 16648],   # Chapter 1 <- Pages 1-4
+    16643: [16649, 16650, 16651, 16652],   # Chapter 2 <- Pages 5-8
+    16644: [16653, 16654, 16655, 16656],   # Chapter 3 <- Pages 9-12
+}
+
+# Mail is returned or deleted when it expires: warn this many days before.
+MAIL_EXPIRY_WARN_DAYS = 5
+
 # Auction house cut in Classic (deducted from the sale price).
 AH_CUT = 0.05

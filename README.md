@@ -20,8 +20,10 @@ and reminders. Any class, Horde or Alliance. English and Spanish.
 
 - **Ask an AI about your character.** Type `/scout`, press Ctrl+C, paste into ChatGPT, Claude
   or any AI chat and ask your question. No setup, nothing to install besides the addon.
-- **Find any NPC.** `/whereis Lydon` puts an arrow on the nearest one and tells you how far
-  it is. It also follows a party member: `/whereis Mauro`.
+- **Find any NPC or object.** `/whereis Lydon` puts an arrow on the nearest one, tells you
+  how far it is and gives you a **[Show on map]** link to click when it is far away. It works
+  for things in the world too (`/whereis mudsnout blossom`) and follows a party member:
+  `/whereis Mauro`.
 - **Follow a route.** `/scout route` walks you stop by stop with waypoints: objectives first,
   turn-ins last.
 - **Know what to roll.** NEED or GREED in chat on every loot roll, and a line on every gear
@@ -39,7 +41,8 @@ and reminders. Any class, Horde or Alliance. English and Spanish.
    in. Chat says `ForeverScout: loaded. Type /scout help`.
 
 Optional but recommended: **Questie** (Forever version) and **TomTom**. `/whereis` and
-`/scout route` need them; everything else works without. The game never installs one addon
+`/scout route` need them; everything else works without. For the offline tools, **Syndicator**
+adds your bank, mail and other characters, and **Auctionator** adds auction prices. The game never installs one addon
 for another, so get those two yourself.
 
 ## Your first five minutes
@@ -49,7 +52,7 @@ for another, so get those two yourself.
 | `/scout help` | The list of commands, in your game's language. |
 | `/scout` | A box with a summary of your character, already selected. Ctrl+C, then paste it into an AI chat with your question. |
 | `/scout is this ring good for me?` | Same, with your question included in the summary. |
-| `/whereis <npc name>` | An arrow to that NPC. `/whereis off` removes it. |
+| `/whereis <npc or object name>` | Where it is, an arrow to it and a **[Show on map]** link. `/whereis off` removes the arrow. |
 | Shift-click an item after typing `/scout ` | NEED or GREED for that item against what you wear. |
 
 ## Commands
@@ -58,7 +61,7 @@ for another, so get those two yourself.
 |---|---|
 | `/scout [question]` | Summary of your character to copy into an AI chat. |
 | `/scout help` | Every command, explained. |
-| `/whereis <npc \| party member>` | Arrow to an NPC or a party member. `/whereis` alone uses your target. |
+| `/whereis <npc \| object \| party member>` | Finds it: distance, arrow and a link to see it on the world map. `/whereis` alone uses your target, `/whereis map` opens the map again. |
 | `/scout route` | Start (or resume) the loaded route. `/scout route next` moves on, `/scout route clear` removes it. |
 | `/scout <item link>` | NEED or GREED for that item. |
 | `/scout weights` | Show or set the stat weights behind the loot advice. |
@@ -73,7 +76,7 @@ Full reference, with every detail: [addon README](addon/ForeverScout/README.md).
 | Feature | Hunter | Other classes |
 |---|---|---|
 | Summary for an AI (`/scout`) and full snapshot | yes | yes |
-| `/whereis` NPC and party arrow, `/scout route` | yes | yes |
+| `/whereis` for NPCs, objects and party members, `/scout route` | yes | yes |
 | Online friends, guild and communities in the summary | yes | yes |
 | Alerts: bags almost full, low durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
@@ -151,7 +154,7 @@ quests and NPCs the way your game client shows them.
 
 | Script | What it gives |
 |---|---|
-| `analyze.py` | Character summary (XP, rested XP, location, hearthstone, gold, bags, durability, pet, unspent talent points and where they can go, XP pace, PvP flag, party with distance, online friends, deaths at this level, flight paths), gear and consumables (ranged weapon, ammo, food, bag upgrades by stat weights), where talent and perk (legacy) points can go with the game's descriptions, professions (cap warnings, skill-up recipes, skinning reach), quest log size against its cap, quests ready to turn in with NPC and location, quests in progress with objectives, quests unlocked by turning in, and quests available in the current and neighboring zones |
+| `analyze.py` | Character summary (XP, rested XP, location, hearthstone, gold, bags, durability, pet, unspent talent points and where they can go, XP pace, PvP flag, party with distance, online friends, deaths at this level, flight paths), gear and consumables (ranged weapon, ammo, food, bag upgrades by stat weights), where talent and perk (legacy) points can go with the game's descriptions, professions (cap warnings, skill-up recipes, skinning reach), bank and mail of every character (with mail about to expire) and quest items already owned outside the bags, quest log size against its cap, quests ready to turn in with NPC and location, quests in progress with objectives, quests unlocked by turning in, and quests available in the current and neighboring zones |
 | `guide.py` | Per quest: start and turn-in NPCs, quest text, objectives with mob levels, elite flags and spawn clusters |
 | `route_check.py` | Distance from every logged quest's objectives and turn-in to a planned route (on route / short detour / off route) and real XP at the current level |
 | `map_route.py` | A numbered route for the in-game world map from quests and waypoints: objectives first (nearest-neighbour order), turn-ins last, one pin per spot. Writes it into the addon for `/scout route` (`--addon`), as a [wow-ai](https://github.com/chelinho139/wow-ai) map layer, or as TomTom `/way` lines (`--tomtom`) |
@@ -215,7 +218,12 @@ mains, alts and bank alts works. Install ForeverScout and log in once with each 
   (folder name like `Caza-Peques` or just `Caza`), else `WOW_CHAR`, else the highest level.
   Quest filters use that character's race, class and faction.
 - `inventory.py` always covers every character: bags, bank and mail from Syndicator, plus
-  snapshot data. Items mailed to a bank alt show up under its mail until collected.
+  snapshot data. `analyze.py` uses the same data to point at quest items that sit in the
+  bank, in the mail or on another character. Bank and mail are as of the last time each was
+  opened in game; without Syndicator only the bags of characters with a snapshot are known.
+- Some quest items are assembled from other items (pages of a manual into a chapter).
+  QuestieDB does not record that, so the known cases live in `config.ITEM_PARTS`: the parts
+  are kept instead of sold and reported with what is still missing. Items mailed to a bank alt show up under its mail until collected.
 - Stat weights for the bag-upgrade check are per class in `config.STAT_WEIGHTS` (hunter only
   for now); `config.KEEP_ITEMS` is the list of items to never sell.
 

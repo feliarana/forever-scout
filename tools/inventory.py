@@ -18,7 +18,6 @@ Rules:
   * USE: consumables that cannot be sold (containers, camp items): use or open them.
 """
 import datetime as dt
-import re
 import sys
 from pathlib import Path
 
@@ -26,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config  # noqa: E402
 from common import (  # noqa: E402
-    char_name, fits_character, identity_of, is_horde_ok, load_q, money,
+    char_name, collect_items as collect, fits_character, identity_of, is_horde_ok, load_q, money,
     quest_name, snapshots, syndicator_characters,
 )
 
@@ -77,63 +76,6 @@ def load_auctionator():
     return prices, vendor, latest
 
 
-def _flatten(value):
-    """Yield item dicts (with itemID) from Syndicator's nested bag/tab/mail structures."""
-    if isinstance(value, dict):
-        if value.get("itemID"):
-            yield value
-            return
-        value = list(value.values())
-    for v in value or []:
-        if isinstance(v, (list, dict)):
-            yield from _flatten(v)
-
-
-def _link_name(link):
-    m = re.search(r"\[(.*?)\]", link or "")
-    return m.group(1) if m else None
-
-
-def collect(snaps):
-    """{itemID: row} for every character: Syndicator bags/bank/mail, falling back to the
-    ForeverScout snapshot bags for characters Syndicator does not know. Snapshots of every
-    character also supply item type and vendor price."""
-    rows = {}
-
-    def add(char, where, iid, name, count, quality, bound):
-        r = rows.setdefault(iid, {"id": iid, "name": name, "where": {}, "chars": set(), "quality": quality,
-                                  "bound": False, "sell": None, "type": None, "subType": None})
-        key = f"{char}:{where}"
-        r["where"][key] = r["where"].get(key, 0) + (count or 1)
-        r["chars"].add(char)
-        r["bound"] = r["bound"] or bool(bound)
-        r["name"] = r["name"] or name
-
-    syn = syndicator_characters()
-    for char, data in syn.items():
-        for label, section in (("bags", data.get("bags")), ("bank", data.get("bankTabs")),
-                               ("bank", data.get("bank")), ("mail", data.get("mail"))):
-            for e in _flatten(section):
-                add(char, label, e["itemID"], _link_name(e.get("itemLink")),
-                    e.get("itemCount"), e.get("quality"), e.get("isBound"))
-
-    meta = {}
-    for d, (snap, _) in snaps.items():
-        char = char_name(d)
-        for b in snap.get("bags") or []:
-            meta[b["id"]] = b
-            if char not in syn:
-                add(char, "bags", b["id"], b.get("name"), b.get("count"), b.get("quality"), None)
-    for iid, r in rows.items():
-        b = meta.get(iid)
-        if b:
-            r["name"] = b.get("name") or r["name"]
-            for k in ("sell", "type", "subType", "reqLevel"):
-                if b.get(k) is not None:
-                    r[k] = b[k]
-    return rows
-
-
 # -- classification --------------------------------------------------------------------
 def quest_uses(Q, snaps):
     """Per character with a snapshot: (log_needs, open_objectives), each {char: {itemID: questID}}.
@@ -151,6 +93,10 @@ def quest_uses(Q, snaps):
             for e in q["objectives"].get(3, []):
                 iid = e[0] if isinstance(e, list) else e
                 (needs if q["id"] in in_log else opens).setdefault(iid, q["id"])
+                # The parts an objective is assembled from are needed too (pages of a manual).
+                if q["id"] in in_log:
+                    for part in config.ITEM_PARTS.get(iid, []):
+                        needs.setdefault(part, q["id"])
     return log_needs, open_obj
 
 

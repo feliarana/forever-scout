@@ -480,3 +480,57 @@ test("perk trees that load after login are picked up without an event", () => {
     assert(#ForeverScoutDB.traitSystems == 1, "late perk trees were cached as empty")
   `);
 });
+
+const QUESTIE = `
+  STUB.installQuestie()
+  STUB.questie.npcs[2216] = { name = "Apothecary Lydon", zone = 267, x = 61.4, y = 19.1, dist = 40 }
+  STUB.questie.npcs[2500] = { name = "Lydia the Far", zone = 45, x = 10, y = 10, dist = 900000 }
+  STUB.questie.objects[1728] = { name = "Mudsnout Blossom", zone = 267, x = 64.4, y = 61.3, dist = 800 }
+`;
+
+test("/whereis: finds an NPC, sets the arrow and offers the map", () => {
+  withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom()`, `
+    SlashCmdList.FOREVERSCOUTWHERE("lydon")
+    assert(STUB.said("Apothecary Lydon (2216)") and STUB.said("61.4, 19.1") and STUB.said("40 yd"))
+    assert(STUB.arrow == "Apothecary Lydon", "arrow not set")
+    assert(STUB.said("|Haddon:ForeverScout:map|h[Show on map]|h"), "map link missing from the chat line")
+
+    -- Clicking the link, or typing /whereis map, opens the world map on the spawn's zone.
+    STUB.clickLink("addon:ForeverScout:map")
+    assert(STUB.mapOpened == 1267, "the link did not open the map")
+    STUB.mapOpened = nil
+    SlashCmdList.FOREVERSCOUTWHERE("map")
+    assert(STUB.mapOpened == 1267, "/whereis map did not open the map")
+  `);
+});
+
+test("/whereis: also finds world objects by name", () => {
+  withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom()`, `
+    SlashCmdList.FOREVERSCOUTWHERE("mudsnout")
+    assert(STUB.said("Mudsnout Blossom (1728)") and STUB.said("64.4, 61.3"), "object not found")
+    assert(STUB.arrow == "Mudsnout Blossom")
+    -- A number is an NPC id: object 1728 must not be picked by "/whereis 1728".
+    STUB.clearChat()
+    SlashCmdList.FOREVERSCOUTWHERE("1728")
+    assert(STUB.said("nothing matches"), "an object was matched by NPC id")
+  `);
+});
+
+test("/whereis: works without TomTom (no arrow), and explains an empty map request", () => {
+  withAddon(ONE_ITEM + QUESTIE, `
+    SlashCmdList.FOREVERSCOUTWHERE("map")
+    assert(STUB.said("nothing to show yet"))
+    SlashCmdList.FOREVERSCOUTWHERE("lydon")
+    assert(STUB.said("Apothecary Lydon (2216)") and STUB.said("TomTom is not enabled"))
+    SlashCmdList.FOREVERSCOUTWHERE("map")
+    assert(STUB.mapOpened == 1267)
+  `);
+});
+
+test("/whereis: old aliases still work and the link is translated on esMX", () => {
+  withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom() STUB.locale = "esMX"`, `
+    assert(SLASH_FOREVERSCOUTWHERE1 == "/whereis" and SLASH_FOREVERSCOUTWHERE2 == "/where" and SLASH_FOREVERSCOUTWHERE3 == "/donde")
+    SlashCmdList.FOREVERSCOUTWHERE("lydia")
+    assert(STUB.said("otro continente") and STUB.said("[Ver en mapa]"))
+  `);
+});

@@ -29,7 +29,8 @@ friends. It works for every class and faction on **World of Warcraft: Forever**.
 
 - **`/scout`** — a one-line summary of your character in a copy box. Press Ctrl+C and paste it
   into any AI chat together with your question.
-- **`/whereis <npc>`** — an arrow to the nearest spawn of an NPC, or to a party member (needs
+- **`/whereis <name>`** — finds an NPC or an object in the world: distance, an arrow and a
+  link to see it on the map. Also follows a party member (needs
   Questie and TomTom).
 - **`/scout route`** — walks a route stop by stop with TomTom waypoints (routes come from the
   offline tools).

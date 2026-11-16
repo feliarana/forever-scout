@@ -9,9 +9,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import advice  # noqa: E402
+import stash  # noqa: E402
 import config  # noqa: E402
 from common import (  # noqa: E402
-    char_name, fits_character, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot, main_character, snapshots, take_char_arg, IDENTITY,
+    char_name, collect_items, fits_character, flatten_items, item_name, syndicator_characters, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot, main_character, snapshots, take_char_arg, IDENTITY,
     dist, locate, money, player_pos, prereqs_met, quest_level, quest_name, resolve_zone,
     snapshot_age_minutes, xp_at_level, zone_name,
 )
@@ -245,6 +246,24 @@ def build(snap):
         print("\n".join(lines))
 
 
+def stashed(Q, snap, me):
+    """Bank, mail and other characters: coverage, and quest items that are not in the bags."""
+    import time
+
+    characters = {}
+    for char, data in syndicator_characters().items():
+        bank = sum(1 for _ in flatten_items(data.get("bankTabs"))) + sum(1 for _ in flatten_items(data.get("bank")))
+        characters[char] = {"bank": bank, "mail": [e.get("expirationTime") for e in flatten_items(data.get("mail"))]}
+    section("Bank, mail and other characters")
+    print("\n".join(stash.coverage_lines(characters, time.time(), config.MAIL_EXPIRY_WARN_DAYS)))
+    rows = collect_items(snapshots())
+    lines = stash.quest_lines(snap.get("quests"), Q["quests"], rows, char_name(me), config.ITEM_PARTS,
+                              lambda iid: item_name(Q, iid).split(" / ")[-1])
+    if lines:
+        print("Quest items you already own outside your bags:")
+        print("\n".join(lines))
+
+
 def quests(Q, snap, zones):
     level = snap.get("level") or 0
     zid, x, y = player_pos(Q, snap)
@@ -344,6 +363,7 @@ def main():
     character(Q, snap, hist)
     gear(snap)
     build(snap)
+    stashed(Q, snap, me)
     quests(Q, snap, zones)
 
 

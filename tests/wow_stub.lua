@@ -349,3 +349,47 @@ function STUB.waypointCount()
   for _ in pairs(STUB.waypoints or {}) do count = count + 1 end
   return count
 end
+
+----------------------------------------------------------------------------------------
+-- Questie, world map and chat links: not loaded by default.
+-- STUB.installQuestie() adds a tiny Questie database: STUB.questie.npcs / .objects are
+-- { [id] = { name, zone, x, y, dist } } with one spawn each (dist in yards from the player).
+-- STUB.clickLink(link) plays a click on an "addon:" chat hyperlink.
+----------------------------------------------------------------------------------------
+
+function STUB.installQuestie()
+  STUB.questie = { npcs = {}, objects = {} }
+  local function single(tableName)
+    return function(id, field)
+      local e = STUB.questie[tableName][id]
+      if not e then return nil end
+      if field == "name" then return e.name end
+      if field == "spawns" then return { [e.zone] = { { e.x, e.y, dist = e.dist } } } end
+    end
+  end
+  local db = { NPCPointers = STUB.questie.npcs, ObjectPointers = STUB.questie.objects,
+               QueryNPCSingle = single("npcs"), QueryObjectSingle = single("objects") }
+  local distance = {}
+  function distance.GetNearestSpawn(spawns)
+    for zone, list in pairs(spawns) do return list[1], zone, list[1].dist end
+  end
+  local zones = {}
+  function zones:GetUiMapIdByAreaId(area) return area + 1000 end
+  local modules = { QuestieDB = db, DistanceUtils = distance, ZoneDB = zones }
+  QuestieLoader = {}
+  function QuestieLoader:ImportModule(name) return modules[name] end
+end
+
+STUB.mapOpened = nil  -- uiMapID last passed to OpenWorldMap
+function OpenWorldMap(mapID) STUB.mapOpened = mapID end
+
+local itemRefCallbacks = {}
+EventRegistry = {}
+function EventRegistry:RegisterCallback(event, fn, owner)
+  if event == "SetItemRef" then itemRefCallbacks[#itemRefCallbacks + 1] = { fn = fn, owner = owner } end
+end
+function STUB.clickLink(link)
+  for _, callback in ipairs(itemRefCallbacks) do
+    callback.fn(callback.owner, link, "[text]", "LeftButton", DEFAULT_CHAT_FRAME)
+  end
+end

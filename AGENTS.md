@@ -48,23 +48,27 @@ as this routine:
 2. Before planning, check the snapshot for: friends online and where they are (never plan
    around someone offline or far away), rested XP, and the NPC and location of every quest
    ready to turn in so none gets lost.
-3. Check upkeep and say what needs attention: the right weapon equipped and upgrades sitting
+3. Read the *Bank, mail and other characters* section: quest items the player already owns
+   away from their bags save a farming stop (plan the bank or mailbox visit instead), and mail
+   close to expiring has to be collected. When the section says there is no data, the
+   player lacks the Syndicator addon: say what they would gain by installing it.
+4. Check upkeep and say what needs attention: the right weapon equipped and upgrades sitting
    in bags, free bag slots, durability, unspent talent or legacy points, professions close
    to their cap, and for hunters ammo, pet food and pet level. For points and professions
    follow *Talents, legacy points and professions* below.
-4. In the next steps, remind the player of the buffs worth grabbing before leaving (food,
+5. In the next steps, remind the player of the buffs worth grabbing before leaving (food,
    campfire and camp buffs they own) and say whether the hearthstone is worth using: where it
    is bound and its cooldown are in the snapshot (`hearth`), and it pays off when the route
    ends far from the turn-ins.
-5. Before telling them to skip or abandon a quest, run `tools/route_check.py` with their
+6. Before telling them to skip or abandon a quest, run `tools/route_check.py` with their
    planned route. A quest whose objectives sit on the route gets done on the way.
-6. When you propose a route, also draw it: if `WOW_AI_MAP_FILE` is set (a wow-ai chat), run
+7. When you propose a route, also draw it: if `WOW_AI_MAP_FILE` is set (a wow-ai chat), run
    `tools/map_route.py` with the quest IDs and waypoints of your plan; otherwise, for players
    with TomTom, run `tools/map_route.py --addon` and tell them to `/reload` and type
    `/scout route`.
-7. Use `tools/guide.py <questID>` for quest details and `tools/inventory.py` for what to sell,
+8. Use `tools/guide.py <questID>` for quest details and `tools/inventory.py` for what to sell,
    auction or keep.
-8. Look up game facts (quest rewards, item stats, zones) in current WoW Forever sources and
+9. Look up game facts (quest rewards, item stats, zones) in current WoW Forever sources and
    say which ones you could not verify. Forever changes Classic in places, so Classic data is
    a fallback, labelled as such.
 
@@ -105,7 +109,7 @@ English or the client language (`17`, `barrens`, `"Mil Agujas"`).
 
 | Script | Purpose |
 |---|---|
-| `tools/analyze.py [--char NAME] [zone …]` | Character summary, where talent and perk points can go, professions, turn-ins, progress, unlocks, available quests |
+| `tools/analyze.py [--char NAME] [zone …]` | Character summary, where talent and perk points can go, professions, bank and mail, turn-ins, progress, unlocks, available quests |
 | `tools/guide.py [--char NAME] <questID …>` | Start, turn-in, text, objectives with levels, ELITE and spawn clusters |
 | `tools/route_check.py [--char NAME] ZONE:X,Y …` | Distance of each logged quest to a route, and XP at the current level |
 | `tools/map_route.py [--char NAME] [--addon \| --tomtom] [QUESTID \| turnin:QUESTID \| ZONE:X,Y=label …]` | Numbered route for the in-game map (objectives first, turn-ins last); no stops = every quest in the current zone. `--addon` writes it for `/scout route`; writes to `$WOW_AI_MAP_FILE` when set |

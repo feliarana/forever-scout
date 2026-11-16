@@ -77,12 +77,14 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["%s: position hidden (instance or other continent)."] = "%s: posición oculta (instancia u otro continente)."
   L["arrow cleared."] = "flecha borrada."
   L["TomTom is not enabled; enable it to get the arrow."] = "TomTom no está activado; activalo para tener la flecha."
-  L["usage: /whereis <npc name or id | party member>, /whereis off. With no argument it uses your NPC target."] =
-    "uso: /whereis <nombre o id de npc | miembro del grupo>, /whereis off. Sin argumento usa el NPC que tenés de objetivo."
+  L["usage: /whereis <npc or object name, npc id | party member>, /whereis map, /whereis off. With no argument it uses your NPC target."] =
+    "uso: /whereis <nombre de npc u objeto, id de npc | miembro del grupo>, /whereis map, /whereis off. Sin argumento usa el NPC que tenés de objetivo."
   L["following %s (party member)."] = "siguiendo a %s (miembro del grupo)."
   L["Questie is not loaded yet; try again in a few seconds."] = "Questie todavía no cargó; probá de nuevo en unos segundos."
-  L["no NPC matches \"%s\". Other players can only be tracked while in your party."] =
-    "ningún NPC coincide con \"%s\". A otros jugadores solo se los puede seguir si están en tu grupo."
+  L["nothing matches \"%s\" (NPCs and objects). Other players can only be tracked while in your party."] =
+    "nada coincide con \"%s\" (NPCs y objetos). A otros jugadores solo se los puede seguir si están en tu grupo."
+  L["Show on map"] = "Ver en mapa"
+  L["nothing to show yet: use /whereis <name> first."] = "todavía no hay nada para mostrar: usá /whereis <nombre> primero."
   L["%s: no known spawn in the database."] = "%s: sin aparición conocida en la base de datos."
   L["%s: spawn zone %s has no map."] = "%s: la zona de aparición %s no tiene mapa."
   L["other continent"] = "otro continente"
@@ -123,8 +125,8 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "/scout [pregunta]: arma la foto y abre una caja para copiar un resumen a un chat de IA."
   L["/reload: writes the full snapshot to disk (the game only saves addon data on reload or logout)."] =
     "/reload: escribe la foto completa al disco (el juego solo guarda datos de addons al recargar o salir)."
-  L["/whereis <npc | party member> (or /where): arrow to an NPC or a party member. Needs Questie and TomTom. /whereis off clears it."] =
-    "/whereis <npc | miembro del grupo> (o /where): flecha hacia un NPC o un miembro del grupo. Necesita Questie y TomTom. /whereis off la borra."
+  L["/whereis <npc | object | party member>: finds it, with an arrow (TomTom) and a link to see it on the map. /whereis map opens the map again, /whereis off clears the arrow. Needs Questie."] =
+    "/whereis <npc | objeto | miembro del grupo>: lo encuentra, con flecha (TomTom) y un link para verlo en el mapa. /whereis map vuelve a abrir el mapa, /whereis off borra la flecha. Necesita Questie."
   L["/scout <shift-clicked item>: NEED or GREED verdict against what you wear."] =
     "/scout <item con shift-clic>: veredicto de NECESIDAD o CODICIA contra lo que tenés puesto."
   L["/scout weights: show or set the stat weights used for loot advice and tooltips."] =
@@ -1691,7 +1693,9 @@ local function fold(text)
   return (text:gsub("\195[\128-\191]", ACCENTS)):lower()
 end
 
--- Name index over Questie's NPC table, built on first use (names come in the client locale).
+-- Name index over Questie's NPC and object tables (objects are things in the world such as
+-- chests, plants and quest items on the ground), built on first use. Names come in the
+-- client locale.
 local npcIndex
 local function getNpcIndex()
   if npcIndex then return npcIndex end
@@ -1700,13 +1704,20 @@ local function getNpcIndex()
   local index = {}
   for id in pairs(db.NPCPointers) do
     local name = try(db.QueryNPCSingle, id, "name")
-    if type(name) == "string" then index[#index + 1] = { id = id, name = name, key = fold(name) } end
+    if type(name) == "string" then index[#index + 1] = { id = id, name = name, key = fold(name), kind = "npc" } end
+  end
+  if db.ObjectPointers and db.QueryObjectSingle then
+    for id in pairs(db.ObjectPointers) do
+      local name = try(db.QueryObjectSingle, id, "name")
+      if type(name) == "string" then index[#index + 1] = { id = id, name = name, key = fold(name), kind = "object" } end
+    end
   end
   if #index > 0 then npcIndex = index end
   return npcIndex
 end
 
--- Exact name or id matches win; otherwise every NPC whose name contains the query.
+-- Exact name matches win; otherwise every NPC or object whose name contains the query.
+-- A number is an NPC ID (objects are found by name).
 local function findNpcs(query)
   local index = getNpcIndex()
   if not index then return nil end
@@ -1714,7 +1725,7 @@ local function findNpcs(query)
   local exact, partial = {}, {}
   for _, e in ipairs(index) do
     if id then
-      if e.id == id then exact[#exact + 1] = e end
+      if e.id == id and e.kind == "npc" then exact[#exact + 1] = e end
     elseif e.key == key then
       exact[#exact + 1] = e
     elseif e.key:find(key, 1, true) then
@@ -1724,14 +1735,16 @@ local function findNpcs(query)
   return #exact > 0 and exact or partial
 end
 
--- Nearest spawn (world yards) across the given NPCs, using Questie's own distance helper.
+-- Nearest spawn (world yards) across the given NPCs and objects, using Questie's own
+-- distance helper.
 local function nearestSpawn(entries)
   local db, du = questieModule("QuestieDB"), questieModule("DistanceUtils")
   if not (db and du and du.GetNearestSpawn) then return nil end
   local best
   for i = 1, math.min(#entries, 200) do
     local e = entries[i]
-    local spawns = try(db.QueryNPCSingle, e.id, "spawns")
+    local query = e.kind == "object" and db.QueryObjectSingle or db.QueryNPCSingle
+    local spawns = try(query, e.id, "spawns")
     if type(spawns) == "table" and next(spawns) then
       local spawn, zone, d = try(du.GetNearestSpawn, spawns)
       if spawn and d and (not best or d < best.dist) then
@@ -1783,10 +1796,47 @@ local function followPartyMember(unit, name)
     end
     if last and last.mapID == pos.mapID and math.abs(last.x - pos.x) < 0.3 and math.abs(last.y - pos.y) < 0.3 then return end
     setArrow(pos.mapID, pos.x, pos.y, name, last ~= nil)
+    lastWhere = { mapID = pos.mapID, x = pos.x, y = pos.y, name = name }
     last = pos
   end
   update()
   if arrowUid and C_Timer and C_Timer.NewTicker then followTicker = C_Timer.NewTicker(2, update) end
+end
+
+-- "Show on map": the last place /whereis found, opened on the world map so a far target can
+-- be judged at a glance. Reached by a clickable chat link (an "addon:" hyperlink, delivered
+-- by the client through the SetItemRef event) or by "/whereis map".
+local lastWhere
+local MAP_LINK = "addon:ForeverScout:map"
+
+local function showOnMap()
+  if not lastWhere then
+    say(T("nothing to show yet: use /whereis <name> first."))
+    return
+  end
+  if OpenWorldMap then
+    pcall(OpenWorldMap, lastWhere.mapID)
+  elseif ToggleWorldMap and WorldMapFrame and not WorldMapFrame:IsShown() then
+    pcall(ToggleWorldMap)
+  end
+  if WorldMapFrame and WorldMapFrame.SetMapID then pcall(WorldMapFrame.SetMapID, WorldMapFrame, lastWhere.mapID) end
+end
+
+local function mapLink()
+  return "|cff71d5ff|H" .. MAP_LINK .. "|h[" .. T("Show on map") .. "]|h|r"
+end
+
+if EventRegistry and EventRegistry.RegisterCallback then
+  -- The callback receives the owner first on some builds; look for the link in any argument.
+  pcall(EventRegistry.RegisterCallback, EventRegistry, "SetItemRef", function(...)
+    for i = 1, select("#", ...) do
+      local value = select(i, ...)
+      if type(value) == "string" and value:find(MAP_LINK, 1, true) then
+        showOnMap()
+        return
+      end
+    end
+  end, "ForeverScout")
 end
 
 local function targetNpcId()
@@ -1802,14 +1852,18 @@ local function where(msg)
     say(T("arrow cleared."))
     return
   end
-  if not (TomTom and TomTom.AddWaypoint) then
-    say(T("TomTom is not enabled; enable it to get the arrow."))
+  local lower = msg:lower()
+  if lower == "map" or lower == "mapa" then
+    showOnMap()
     return
   end
+  -- Without TomTom there is no arrow, but the place is still found and can be opened on
+  -- the map.
+  local hasTomTom = TomTom and TomTom.AddWaypoint
   if msg == "" then
     local id = targetNpcId()
     if not id then
-      say(T("usage: /whereis <npc name or id | party member>, /whereis off. With no argument it uses your NPC target."))
+      say(T("usage: /whereis <npc or object name, npc id | party member>, /whereis map, /whereis off. With no argument it uses your NPC target."))
       return
     end
     msg = tostring(id)
@@ -1817,9 +1871,13 @@ local function where(msg)
 
   local unit, member = partyUnitByName(msg)
   if unit then
+    if not hasTomTom then
+      say(T("TomTom is not enabled; enable it to get the arrow."))
+      return
+    end
     clearArrow()
-    say(string.format(T("following %s (party member)."), member))
     followPartyMember(unit, member)
+    say(string.format(T("following %s (party member)."), member) .. (lastWhere and lastWhere.name == member and (" " .. mapLink()) or ""))
     return
   end
 
@@ -1829,7 +1887,7 @@ local function where(msg)
     return
   end
   if #found == 0 then
-    say(string.format(T("no NPC matches \"%s\". Other players can only be tracked while in your party."), msg))
+    say(string.format(T("nothing matches \"%s\" (NPCs and objects). Other players can only be tracked while in your party."), msg))
     return
   end
   local best = nearestSpawn(found)
@@ -1846,15 +1904,17 @@ local function where(msg)
   local info = try(C_Map.GetMapInfo, mapID)
   -- Only replace the current arrow once the new target is known.
   clearArrow()
-  setArrow(mapID, best.x, best.y, best.entry.name, true)
+  if hasTomTom then setArrow(mapID, best.x, best.y, best.entry.name, true) end
+  lastWhere = { mapID = mapID, x = best.x, y = best.y, name = best.entry.name }
   local distance
   if best.dist >= 500000 then
     distance = T("other continent")
   else
     distance = string.format("%d yd (%d m)", math.floor(best.dist + 0.5), math.floor(best.dist * YARD_IN_METERS + 0.5))
   end
-  say(string.format("%s (%d) — %s %.1f, %.1f — %s", best.entry.name, best.entry.id,
-    info and info.name or "?", best.x, best.y, distance))
+  say(string.format("%s (%d) — %s %.1f, %.1f — %s %s", best.entry.name, best.entry.id,
+    info and info.name or "?", best.x, best.y, distance, mapLink()))
+  if not hasTomTom then say(T("TomTom is not enabled; enable it to get the arrow.")) end
   if #found > 1 then
     local others = {}
     for i = 1, math.min(#found, 6) do
@@ -2144,7 +2204,7 @@ local HELP_LINES = {
   "ForeverScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps.",
   "/scout [question]: build the snapshot and open a box to copy a summary into an AI chat.",
   "/reload: writes the full snapshot to disk (the game only saves addon data on reload or logout).",
-  "/whereis <npc | party member> (or /where): arrow to an NPC or a party member. Needs Questie and TomTom. /whereis off clears it.",
+  "/whereis <npc | object | party member>: finds it, with an arrow (TomTom) and a link to see it on the map. /whereis map opens the map again, /whereis off clears the arrow. Needs Questie.",
   "/scout <shift-clicked item>: NEED or GREED verdict against what you wear.",
   "/scout weights: show or set the stat weights used for loot advice and tooltips.",
   "/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters.",

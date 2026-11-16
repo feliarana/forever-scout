@@ -1,6 +1,6 @@
 {
   "name": "forever-scout",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Development tooling for the ForeverScout addon: runs the addon in a Lua VM against a stub of the WoW client.",
   "scripts": {
