@@ -27,8 +27,6 @@
 - The game only saves addon data on `/reload` or logout, so the full snapshot needs a `/reload`.
 - **English and Spanish:** the whole addon follows your game client, Spanish on esMX / esES and English everywhere else. *Descripción en español más abajo.*
 
-Source code, issue tracker and the optional companion tools: [github.com/feliarana/trail-scout-wow](https://github.com/feliarana/trail-scout-wow). MIT license.
-
 ---
 
 ## En español
@@ -60,4 +58,6 @@ Source code, issue tracker and the optional companion tools: [github.com/feliara
 - **No juega por ti.** Solo lee lo que cualquier addon puede leer y te muestra información.
 - El juego solo guarda los datos de los addons al hacer `/reload` o al salir, por eso la foto completa necesita un `/reload`.
 
-Código fuente, reporte de problemas y herramientas complementarias: [github.com/feliarana/trail-scout-wow](https://github.com/feliarana/trail-scout-wow). Licencia MIT.
+---
+
+Source code, issue tracker and the optional companion tools · Código fuente, reporte de problemas y herramientas complementarias: [github.com/feliarana/trail-scout-wow](https://github.com/feliarana/trail-scout-wow). MIT license.
