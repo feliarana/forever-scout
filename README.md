@@ -55,6 +55,7 @@ read the [addon README](addon/ForeverScout/README.md).
 | `analyze.py` | Character summary (XP, rested XP, location, hearthstone, gold, bags, durability, pet, unspent talent points and where they can go, XP pace, PvP flag, party with distance, online friends, deaths at this level, flight paths), gear and consumables (ranged weapon, ammo, food, bag upgrades by stat weights), quest log size against its cap, quests ready to turn in with NPC and location, quests in progress with objectives, quests unlocked by turning in, and quests available in the current and neighboring zones |
 | `guide.py` | Per quest: start and turn-in NPCs, quest text, objectives with mob levels, elite flags and spawn clusters |
 | `route_check.py` | Distance from every logged quest's objectives and turn-in to a planned route (on route / short detour / off route) and real XP at the current level |
+| `map_route.py` | A numbered route for the in-game world map from quests and waypoints: objectives first (nearest-neighbour order), turn-ins last, one pin per spot. Writes it into the addon for `/scout route` (`--addon`), as a [wow-ai](https://github.com/chelinho139/wow-ai) map layer, or as TomTom `/way` lines (`--tomtom`) |
 | `inventory.py` | Vendor / auction / use / keep / turn-in for every character's bags, bank and mail, with Auctionator prices |
 | `build_q.py` | Builds the `data/Q.pkl` cache from QuestieDB plus real Forever quest XP (the other tools rebuild it when stale) |
 
@@ -152,7 +153,28 @@ mains, alts and bank alts works. Install ForeverScout and log in once with each 
 .venv/bin/python tools/guide.py 4841 5147
 .venv/bin/python tools/route_check.py 17:52,30 17:45,57 400:46,51 400:38,27
 .venv/bin/python tools/inventory.py            # what to vendor / auction / keep
+.venv/bin/python tools/map_route.py            # route for every quest in the current zone
+.venv/bin/python tools/map_route.py --addon    # same, loaded by /scout route after a /reload
+.venv/bin/python tools/map_route.py 509 567 501 --tomtom   # chosen quests, as /way lines
 ```
+
+### Routes on the world map
+
+`map_route.py` needs something in game to draw the route:
+
+- **wow-ai** (chat with an AI agent inside the game): when a wow-ai chat works in this folder,
+  the bridge sets `WOW_AI_MAP_FILE` and `map_route.py` appends the route to it. The route shows
+  as numbered pins joined by lines, with wow-ai's navigator arrow walking from stop to stop.
+  `map_route.py --clear` removes it.
+- **ForeverScout + TomTom**: `--addon` writes the route into the installed addon
+  (`Interface/AddOns/ForeverScout/Route.lua`). `/reload`, then `/scout route` adds every stop
+  as a TomTom waypoint and points the arrow at the first; `/scout route next` moves on. No
+  pasting, and a `/reload` resumes where you were.
+- **TomTom alone**: `--tomtom` prints one `/way` line per stop to paste into the game chat.
+
+Without `WOW_AI_MAP_FILE` or `--out FILE`, the map command is printed. Stops can be quest IDs
+(unfinished objectives plus the turn-in), `turnin:QUESTID`, or `ZONE:X,Y=label` waypoints.
+Each objective is placed at the centre of its biggest spawn cluster in the zone.
 
 Distances are in map units (percent of the zone map). Route check thresholds: ≤10 on route,
 ≤20 short detour, otherwise off route. XP uses QuestieDB's real Forever XP traces
@@ -179,7 +201,12 @@ as Lua 5.1, the version the game runs.
 ```bash
 npm install   # once; needs Node.js 22+
 npm test
+.venv/bin/python -m unittest discover -s tests -p "test_*.py"   # offline tools
 ```
+
+`addon/ForeverScout/Route.lua` is tracked as an empty placeholder (the client only finds addon
+files that exist at launch) and `map_route.py --addon` rewrites it. To keep your own routes
+out of `git status`: `git update-index --skip-worktree addon/ForeverScout/Route.lua`.
 
 Run it before every `/reload` on a change to the addon; CI runs it on every push
 (`.github/workflows/test.yml`). When the addon calls a client API the stub does not model
@@ -188,6 +215,7 @@ yet, add it to `tests/wow_stub.lua`.
 ## Credits
 
 - [chelinho139/wow-ai](https://github.com/chelinho139/wow-ai) — the idea of testing a WoW addon
-  in a Lua VM with a client stub comes from its test suite.
+  in a Lua VM with a client stub comes from its test suite, and `map_route.py` writes its map
+  layer format.
 - [Questie](https://github.com/Questie/Questie) and [QuestieDB](https://github.com/Questie/QuestieDB)
   — quest, NPC and spawn data, read live from the installed addon.

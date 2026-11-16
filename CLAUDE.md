@@ -40,6 +40,7 @@ Run with the repo virtualenv: `.venv/bin/python tools/<script>.py`.
 | `tools/analyze.py [--char NAME] [zone …]` | Character summary, turn-ins, progress, unlocks, available quests |
 | `tools/guide.py [--char NAME] <questID …>` | Start, turn-in, text, objectives with levels, ELITE and spawn clusters |
 | `tools/route_check.py [--char NAME] ZONE:X,Y …` | Distance of each logged quest to a route + XP at current level |
+| `tools/map_route.py [--char NAME] [--addon \| --tomtom] [QUESTID \| turnin:QUESTID \| ZONE:X,Y=label …]` | Numbered route for the in-game map (objectives first, turn-ins last); no stops = every quest in the current zone. `--addon` writes it for `/scout route` (I /reload, then type it). Writes to `$WOW_AI_MAP_FILE` when set |
 | `tools/inventory.py [--all]` | Vendor / auction / use / keep / turn-in for every character's bags, bank and mail (Syndicator + Auctionator). Ask for an Auctionator full scan + /reload when prices are stale. Keep list: `config.KEEP_ITEMS` |
 
 After any change to `addon/ForeverScout/ForeverScout.lua`, run `npm test` before asking me for a /reload.

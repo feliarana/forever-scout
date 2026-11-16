@@ -16,7 +16,7 @@ local session = {}
 
 -- Upkeep alerts (ammo, pet, bags, durability) and the first-login welcome line; defined
 -- further down, used by the event handler.
-local scheduleAlerts, welcome
+local scheduleAlerts, welcome, routeResume
 
 -- Call a function safely; return nil instead of raising if the API is missing or errors.
 local function try(fn, ...)
@@ -131,6 +131,16 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "/scout weights: muestra o cambia los pesos de estadísticas del consejo de botín y los tooltips."
   L["/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters."] =
     "/scout alerts [on|off]: avisos de bolsas, durabilidad, puntos de talento, y munición y mascota para cazadores."
+  L["/scout route [next|<n>|clear]: walk a route made by tools/map_route.py --addon, one TomTom waypoint per stop."] =
+    "/scout route [next|<n>|clear]: recorre una ruta hecha con tools/map_route.py --addon, un punto de TomTom por parada."
+  L["route finished."] = "ruta terminada."
+  L["route cleared."] = "ruta borrada."
+  L["next stop: %s (%d of %d)"] = "próxima parada: %s (%d de %d)"
+  L["you reached %s. Type /scout route next when you are done here."] = "llegaste a %s. Escribí /scout route next cuando termines acá."
+  L["no route loaded. Create one with tools/map_route.py --addon, then /reload."] =
+    "no hay ruta cargada. Creá una con tools/map_route.py --addon y después /reload."
+  L["route \"%s\": %d stops."] = "ruta \"%s\": %d paradas."
+  L["new route loaded: %s (%d stops). Type /scout route to start."] = "ruta nueva cargada: %s (%d paradas). Escribí /scout route para empezar."
   L["/scout addons: loaded addons that do the same job."] = "/scout addons: addons cargados que hacen el mismo trabajo."
   L["Privacy: the snapshot and the copy box include names of party members, friends, guild and communities. It stays on your computer until you paste or share it."] =
     "Privacidad: la foto y la caja de copiar incluyen nombres de miembros del grupo, amigos, hermandad y comunidades. Queda en tu computadora hasta que la pegues o compartas."
@@ -1398,6 +1408,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
     if C_Timer then
       C_Timer.After(10, function() scheduleAlerts() end)
       C_Timer.After(6, function() pcall(welcome) end)
+      C_Timer.After(4, function() pcall(routeResume) end)
     end
     -- Keep the snapshot fresh while playing, so a plain /reload always saves current data.
     -- Rosters are re-requested each tick; the server throttles them and the next tick reads them.
@@ -1728,6 +1739,124 @@ local function where(msg)
   end
 end
 
+-- /scout route: walks a route written by "tools/map_route.py --addon" into Route.lua (the
+-- global ForeverScoutRoute, read again on every /reload). Every remaining stop becomes a
+-- TomTom waypoint and the arrow points at the current one. Waypoint stops ("poi") advance on
+-- arrival; quest stops wait for "/scout route next", since killing or looting takes a while.
+-- The current stop is saved, so a /reload resumes the same route where it was.
+local ROUTE_ARRIVE = 1.5  -- map percent around a stop that counts as being there
+local routeUids, routeIndex, routeTicker, routeArrived = {}, nil, nil, nil
+
+local function routeData()
+  local route = ForeverScoutRoute
+  if type(route) == "table" and type(route.points) == "table" and #route.points > 0 then return route end
+  return nil
+end
+
+local function routeRemoveWaypoint(index)
+  if routeUids[index] and TomTom and TomTom.RemoveWaypoint then
+    pcall(TomTom.RemoveWaypoint, TomTom, routeUids[index])
+  end
+  routeUids[index] = nil
+end
+
+local function routeStop()
+  if routeTicker then routeTicker:Cancel(); routeTicker = nil end
+  local indexes = {}
+  for index in pairs(routeUids) do indexes[#indexes + 1] = index end
+  for _, index in ipairs(indexes) do routeRemoveWaypoint(index) end
+  routeIndex, routeArrived = nil, nil
+end
+
+local function routeAddWaypoint(index, arrow)
+  local point = routeData().points[index]
+  routeRemoveWaypoint(index)
+  routeUids[index] = try(TomTom.AddWaypoint, TomTom, point.m, point.x / 100, point.y / 100,
+    { title = point.label, crazy = arrow, persistent = false, silent = true, from = "ForeverScout" })
+end
+
+-- Point the arrow at stop `index`; past the last stop the route ends, or restarts on a loop.
+local function routeGoTo(index)
+  local route = routeData()
+  if index > #route.points then
+    if not route.loop then
+      routeStop()
+      history().routeState = nil
+      say(T("route finished."))
+      return
+    end
+    index = 1
+  end
+  routeIndex, routeArrived = index, nil
+  history().routeState = { id = route.createdAt, index = index }
+  routeAddWaypoint(index, true)
+  say(string.format(T("next stop: %s (%d of %d)"), route.points[index].label, index, #route.points))
+end
+
+local function routeTick()
+  local route = routeData()
+  if not (route and routeIndex) then return end
+  local point, pos = route.points[routeIndex], unitMapPos("player")
+  if pos.mapID ~= point.m or not (pos.x and pos.y) then return end
+  if math.abs(pos.x - point.x) > ROUTE_ARRIVE or math.abs(pos.y - point.y) > ROUTE_ARRIVE then return end
+  if point.kind == "poi" then
+    routeRemoveWaypoint(routeIndex)
+    routeGoTo(routeIndex + 1)
+  elseif routeArrived ~= routeIndex then
+    routeArrived = routeIndex
+    say(string.format(T("you reached %s. Type /scout route next when you are done here."), point.label))
+  end
+end
+
+local function routeStart(index, quiet)
+  local route = routeData()
+  if not route then
+    say(T("no route loaded. Create one with tools/map_route.py --addon, then /reload."))
+    return
+  end
+  if not (TomTom and TomTom.AddWaypoint) then
+    say(T("TomTom is not enabled; enable it to get the arrow."))
+    return
+  end
+  routeStop()
+  index = math.max(1, math.min(index or 1, #route.points))
+  for i = index + 1, #route.points do routeAddWaypoint(i, false) end
+  if C_Timer and C_Timer.NewTicker then routeTicker = C_Timer.NewTicker(1, routeTick) end
+  if not quiet then say(string.format(T("route \"%s\": %d stops."), tostring(route.title), #route.points)) end
+  routeGoTo(index)
+end
+
+-- After login: resume the route that was being walked, or announce a new route file once.
+routeResume = function()
+  local route = routeData()
+  if not route then return end
+  local h = history()
+  local state = h.routeState
+  if state and state.id == route.createdAt and TomTom and TomTom.AddWaypoint then
+    routeStart(state.index, true)
+  elseif h.routeSeen ~= route.createdAt then
+    h.routeSeen = route.createdAt
+    say(string.format(T("new route loaded: %s (%d stops). Type /scout route to start."), tostring(route.title), #route.points))
+  end
+end
+
+local function routeCommand(arg)
+  if arg == "clear" or arg == "off" or arg == "stop" then
+    routeStop()
+    history().routeState = nil
+    say(T("route cleared."))
+  elseif arg == "next" and routeIndex then
+    routeRemoveWaypoint(routeIndex)
+    routeGoTo(routeIndex + 1)
+  elseif tonumber(arg) then
+    routeStart(tonumber(arg))
+  else
+    -- Plain "/scout route" starts the route, or carries on from the saved stop.
+    local route, state = routeData(), history().routeState
+    routeStart(route and state and state.id == route.createdAt and state.index or 1)
+  end
+end
+
 SLASH_FOREVERSCOUTWHERE1 = "/donde"
 SLASH_FOREVERSCOUTWHERE2 = "/where"
 SlashCmdList.FOREVERSCOUTWHERE = where
@@ -1893,6 +2022,7 @@ local HELP_LINES = {
   "/scout <shift-clicked item>: NEED or GREED verdict against what you wear.",
   "/scout weights: show or set the stat weights used for loot advice and tooltips.",
   "/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters.",
+  "/scout route [next|<n>|clear]: walk a route made by tools/map_route.py --addon, one TomTom waypoint per stop.",
   "/scout addons: loaded addons that do the same job.",
   "Privacy: the snapshot and the copy box include names of party members, friends, guild and communities. It stays on your computer until you paste or share it.",
 }
@@ -1972,6 +2102,11 @@ local function command(msg)
   end
   if lower == "addons" then
     addonsCommand()
+    return
+  end
+  local routeArg = lower:match("^route%s*(.*)$") or lower:match("^ruta%s*(.*)$")
+  if routeArg then
+    routeCommand(routeArg)
     return
   end
   local weightsArg = lower:match("^weights%s*(.*)$") or lower:match("^pesos%s*(.*)$")

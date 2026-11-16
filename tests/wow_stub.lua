@@ -286,3 +286,31 @@ end
 function C_Traits.GetEntryInfo() return { definitionID = 7 } end
 function C_Traits.GetDefinitionInfo() return { overrideName = "Endurance Training" } end
 function GetNumUnspentTalents() return 0 end
+
+----------------------------------------------------------------------------------------
+-- TomTom: not loaded by default. STUB.installTomTom() adds a stand-in that records
+-- waypoints in STUB.waypoints (uid -> { map, x, y, title, crazy }) and the arrow target.
+----------------------------------------------------------------------------------------
+
+function STUB.installTomTom()
+  STUB.waypoints, STUB.arrow = {}, nil
+  local nextUid = 0
+  TomTom = {}
+  function TomTom:AddWaypoint(map, x, y, options)
+    nextUid = nextUid + 1
+    local uid = { id = nextUid }
+    STUB.waypoints[uid] = { map = map, x = x, y = y, title = options.title, crazy = options.crazy }
+    if options.crazy then STUB.arrow = options.title end
+    return uid
+  end
+  function TomTom:RemoveWaypoint(uid)
+    if STUB.waypoints[uid] and STUB.arrow == STUB.waypoints[uid].title then STUB.arrow = nil end
+    STUB.waypoints[uid] = nil
+  end
+end
+
+function STUB.waypointCount()
+  local count = 0
+  for _ in pairs(STUB.waypoints or {}) do count = count + 1 end
+  return count
+end

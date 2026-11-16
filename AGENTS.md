@@ -40,9 +40,13 @@ When the player asks you to read their state (or to plan their next steps):
    ready to turn in.
 3. Before telling them to skip or abandon a quest, run `tools/route_check.py` with their
    planned route. A quest whose objectives sit on the route gets done on the way.
-4. Use `tools/guide.py <questID>` for quest details and `tools/inventory.py` for what to sell,
+4. When you propose a route, also draw it: if `WOW_AI_MAP_FILE` is set (a wow-ai chat), run
+   `tools/map_route.py` with the quest IDs and waypoints of your plan; otherwise, for players
+   with TomTom, run `tools/map_route.py --addon` and tell them to `/reload` and type
+   `/scout route`.
+5. Use `tools/guide.py <questID>` for quest details and `tools/inventory.py` for what to sell,
    auction or keep.
-5. Look up game facts (quest rewards, item stats, zones) in current WoW Forever sources and
+6. Look up game facts (quest rewards, item stats, zones) in current WoW Forever sources and
    say which ones you could not verify. Forever changes Classic in places, so Classic data is
    a fallback, labelled as such.
 

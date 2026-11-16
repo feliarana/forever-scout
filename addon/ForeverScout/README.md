@@ -29,6 +29,7 @@ the full snapshot needs a `/reload`.
 |---|---|---|
 | Snapshot, copy box, session history, XP pace | yes | yes |
 | `/donde` NPC and party arrow | yes | yes |
+| `/scout route` waypoints from the offline tools | yes | yes |
 | Alerts: bags, durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
 | Loot NEED / GREED advice and tooltip score | yes, built-in weights | after you set your stat weights with `/scout weights` |
@@ -59,6 +60,8 @@ required dependency would stop ForeverScout from loading at all without them.
 | `/scout alerts` | Shows the upkeep alert thresholds and runs a check now. |
 | `/scout alerts off` / `/scout alerts on` | Mutes or re-enables upkeep alerts (saved per character). |
 | `/scout <shift-clicked item link>` | Instant NEED / GREED verdict for that item against what is equipped. |
+| `/scout route` (or `ruta`) | Walks the route written by `tools/map_route.py --addon`: one TomTom waypoint per stop, arrow on the current one. Carries on from the saved stop after a `/reload`. |
+| `/scout route next` / `/scout route <n>` / `/scout route clear` | Move to the next stop, jump to stop n, or remove the route's waypoints. |
 | `/scout help` (or `?`, `ayuda`) | What the addon does and every command. |
 | `/scout weights` | Shows the stat weights in use and the stats you can set. |
 | `/scout weights agi=2.3 sta=0.7 …` | Sets your own stat weights for this character (merged over the ones in use). `/scout weights reset` goes back to the class default. |
@@ -75,6 +78,19 @@ Limits of `/donde`:
 - Players outside the party cannot be located: the client only gives party member positions.
   For friends outside the party, the snapshot records their zone (see `onlineFriends`).
 - A failed search keeps the current arrow.
+
+## Routes
+
+`/scout route` walks a route made outside the game by `tools/map_route.py --addon` (from the
+[forever-scout repository](https://github.com/feliarana/forever-scout)). The tool writes the
+stops into `Route.lua` in this folder; the game reads that file on every `/reload`, and chat
+says `new route loaded` when there is one. Needs TomTom.
+
+- Every remaining stop is a TomTom waypoint; the arrow points at the current stop.
+- A plain waypoint advances by itself when you stand on it. A quest stop (kill, loot, object,
+  turn-in) only says you arrived, since the work there takes a while: type `/scout route next`
+  when you are done.
+- The current stop is saved per character, so a `/reload` resumes the route.
 
 ## Snapshot
 

@@ -177,7 +177,8 @@ test("/scout help lists the commands, in the client language", () => {
   withAddon(ONE_ITEM, LOGIN + `
     slash("help")
     assert(STUB.said("/scout weights") and STUB.said("/donde") and STUB.said("Privacy:"))
-    assert(#STUB.chat == 10, "help should be ten lines for a class with weights, got " .. #STUB.chat)
+    assert(#STUB.chat == 11, "help should be eleven lines for a class with weights, got " .. #STUB.chat)
+    assert(STUB.said("/scout route"))
     assert(STUB.said("Questie not installed or disabled, TomTom not installed or disabled"))
     TomTom = {}
     STUB.clearChat()
@@ -321,4 +322,98 @@ test("the copy box summary is English data whatever the client language", () => 
     assert(ForeverScoutCopyFrame.info.text:find("Resumen de tu personaje (" .. #text .. " caracteres)", 1, true))
     assert(ForeverScoutCopyFrame.box.cursor == 0, "the box must show the start of the summary")
   `);
+});
+
+// A three-stop route as tools/map_route.py --addon writes it into Route.lua: a waypoint,
+// a quest objective and a turn-in, all on the map the stub player stands on (1424).
+const ROUTE = `
+  ForeverScoutRoute = { title = "Route: Hillsbrad", createdAt = "2026-11-16 09:00:00", loop = false, points = {
+    { m = 1424, x = 61, y = 20, label = "1. Tarren Mill", kind = "poi" },
+    { m = 1424, x = 64.4, y = 61.3, label = "2. Mudsnout Blossoms", kind = "loot" },
+    { m = 1424, x = 61.4, y = 19.1, label = "3. Lydon: Elixir of Agony", kind = "turnin" },
+  } }
+`;
+
+test("/scout route: needs a route file and TomTom, and says which one is missing", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    slash("route")
+    assert(STUB.said("no route loaded"), "missing route not reported")
+  `);
+  withAddon(ONE_ITEM + ROUTE, LOGIN + `
+    slash("route")
+    assert(STUB.said("TomTom is not enabled"), "missing TomTom not reported")
+  `);
+});
+
+test("/scout route: one waypoint per stop, arrow on the current one, advancing by kind", () => {
+  withAddon(ONE_ITEM + ROUTE + `
+    STUB.installTomTom()
+    STUB.x, STUB.y = 0.30, 0.30  -- away from every stop
+  `, LOGIN + `
+    slash("route")
+    assert(STUB.waypointCount() == 3, "expected three waypoints, got " .. STUB.waypointCount())
+    assert(STUB.arrow == "1. Tarren Mill", "arrow must start on stop 1")
+    assert(STUB.said('route "Route: Hillsbrad": 3 stops.'))
+
+    -- A plain waypoint advances as soon as the player stands on it.
+    STUB.x, STUB.y = 0.61, 0.20
+    STUB.advance(2)
+    assert(STUB.arrow == "2. Mudsnout Blossoms", "waypoint stop did not advance on arrival")
+    assert(STUB.waypointCount() == 2, "the reached stop must be removed")
+
+    -- A quest stop waits: farming takes time, so only "/scout route next" moves on.
+    STUB.clearChat()
+    STUB.x, STUB.y = 0.644, 0.613
+    STUB.advance(5)
+    assert(STUB.arrow == "2. Mudsnout Blossoms", "quest stop advanced by itself")
+    assert(STUB.said("you reached 2. Mudsnout Blossoms"))
+    assert(#STUB.chat == 1, "the arrival line must be said once, got " .. #STUB.chat)
+    slash("route next")
+    assert(STUB.arrow == "3. Lydon: Elixir of Agony")
+
+    slash("route next")
+    assert(STUB.said("route finished.") and STUB.waypointCount() == 0)
+    assert(ForeverScoutHistory.routeState == nil)
+  `);
+});
+
+test("/scout route: a reload resumes at the saved stop, a new route is announced once", () => {
+  withAddon(ONE_ITEM + ROUTE + `
+    STUB.installTomTom()
+    STUB.x, STUB.y = 0.30, 0.30
+  `, LOGIN + `
+    login()
+    assert(STUB.said("new route loaded: Route: Hillsbrad (3 stops)"), "new route not announced")
+    slash("route 2")
+    assert(STUB.arrow == "2. Mudsnout Blossoms" and STUB.waypointCount() == 2)
+
+    -- /reload: TomTom forgets non-persistent waypoints, the addon puts them back.
+    STUB.installTomTom()
+    STUB.clearChat()
+    login()
+    assert(STUB.arrow == "2. Mudsnout Blossoms", "route not resumed after reload")
+    assert(not STUB.said("new route loaded"), "a resumed route must not be announced again")
+
+    slash("route clear")
+    assert(STUB.waypointCount() == 0 and STUB.said("route cleared."))
+  `);
+});
+
+test("/scout route: messages are in Spanish on an esMX client", () => {
+  withAddon(ONE_ITEM + ROUTE + `
+    STUB.locale = "esMX"
+    STUB.installTomTom()
+    STUB.x, STUB.y = 0.30, 0.30
+  `, LOGIN + `
+    slash("ruta")
+    assert(STUB.said("próxima parada: 1. Tarren Mill (1 de 3)"), "route line missing or untranslated")
+  `);
+});
+
+test("the placeholder Route.lua and the TOC load order are in place", () => {
+  const dir = path.join(__dirname, "..", "addon", "ForeverScout");
+  const toc = fs.readFileSync(path.join(dir, "ForeverScout.toc"), "utf8").split(/\r?\n/);
+  assert.ok(toc.indexOf("Route.lua") >= 0 && toc.indexOf("Route.lua") < toc.indexOf("ForeverScout.lua"),
+    "Route.lua must be listed before ForeverScout.lua");
+  assert.doesNotThrow(() => luaparse.parse(fs.readFileSync(path.join(dir, "Route.lua"), "utf8"), { luaVersion: "5.1" }));
 });
