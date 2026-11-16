@@ -121,7 +121,7 @@ is stored under `errors`.
 | `guild` | Guild name, own rank and rank index, members and members online; absent when not in a guild |
 | `communities` | Every subscribed community except the guild: name, type (`bnet`, `wow`, `other`), member count and online members with level, class and zone |
 | `pvpFlagged`, `target` | PvP flag and the current target |
-| `quests`, `completedQuests` | Quest log with objectives, and completed quest IDs |
+| `quests`, `completedQuests` | Quest log with objectives, and completed quest IDs. Each logged quest also carries what the client itself reports: `xp` (what it pays at your level), `waypoint` (where the game's own marker points next; the Forever 1.60 client does not report it, so it is usually absent) and `giver` (who you took it from and where, recorded when you accepted it). These cover Forever's new quests, which the quest databases do not have yet |
 | `questLog` | Quests in the log (`count`) and the log cap (`max`, absent when the client does not report it) |
 | `pace` | XP pacing: session start, seconds and XP, `xpPerHour` for the session and `recentXPPerHour` over about the last hour. A session survives `/reload` and ends after 30 minutes without a snapshot; rates appear after 5 minutes |
 | `equipment`, `bags` | Equipped items and bag contents, with stats |
@@ -142,8 +142,9 @@ is stored under `errors`.
 
 `TrailScoutHistory` (per character, kept across sessions): running XP total, level-ups with
 date and zone, deaths with place and level (killer taken from a hostile target, best effort; left empty when unknown),
-dungeon runs with XP gained, flight paths, recipes, the XP pacing session (`pace`), your own
-stat weights (`weights`) and the upkeep alert setting (`alerts`).
+dungeon runs with XP gained, flight paths, recipes, the XP pacing session (`pace`), where each
+quest was accepted (`questGivers`), your own stat weights (`weights`) and the upkeep alert
+setting (`alerts`).
 
 Values from roster APIs can be restricted ("secret") on this client. Storing one in
 SavedVariables triggers the blocked-action dialog, so the addon drops any value that fails a

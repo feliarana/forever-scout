@@ -1,6 +1,6 @@
 {
   "name": "trail-scout",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "license": "MIT",
   "description": "Development tooling for the TrailScout addon: runs the addon in a Lua VM against a stub of the WoW client.",

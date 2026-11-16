@@ -584,3 +584,24 @@ test("recipe lists copied to the wrong profession by older versions are cleaned 
     assert(recipes["First Aid"] and recipes["Cooking"], "a real list was dropped")
   `);
 });
+
+test("logged quests carry the client's own XP, next waypoint and quest giver", () => {
+  withAddon(ONE_ITEM + `
+    STUB.quests = { { id = 92421, title = "Light's Justice", level = 22, xp = 1850, waypoint = { 1420, 0.652, 0.602 } },
+                    { id = 549, title = "WANTED: Syndicate Personnel", level = 22 } }
+  `, LOGIN + `
+    -- Accepting a quest records who gave it and where the player stood.
+    STUB.npc = { name = "Morbin Lightbane", id = 4488 }
+    STUB.fire("QUEST_ACCEPTED", 92421)
+    STUB.npc = nil
+    STUB.fire("QUEST_ACCEPTED", 3, 549)  -- Classic-era argument order, started without an NPC
+    login()
+    local first, second = TrailScoutDB.quests[1], TrailScoutDB.quests[2]
+    assert(first.xp == 1850, "quest XP from the client is missing")
+    assert(first.waypoint.mapID == 1420 and first.waypoint.x == 65.2 and first.waypoint.y == 60.2)
+    assert(first.giver.name == "Morbin Lightbane" and first.giver.id == 4488 and first.giver.kind == "Creature")
+    assert(first.giver.mapID == 1424 and first.giver.x == 61)
+    assert(second.xp == nil and second.waypoint == nil, "no data must stay empty, not zero")
+    assert(second.giver and second.giver.name == nil and second.giver.x == 61, "an NPC-less accept still records the place")
+  `);
+});

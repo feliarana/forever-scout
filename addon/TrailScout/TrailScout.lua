@@ -435,6 +435,28 @@ local function questObjectives(questID)
   return list
 end
 
+-- What the client itself knows about a logged quest, for quests the quest database has no
+-- data for (most of Forever's new ones): the XP it will pay at the current level, where the
+-- game's own waypoint points next (the turn-in once the quest is complete) and who gave it.
+local function questExtras(quest)
+  local id = quest.id
+  if not id then return quest end
+  pcall(function()
+    local xp = GetQuestLogRewardXP and GetQuestLogRewardXP(id)
+    if type(xp) == "number" and xp > 0 then quest.xp = xp end
+  end)
+  pcall(function()
+    if not (C_QuestLog and C_QuestLog.GetNextWaypoint) then return end
+    local mapID, x, y = C_QuestLog.GetNextWaypoint(id)
+    if type(mapID) == "number" and type(x) == "number" and type(y) == "number" then
+      quest.waypoint = { mapID = mapID, x = math.floor(x * 10000 + 0.5) / 100, y = math.floor(y * 10000 + 0.5) / 100 }
+    end
+  end)
+  local givers = TrailScoutHistory and TrailScoutHistory.questGivers
+  if givers and givers[id] then quest.giver = givers[id] end
+  return quest
+end
+
 local function getQuestLog()
   local quests = {}
   local header
@@ -450,12 +472,12 @@ local function getQuestLog()
         elseif info.questID then
           local id = info.questID
           local ready = try(C_QuestLog.ReadyForTurnIn, id) or try(C_QuestLog.IsComplete, id)
-          quests[#quests + 1] = {
+          quests[#quests + 1] = questExtras({
             id = id, title = info.title, level = info.level, group = info.suggestedGroup,
             zoneHeader = header, complete = ready and 1 or nil,
             failed = try(C_QuestLog.IsFailed, id) or nil,
             objectives = questObjectives(id),
-          }
+          })
         end
       end
     end
@@ -478,7 +500,7 @@ local function getQuestLog()
           q.objectives[#q.objectives + 1] = { text = text, type = objType, done = finished and true or false }
         end
         if #q.objectives == 0 and questID then q.objectives = questObjectives(questID) end
-        quests[#quests + 1] = q
+        quests[#quests + 1] = questExtras(q)
       end
     end
   end
@@ -1318,6 +1340,32 @@ end
 -- so the killer is taken from the current target when it is hostile (best effort).
 -- With no hostile target the killer is unknown: killer and killerIsPlayer stay nil, so a
 -- death is never recorded as "not a player" without evidence.
+-- Who gave each quest and where the character stood when taking it. The quest database
+-- has no start point for many of Forever's new quests; this records the player's own.
+-- The giver is the unit of the open quest window; quests started by an item have none.
+local function onQuestAccepted(first, second)
+  -- The event carries (questID) on this client and (logIndex, questID) on Classic-era ones.
+  local questID = (type(second) == "number" and second > 0) and second or first
+  if type(questID) ~= "number" or questID <= 0 then return end
+  local h = history()
+  h.questGivers = h.questGivers or {}
+  local entry = { at = date("%Y-%m-%d %H:%M") }
+  for _, unit in ipairs({ "questnpc", "npc" }) do
+    if UnitExists(unit) and not UnitIsPlayer(unit) then
+      entry.name = plain(UnitName(unit))
+      local guid = plain(UnitGUID and UnitGUID(unit))
+      if type(guid) == "string" then
+        local kind, id = guid:match("^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)")
+        entry.kind, entry.id = kind, tonumber(id)
+      end
+      break
+    end
+  end
+  local pos = unitMapPos("player")
+  entry.mapID, entry.x, entry.y = pos.mapID, pos.x, pos.y
+  h.questGivers[questID] = entry
+end
+
 local lastDeathAt
 local function onDeath()
   -- PLAYER_DEAD fires twice per death on this client; keep one entry.
@@ -1574,6 +1622,7 @@ end
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("QUEST_DETAIL")
 frame:RegisterEvent("QUEST_COMPLETE")
+pcall(frame.RegisterEvent, frame, "QUEST_ACCEPTED")
 frame:RegisterEvent("TRAINER_SHOW")
 frame:RegisterEvent("MERCHANT_SHOW")
 frame:RegisterEvent("PLAYER_XP_UPDATE")
@@ -1650,6 +1699,8 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
   elseif event == "START_LOOT_ROLL" then
     local link = try(GetLootRollItemLink, arg1)
     if link and hasWeights() then adviseItem(link) end
+  elseif event == "QUEST_ACCEPTED" then
+    pcall(onQuestAccepted, arg1, arg2)
   elseif event == "QUEST_DETAIL" then
     captureQuestWindow("offered")
   elseif event == "QUEST_COMPLETE" then

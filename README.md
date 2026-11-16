@@ -154,7 +154,7 @@ quests and NPCs the way your game client shows them.
 
 | Script | What it gives |
 |---|---|
-| `analyze.py` | Character summary (XP, rested XP, location, hearthstone, gold, bags, durability, pet, unspent talent points and where they can go, XP pace, PvP flag, party with distance, online friends, deaths at this level, flight paths), gear and consumables (ranged weapon, ammo, food, bag upgrades by stat weights), where talent and perk (legacy) points can go with the game's descriptions, professions (cap warnings, skill-up recipes, skinning reach), bank and mail of every character (with mail about to expire) and quest items already owned outside the bags, quest log size against its cap, quests ready to turn in with NPC and location, quests in progress with objectives, quests unlocked by turning in, and quests available in the current and neighboring zones |
+| `analyze.py` | Character summary (XP, rested XP, location, hearthstone, gold, bags, durability, pet, unspent talent points and where they can go, XP pace, PvP flag, party with distance, online friends, deaths at this level, flight paths), gear and consumables (ranged weapon, ammo, food, bag upgrades by stat weights), where talent and perk (legacy) points can go with the game's descriptions, professions (cap warnings, skill-up recipes, skinning reach), bank and mail of every character (with mail about to expire) and quest items already owned outside the bags, quest log size against its cap, quests ready to turn in with NPC and location (from the game's own waypoint and your accept history when the quest database has no place for it), quests in progress with objectives, quests unlocked by turning in, and quests available in the current and neighboring zones |
 | `guide.py` | Per quest: start and turn-in NPCs, quest text, objectives with mob levels, elite flags and spawn clusters |
 | `route_check.py` | Distance from every logged quest's objectives and turn-in to a planned route (on route / short detour / off route) and real XP at the current level |
 | `map_route.py` | A numbered route for the in-game world map from quests and waypoints: objectives first (nearest-neighbour order), turn-ins last, one pin per spot. Writes it into the addon for `/scout route` (`--addon`), as a [wow-ai](https://github.com/chelinho139/wow-ai) map layer, or as TomTom `/way` lines (`--tomtom`) |
@@ -328,6 +328,19 @@ side are in [docs/curseforge.md](docs/curseforge.md).
 ## License
 
 [MIT](LICENSE).
+
+## Other data sources
+
+Quest XP comes from the game client first (the snapshot has what each logged quest pays at
+your level), then from QuestieDB. Two open projects are worth knowing as they grow:
+
+- [opendata](https://github.com/wowlayerup-forever/opendata) (data CC BY 4.0, with an MCP
+  server for AI agents): game data keyed by Blizzard IDs with provenance on every row. As of
+  November 2026 it holds 46 quests and no world data, so the tools do not read it yet.
+- [forever-xp](https://github.com/Jweyant/forever-xp) (GPL-3.0): hand-written leveling routes
+  with skip reasons, quest XP-per-minute scores, talent builds and Blizzard's change notes.
+  A good reference for an AI assistant; its code and data files are not copied here because
+  of the license difference.
 
 ## Credits
 

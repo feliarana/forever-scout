@@ -139,12 +139,18 @@ function UnitExists(unit)
   if unit == "player" then return true end
   if unit == "target" then return STUB.target ~= nil end
   if unit == "pet" then return STUB.pet ~= nil end
+  if unit == "npc" then return STUB.npc ~= nil end
   return false
+end
+-- STUB.npc = { name, id } is the unit of an open quest, trainer or vendor window.
+function UnitGUID(unit)
+  if unit == "npc" and STUB.npc then return "Creature-0-4444-0-55-" .. STUB.npc.id .. "-0000ABCDEF" end
 end
 function UnitName(unit)
   if unit == "player" then return STUB.player.name end
   if unit == "target" then return STUB.target and STUB.target.name end
   if unit == "pet" then return STUB.pet and STUB.pet.name end
+  if unit == "npc" then return STUB.npc and STUB.npc.name end
 end
 function UnitClass(unit) if unit == "player" then return STUB.player.class, STUB.player.class end end
 function UnitRace() return STUB.player.race, STUB.player.race end
@@ -265,6 +271,18 @@ end
 function C_QuestLog.IsFailed() return false end
 function C_QuestLog.GetAllCompletedQuestIDs() return STUB.completedQuests end
 function C_QuestLog.GetMaxNumQuestsCanAccept() return STUB.questCap end
+-- Per-quest client facts, set on the STUB.quests entries: xp, waypoint = { mapID, x, y }.
+function GetQuestLogRewardXP(id)
+  for _, q in ipairs(STUB.quests) do
+    if q.id == id then return q.xp or 0 end
+  end
+  return 0
+end
+function C_QuestLog.GetNextWaypoint(id)
+  for _, q in ipairs(STUB.quests) do
+    if q.id == id and q.waypoint then return q.waypoint[1], q.waypoint[2], q.waypoint[3] end
+  end
+end
 
 ----------------------------------------------------------------------------------------
 -- Talents (trait system): one tree, one node, points held as the tree currency

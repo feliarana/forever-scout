@@ -70,7 +70,10 @@ as this routine:
    auction or keep.
 9. Look up game facts (quest rewards, item stats, zones) in current WoW Forever sources and
    say which ones you could not verify. Forever changes Classic in places, so Classic data is
-   a fallback, labelled as such.
+   a fallback, labelled as such. Useful open sources: forever-xp.com (leveling routes with
+   the reasons to skip a quest, talent builds, Blizzard's change notes) and the opendata
+   project (github.com/wowlayerup-forever/opendata, with an MCP server). Quest XP in
+   `analyze.py` already comes from the game client when the snapshot has it.
 
 Answer in the player's language. Name quests, NPCs and zones as their game client shows them,
 with the English name beside it.

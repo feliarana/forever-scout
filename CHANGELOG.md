@@ -3,6 +3,11 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.5.1
+
+- The snapshot now records what the game client itself says each quest in your log pays in XP at your level. This covers Forever's new quests, which quest databases do not have yet.
+- It also remembers who gave you each quest and where you were when you accepted it.
+
 ## TrailScout 1.5.0
 
 First public release. Works with any class and faction on World of Warcraft: Forever.

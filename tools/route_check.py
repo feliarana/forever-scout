@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (  # noqa: E402
-    fmt_xp, load_q, load_snapshot, objective_targets, take_char_arg, quest_name, resolve_zone, spawns_of,
+    fmt_xp, load_q, quest_xp_text, load_snapshot, objective_targets, take_char_arg, quest_name, resolve_zone, spawns_of,
     xp_at_level, zone_name,
 )
 
@@ -101,7 +101,7 @@ def main():
             continue
         complete = bool(lq.get("complete"))
         state = "COMPLETE" if complete else "in progress"
-        lines.append(f"[{qid}] {quest_name(Q, qid)} (lvl {q['level']}, {fmt_xp(q, level)}, {state})")
+        lines.append(f"[{qid}] {quest_name(Q, qid)} (lvl {q['level']}, {quest_xp_text(q, lq, level)}, {state})")
         if not complete:
             done_texts = [o for o in lq.get("objectives") or [] if o.get("done")]
             targets = objective_targets(Q, q)
@@ -126,7 +126,7 @@ def main():
         # Worst of objectives and turn-in decides the group; missing data never hides a far turn-in.
         worst = max(worst, rank) if worst != 3 else (3 if rank < 2 else 2)
         lines.append(f"    turn-in: {text}")
-        xp = xp_at_level(q, level)[0] or 0
+        xp = lq.get("xp") or xp_at_level(q, level)[0] or 0
         rows.append((worst, -xp, lines))
 
     titles = {0: "On route", 1: "Short detour", 2: "Off route", 3: "No data", 9: "Unknown"}

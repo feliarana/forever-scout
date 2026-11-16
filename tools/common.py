@@ -116,6 +116,10 @@ def _merge_history(old, new):
     merged = dict(old)
     for key, value in new.items():
         prev = merged.get(key)
+        # An empty Lua table loads as an empty dict whatever it was meant to hold: a list the
+        # new addon has not added to yet must not wipe the older entries.
+        if prev and isinstance(value, (list, dict)) and not value:
+            continue
         if isinstance(value, list) and isinstance(prev, list):
             merged[key] = prev + value
         elif isinstance(value, dict) and isinstance(prev, dict):
@@ -523,6 +527,37 @@ def fmt_xp(q, level):
     if src == "classic":
         s += " ~classic"
     return s
+
+
+def quest_xp_text(q, log_quest, level):
+    """XP of a logged quest. The client's own number (snapshot `xp`) wins: it is what the
+    quest pays at the current level, and the only source for quests the database lacks."""
+    client = (log_quest or {}).get("xp")
+    if client:
+        return f"{client} XP"
+    return fmt_xp(q, level) if q else "XP ?"
+
+
+def map_label(Q, map_id):
+    """Zone name of a uiMapID, in both languages when known."""
+    area = config.MAPID_TO_ZONE.get(map_id) or (Q["uimap"].get(map_id) or (None,))[0]
+    return zone_name(Q, area) if area else f"map {map_id}"
+
+
+def client_places(Q, log_quest):
+    """Where the client and the player's own history place a logged quest, for quests the
+    database cannot locate: the game's next waypoint and where the quest was accepted."""
+    lines = []
+    way = (log_quest or {}).get("waypoint") or {}
+    if way.get("mapID") and way.get("x") is not None:
+        what = "turn-in" if log_quest.get("complete") else "next step"
+        lines.append(f"{what} (game waypoint): {map_label(Q, way['mapID'])} {way['x']:.1f},{way['y']:.1f}")
+    giver = (log_quest or {}).get("giver") or {}
+    if giver.get("mapID") and giver.get("x") is not None:
+        who = giver.get("name") or "no NPC (item or object)"
+        lines.append(f"accepted from {who}: {map_label(Q, giver['mapID'])} {giver['x']:.1f},{giver['y']:.1f} "
+                     f"(your own record, {giver.get('at')})")
+    return lines
 
 
 def money(copper):

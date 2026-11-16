@@ -12,7 +12,7 @@ import advice  # noqa: E402
 import stash  # noqa: E402
 import config  # noqa: E402
 from common import (  # noqa: E402
-    char_name, collect_items, fits_character, flatten_items, item_name, syndicator_characters, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot, main_character, snapshots, take_char_arg, IDENTITY,
+    char_name, client_places, collect_items, fits_character, quest_xp_text, flatten_items, item_name, syndicator_characters, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot, main_character, snapshots, take_char_arg, IDENTITY,
     dist, locate, money, player_pos, prereqs_met, quest_level, quest_name, resolve_zone,
     snapshot_age_minutes, xp_at_level, zone_name,
 )
@@ -279,11 +279,17 @@ def quests(Q, snap, zones):
     complete = [q for q in log if q.get("complete")]
     progress = [q for q in log if not q.get("complete")]
 
-    def turnin(qid):
-        q = Q["quests"].get(qid)
-        if not q:
-            return ["(not in QuestieDB)"]
-        return [fmt_loc(Q, l) for l in locate(Q, q["end_npcs"], q["end_objects"], zid, pos)] or ["?"]
+    def turnin(lq):
+        """Turn-in lines from the quest database, falling back to what the client and the
+        player's own history know when the database has no place for the quest."""
+        q = Q["quests"].get(lq["id"])
+        found = [fmt_loc(Q, l) for l in locate(Q, q["end_npcs"], q["end_objects"], zid, pos)] if q else []
+        located = [t for t in found if "(no coordinates)" not in t]
+        if located:
+            return [f"turn-in: {t}" for t in found]
+        fallback = client_places(Q, lq)
+        missing = "turn-in: " + ("; ".join(found) if found else "not in QuestieDB" if not q else "?")
+        return [missing] + fallback
 
     size = snap.get("questLog") or {}
     if size.get("max"):
@@ -293,21 +299,21 @@ def quests(Q, snap, zones):
     section(f"Ready to turn in ({len(complete)})")
     for lq in sorted(complete, key=lambda q: q.get("level") or 0):
         q = Q["quests"].get(lq["id"])
-        xp = fmt_xp(q, level) if q else "XP ?"
+        xp = quest_xp_text(q, lq, level)
         print(f"[{lq['id']}] {quest_name(Q, lq['id'])} (lvl {lq.get('level')}, {xp})")
-        for t in turnin(lq["id"]):
-            print(f"    turn-in: {t}")
+        for t in turnin(lq):
+            print(f"    {t}")
 
     section(f"In progress ({len(progress)})")
     for lq in sorted(progress, key=lambda q: q.get("level") or 0):
         q = Q["quests"].get(lq["id"])
-        xp = fmt_xp(q, level) if q else "XP ?"
+        xp = quest_xp_text(q, lq, level)
         print(f"[{lq['id']}] {quest_name(Q, lq['id'])} (lvl {lq.get('level')}, {xp}) — {lq.get('zoneHeader')}")
         for o in lq.get("objectives") or []:
             mark = "✓" if o.get("done") else "·"
             print(f"    {mark} {o.get('text')}")
-        for t in turnin(lq["id"]):
-            print(f"    turn-in: {t}")
+        for t in turnin(lq):
+            print(f"    {t}")
 
     # Quests unlocked once the complete ones are turned in.
     after = done | {q["id"] for q in complete}
