@@ -1,12 +1,19 @@
-# forever-claude
+# forever-scout
 
-Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), for a troll hunter.
+Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), for any class and
+faction: an in-game addon takes a snapshot of your character and offline tools let an AI
+assistant read it to plan your next steps. It started as the author's troll hunter setup, so
+hunters get the most out of the box.
+
+New here? Install the addon ([step 1](#1-the-addon-any-class)), type `/scout help` in game, and
+read the [addon README](addon/ForeverScout/README.md).
 
 - `addon/ForeverScout/` — in-game addon: character snapshot, loot advisor, tooltip score, upkeep alerts and NPC arrow
   ([addon README](addon/ForeverScout/README.md)). The game's `Interface/AddOns/ForeverScout` is a
   symlink to this folder.
 - `tools/` — Python scripts that cross the live snapshot with the installed QuestieDB.
-- `guide/` — leveling guide for the troll hunter.
+- `guide/` — the author's troll hunter leveling guide (work in progress).
+- `tests/` — addon tests that run outside the game (`npm test`).
 - `AGENTS.md` — guide for any AI assistant helping a player set up and use the toolkit.
 - `CLAUDE.md` — the author's personal rules for Claude.
 
@@ -16,7 +23,7 @@ Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), fo
 
 - **Snapshot** — quests, location, gear, bags, talents, spellbook, action bars, pet,
   professions, buffs, hearthstone, durability, party and online friends, refreshed every 20
-  seconds and written to disk on `/reload`. `/wow [question]` also opens a copy box with a
+  seconds and written to disk on `/reload`. `/scout [question]` also opens a copy box with a
   one-line summary to paste into a chat.
 - **Online friends** — friend list, Battle.net friends playing WoW, guild and community
   members, with level and zone; guild name and rank, communities; party members with map
@@ -26,14 +33,17 @@ Leveling toolkit for **World of Warcraft: Forever** (Classic+, level cap 60), fo
 - **Window capture** — last quest reward window, trainer and vendor opened, with stats and
   costs.
 - **Loot advisor** — NEED / GREED verdict on every loot roll, or with
-  `/wow <item link>`, using the hunter stat weights against the equipped item.
+  `/scout <item link>`, using stat weights against the equipped item. Hunters have built-in
+  weights; other classes set their own with `/scout weights`.
 - **Tooltip score** — every gear tooltip shows the weighted score difference against what is
-  equipped (green upgrade, red downgrade), or why the item is not for a hunter.
-- **Addon overlap check** — `/wow addons` lists loaded addons that do the same job, to trim
+  equipped (green upgrade, red downgrade), or why your class cannot use the item.
+- **Addon overlap check** — `/scout addons` lists loaded addons that do the same job, to trim
   long addon lists.
 - **Upkeep alerts** — on-screen warning and sound for low ammo (with a hint to equip another
-  stack), dead / unhappy / content / missing pet, nearly full bags and low durability.
-  `/wow alerts on|off`.
+  stack), dead / unhappy / content / missing pet, nearly full bags, low durability and unspent
+  talent points. `/scout alerts on|off`.
+- **In-game help and languages** — `/scout help` explains every command; messages are in
+  Spanish on esMX / esES clients and English elsewhere.
 - **NPC arrow** — `/donde <npc name | id | party member>` puts a TomTom arrow on the nearest
   spawn (Questie database) and prints the distance in yards and meters; with no argument it
   uses the NPC target, and it follows party members live. `/donde off` clears it.
@@ -59,23 +69,22 @@ Nothing from the game is copied here: tools always read the live files under `WO
    game has `Interface/AddOns/ForeverScout/ForeverScout.toc`.
    - To pick up updates automatically, link it instead of copying:
      - Windows (Command Prompt as admin):
-       `mklink /D "C:\...\_forever_\Interface\AddOns\ForeverScout" "C:\...\forever-claude\addon\ForeverScout"`
-     - Linux / macOS: `ln -s /path/to/forever-claude/addon/ForeverScout /path/to/_forever_/Interface/AddOns/ForeverScout`
+       `mklink /D "C:\...\_forever_\Interface\AddOns\ForeverScout" "C:\...\forever-scout\addon\ForeverScout"`
+     - Linux / macOS: `ln -s /path/to/forever-scout/addon/ForeverScout /path/to/_forever_/Interface/AddOns/ForeverScout`
 3. Optional, recommended: install **Questie** (Forever version, with QuestieDB) and **TomTom**.
    `/donde` needs both.
-4. In game, enable ForeverScout in the AddOns list and `/reload`.
+4. In game, enable ForeverScout in the AddOns list and `/reload`. Type `/scout help`.
 
 What works for each class:
 
 | Feature | Hunter | Other classes |
 |---|---|---|
-| Snapshot (`/wow`, `/reload`), copy box, session history | yes | yes |
+| Snapshot (`/scout`, `/reload`), copy box, session history | yes | yes |
 | `/donde` NPC and party arrow | yes | yes |
 | Online friends, guild and communities | yes | yes |
-| Alerts: bags almost full, low durability | yes | yes |
+| Alerts: bags almost full, low durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
-| Loot roll NEED / GREED advice | yes | — (hunter stat weights) |
-| Tooltip score | yes | — (hunter stat weights) |
+| Loot roll NEED / GREED advice and tooltip score | yes, built-in weights | after setting your own with `/scout weights` |
 
 ### 2. The offline tools (optional)
 
@@ -124,7 +133,7 @@ Paths live in `config.py` and can be overridden with environment variables:
 
 Characters are discovered from `WTF/Account/<account>/<realm>/<character>/`, so any number of
 mains, alts and bank alts works. Install ForeverScout and log in once with each character
-(`/wow` or `/reload`) so it gets a snapshot.
+(`/scout` or `/reload`) so it gets a snapshot.
 
 - `analyze.py`, `guide.py` and `route_check.py` work on one character: `--char NAME`
   (folder name like `Caza-Peques` or just `Caza`), else `WOW_CHAR`, else the highest level.
@@ -158,3 +167,27 @@ Distances are in map units (percent of the zone map). Route check thresholds: �
 - `WTF/.../SavedVariables/ForeverScout.lua` and `ShortestPathForever.lua` — snapshot and known flight paths.
 - `WTF/<account>/SavedVariables/Syndicator.lua` — bags, bank and mail of every character.
 - `WTF/<account>/SavedVariables/Auctionator.lua` — AH price database (run a full scan to refresh) and vendor price cache.
+
+## Development
+
+The addon has a test suite that runs outside the game: `tests/addon_test.js` loads
+`ForeverScout.lua` in a Lua VM ([fengari](https://github.com/fengari-lua/fengari)) against
+`tests/wow_stub.lua`, a small stand-in for the WoW client, and checks the snapshot, the loot
+advisor, the alerts, the slash commands and the Spanish translations. It also parses the file
+as Lua 5.1, the version the game runs.
+
+```bash
+npm install   # once; needs Node.js 22+
+npm test
+```
+
+Run it before every `/reload` on a change to the addon; CI runs it on every push
+(`.github/workflows/test.yml`). When the addon calls a client API the stub does not model
+yet, add it to `tests/wow_stub.lua`.
+
+## Credits
+
+- [chelinho139/wow-ai](https://github.com/chelinho139/wow-ai) — the idea of testing a WoW addon
+  in a Lua VM with a client stub comes from its test suite.
+- [Questie](https://github.com/Questie/Questie) and [QuestieDB](https://github.com/Questie/QuestieDB)
+  — quest, NPC and spawn data, read live from the installed addon.

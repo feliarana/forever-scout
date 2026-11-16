@@ -183,7 +183,7 @@ def _pick_character():
         sys.exit(f"Unknown character '{wanted}'. Known: {', '.join(char_name(d) for d in dirs)}")
     snaps = snapshots()
     if not snaps:
-        sys.exit("No ForeverScout snapshot found: log in, run /wow or /reload, then retry")
+        sys.exit("No ForeverScout snapshot found: log in, run /scout or /reload, then retry")
     return max(snaps, key=lambda d: (snaps[d][0].get("level") or 0, snaps[d][0].get("savedAt") or ""))
 
 

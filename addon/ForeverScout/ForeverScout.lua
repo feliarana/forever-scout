@@ -1,12 +1,12 @@
 -- ForeverScout: writes a per-character snapshot into SavedVariables.
 -- WoW only flushes SavedVariables to disk on /reload, character switch or logout,
--- so /wow builds the snapshot and the following /reload writes it to disk.
+-- so /scout builds the snapshot and the following /reload writes it to disk.
 --
--- Usage: /wow [optional question]  -> saves snapshot + question and shows a copy box;
+-- Usage: /scout [optional question]  -> saves snapshot + question and shows a copy box;
 -- type /reload to write the full snapshot to disk. See README.md for every feature.
 -- It also remembers the last quest reward window, trainer and vendor you opened.
 -- /donde <npc | party member> points a TomTom arrow at it (see where()).
--- Upkeep alerts warn about ammo, pet, bags and durability (see checkAlerts(), /wow alerts).
+-- Upkeep alerts warn about ammo, pet, bags and durability (see checkAlerts(), /scout alerts).
 -- Gear tooltips get a weighted score line against what is equipped (see addTooltipScore()).
 
 local frame = CreateFrame("Frame")
@@ -14,8 +14,9 @@ local frame = CreateFrame("Frame")
 -- Data captured from windows during the session; kept until the next snapshot.
 local session = {}
 
--- Upkeep alerts (ammo, pet, bags, durability); defined further down, used by the event handler.
-local scheduleAlerts
+-- Upkeep alerts (ammo, pet, bags, durability) and the first-login welcome line; defined
+-- further down, used by the event handler.
+local scheduleAlerts, welcome
 
 -- Call a function safely; return nil instead of raising if the API is missing or errors.
 local function try(fn, ...)
@@ -25,6 +26,114 @@ local function try(fn, ...)
   local n, r = pack(pcall(fn, ...))
   if r[1] then return unpack(r, 2, n) end
   return nil
+end
+
+-- Every chat message goes through here so it carries the addon name.
+local function say(text)
+  DEFAULT_CHAT_FRAME:AddMessage("|cFF54E33BForeverScout|r: " .. text)
+end
+
+-- Localization: the English text is the key, so a missing translation falls back to English.
+-- Spanish clients (esMX, esES) get the table below; add another locale the same way.
+local L = {}
+local function T(text) return L[text] or text end
+local clientLocale = GetLocale and GetLocale() or "enUS"
+if clientLocale == "esMX" or clientLocale == "esES" then
+  -- Loot advisor and tooltip
+  L["NEED"] = "NECESIDAD"
+  L["GREED"] = "CODICIA"
+  L["not equippable"] = "no es equipable"
+  L["a weapon your class cannot use"] = "arma que tu clase no puede usar"
+  L["armor too heavy for your class"] = "armadura demasiado pesada para tu clase"
+  L["your class cannot use shields"] = "tu clase no puede usar escudos"
+  L["armor type you can wear from level 40"] = "tipo de armadura que podés usar desde el nivel 40"
+  L["unknown slot (%s)"] = "ranura no reconocida (%s)"
+  L[" (requires level %d)"] = " (requiere nivel %d)"
+  L["upgrade, +%.1f points%s"] = "mejora, +%.1f puntos%s"
+  L["not better than yours (%.1f)%s"] = "no mejora lo tuyo (%.1f)%s"
+  L["not for you (%s)"] = "no es para vos (%s)"
+  L["equipped, score %.1f"] = "equipado, puntaje %.1f"
+  L["%+.1f vs equipped"] = "%+.1f contra lo equipado"
+  L["(score %.1f)"] = "(puntaje %.1f)"
+  L["needs level %d"] = "requiere nivel %d"
+  L["no stat weights for your class yet, so there is no loot advice. Set your own: /scout weights agi=1 sta=0.5 (see /scout weights)."] =
+    "todavía no hay pesos de estadísticas para tu clase, así que no hay consejo de botín. Poné los tuyos: /scout weights agi=1 sta=0.5 (mirá /scout weights)."
+  -- Stat weights command
+  L["stat weights (%s): %s"] = "pesos de estadísticas (%s): %s"
+  L["yours"] = "tuyos"
+  L["class default"] = "por defecto de la clase"
+  L["none set"] = "sin definir"
+  L["usage: /scout weights agi=2.3 sta=0.7 ... | /scout weights reset. Stats: %s. dps is melee weapon DPS, rdps is ranged weapon DPS."] =
+    "uso: /scout weights agi=2.3 sta=0.7 ... | /scout weights reset. Estadísticas: %s. dps es el DPS del arma cuerpo a cuerpo, rdps el del arma a distancia."
+  L["unknown stat \"%s\". Stats: %s."] = "estadística desconocida \"%s\". Estadísticas: %s."
+  L["stat weights saved for this character."] = "pesos de estadísticas guardados para este personaje."
+  L["stat weights reset to the class default."] = "pesos de estadísticas restablecidos a los de la clase."
+  -- Copy box
+  L["Ctrl+C to copy, then paste it into your AI chat. Esc to close."] = "Ctrl+C para copiar y pegalo en tu chat de IA. Esc para cerrar."
+  L["Summary of your character (%d characters), already selected: just press Ctrl+C."] =
+    "Resumen de tu personaje (%d caracteres), ya seleccionado: solo apretá Ctrl+C."
+  -- /donde
+  L["%s left the party; arrow cleared."] = "%s salió del grupo; flecha borrada."
+  L["%s: position hidden (instance or other continent)."] = "%s: posición oculta (instancia u otro continente)."
+  L["arrow cleared."] = "flecha borrada."
+  L["TomTom is not enabled; enable it to get the arrow."] = "TomTom no está activado; activalo para tener la flecha."
+  L["usage: /donde <npc name or id | party member>, /donde off. With no argument it uses your NPC target."] =
+    "uso: /donde <nombre o id de npc | miembro del grupo>, /donde off. Sin argumento usa el NPC que tenés de objetivo."
+  L["following %s (party member)."] = "siguiendo a %s (miembro del grupo)."
+  L["Questie is not loaded yet; try again in a few seconds."] = "Questie todavía no cargó; probá de nuevo en unos segundos."
+  L["no NPC matches \"%s\". Other players can only be tracked while in your party."] =
+    "ningún NPC coincide con \"%s\". A otros jugadores solo se los puede seguir si están en tu grupo."
+  L["%s: no known spawn in the database."] = "%s: sin aparición conocida en la base de datos."
+  L["%s: spawn zone %s has no map."] = "%s: la zona de aparición %s no tiene mapa."
+  L["other continent"] = "otro continente"
+  L["%d matches, nearest chosen. Others: %s. Use /donde <id>."] = "%d coincidencias, se eligió la más cercana. Otras: %s. Usá /donde <id>."
+  -- Upkeep alerts
+  L["No ammo equipped: drag arrows to the ammo slot."] = "Sin munición equipada: arrastrá flechas a la ranura de munición."
+  L["No ammo: buy arrows."] = "Sin munición: comprá flechas."
+  L["your other ammo"] = "tu otra munición"
+  L[" Equip %s (%d)."] = " Equipá %s (%d)."
+  L[" Buy more."] = " Comprá más."
+  L["Low ammo: %d %s left.%s"] = "Poca munición: quedan %d %s.%s"
+  L["Pet is dead: cast Revive Pet."] = "La mascota está muerta: lanzá Revivir mascota."
+  L["Pet is unhappy (75% damage, may run away): Feed Pet now."] = "La mascota está descontenta (75% de daño, puede escaparse): alimentala ya."
+  L["Pet is only content: Feed Pet for +25% damage."] = "La mascota solo está conforme: alimentala para +25% de daño."
+  L["No pet out: Call Pet."] = "Sin mascota: lanzá Llamar a mascota."
+  L["%d unspent talent point(s): open the talent window."] = "%d punto(s) de talento sin gastar: abrí la ventana de talentos."
+  L["Bags almost full: %d free slot(s)."] = "Bolsas casi llenas: %d lugar(es) libre(s)."
+  L["Gear at %d%% durability: repair."] = "Equipo al %d%% de durabilidad: reparalo."
+  L["upkeep alerts off (/scout alerts on to enable)."] = "alertas apagadas (/scout alerts on para activarlas)."
+  L["upkeep alerts on."] = "alertas activadas."
+  L["on"] = "activadas"
+  L["off"] = "apagadas"
+  L["upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points. Repeat every %d min. /scout alerts on|off"] =
+    "alertas %s: munición < %d, lugares libres <= %d, durabilidad < %d%%, mascota muerta / descontenta / conforme / ausente, puntos de talento sin gastar. Se repiten cada %d min. /scout alerts on|off"
+  -- Addon overlap check
+  L["%d addons loaded (of %d installed)."] = "%d addons cargados (de %d instalados)."
+  L["no overlapping addons found."] = "no hay addons superpuestos."
+  L["same job twice: keep one per line (Leatrix Plus / ElvUI only clash if that option is on)."] =
+    "mismo trabajo dos veces: dejá uno por línea (Leatrix Plus / ElvUI solo chocan si esa opción está activa)."
+  -- Help and welcome
+  L["loaded"] = "cargado"
+  L["not installed or disabled"] = "no instalado o desactivado"
+  L["Optional addons, only needed for /donde: Questie %s, TomTom %s."] = "Addons opcionales, solo necesarios para /donde: Questie %s, TomTom %s."
+  L["loaded. Type /scout help to see what it does."] = "cargado. Escribí /scout help para ver qué hace."
+  L["ForeverScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps."] =
+    "ForeverScout guarda una foto de tu personaje (misiones, equipo, bolsas, talentos, amigos) que un asistente de IA o las herramientas offline pueden leer para planificar tus próximos pasos."
+  L["/scout [question]: build the snapshot and open a box to copy a summary into an AI chat."] =
+    "/scout [pregunta]: arma la foto y abre una caja para copiar un resumen a un chat de IA."
+  L["/reload: writes the full snapshot to disk (the game only saves addon data on reload or logout)."] =
+    "/reload: escribe la foto completa al disco (el juego solo guarda datos de addons al recargar o salir)."
+  L["/donde <npc | party member> (or /where): arrow to an NPC or a party member. Needs Questie and TomTom. /donde off clears it."] =
+    "/donde <npc | miembro del grupo> (o /where): flecha hacia un NPC o un miembro del grupo. Necesita Questie y TomTom. /donde off la borra."
+  L["/scout <shift-clicked item>: NEED or GREED verdict against what you wear."] =
+    "/scout <item con shift-clic>: veredicto de NECESIDAD o CODICIA contra lo que tenés puesto."
+  L["/scout weights: show or set the stat weights used for loot advice and tooltips."] =
+    "/scout weights: muestra o cambia los pesos de estadísticas del consejo de botín y los tooltips."
+  L["/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters."] =
+    "/scout alerts [on|off]: avisos de bolsas, durabilidad, puntos de talento, y munición y mascota para cazadores."
+  L["/scout addons: loaded addons that do the same job."] = "/scout addons: addons cargados que hacen el mismo trabajo."
+  L["Privacy: the snapshot and the copy box include names of party members, friends, guild and communities. It stays on your computer until you paste or share it."] =
+    "Privacidad: la foto y la caja de copiar incluyen nombres de miembros del grupo, amigos, hermandad y comunidades. Queda en tu computadora hasta que la pegues o compartas."
 end
 
 local function itemIdFromLink(link)
@@ -50,6 +159,9 @@ local STAT_KEYS = {
   ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "rap",
   ITEM_MOD_CRIT_RATING_SHORT = "crit",
   ITEM_MOD_HIT_RATING_SHORT = "hit",
+  ITEM_MOD_SPELL_POWER_SHORT = "sp",
+  ITEM_MOD_SPELL_HEALING_DONE_SHORT = "heal",
+  ITEM_MOD_POWER_REGEN0_SHORT = "mp5",
 }
 
 -- Full description of an item: quality, slot, level requirement, sell price and stats.
@@ -70,15 +182,45 @@ local function describeItem(link)
   return d
 end
 
--- Loot advisor: scores an item with RestedXP hunter weights and compares it to what is equipped,
+-- Loot advisor: scores an item with per-class stat weights and compares it to what is equipped,
 -- so a Need/Greed decision can be made in chat without a /reload.
-local WEIGHTS = { agi = 2.33, spi = 1.12, sta = 0.75, int = 0.55, str = 0.20,
-                  armor = 0.035, ap = 0.8, rap = 0.8, crit = 10, hit = 10 }
-local RANGED_DPS_WEIGHT, MELEE_DPS_WEIGHT = 14, 3
+-- Weights per class token. `dps` is melee weapon DPS, `rdps` ranged weapon DPS. Only classes
+-- with a sourced set are listed (hunter: RestedXP, levels 20-29); any player can set their own
+-- with "/scout weights", saved per character in ForeverScoutHistory.weights.
+local CLASS_WEIGHTS = {
+  HUNTER = { agi = 2.33, spi = 1.12, sta = 0.75, int = 0.55, str = 0.20, armor = 0.035,
+             ap = 0.8, rap = 0.8, crit = 10, hit = 10, dps = 3, rdps = 14 },
+}
+-- Stat names "/scout weights" accepts, in display order.
+local WEIGHT_STATS = { "agi", "str", "sta", "int", "spi", "armor", "ap", "rap", "crit", "hit",
+                       "sp", "heal", "mp5", "dps", "rdps" }
+
+local function playerClass()
+  return select(2, UnitClass("player"))
+end
+
+-- Weights in use: the character's own, else the class default, else nil (no loot advice).
+local function activeWeights()
+  local h = ForeverScoutHistory
+  if h and type(h.weights) == "table" and next(h.weights) then return h.weights, "yours" end
+  local weights = CLASS_WEIGHTS[playerClass()]
+  if weights then return weights, "class default" end
+  return nil, "none set"
+end
 
 -- Weapon subclasses a hunter can equip (axes, bows, guns, polearms, swords, staves, misc, fist, daggers, thrown, crossbows).
-local HUNTER_WEAPONS = { [0] = true, [1] = true, [2] = true, [3] = true, [6] = true, [7] = true, [8] = true,
-                         [10] = true, [13] = true, [14] = true, [15] = true, [16] = true, [18] = true }
+-- Other classes have no list yet, so their weapons are never rejected.
+local CLASS_WEAPONS = {
+  HUNTER = { [0] = true, [1] = true, [2] = true, [3] = true, [6] = true, [7] = true, [8] = true,
+             [10] = true, [13] = true, [14] = true, [15] = true, [16] = true, [18] = true },
+}
+-- Heaviest armor subclass each class wears {before level 40, from level 40}, Classic rules:
+-- 1 cloth, 2 leather, 3 mail, 4 plate. Subclass 6 is shields.
+local ARMOR_LIMIT = {
+  WARRIOR = { 3, 4 }, PALADIN = { 3, 4 }, HUNTER = { 2, 3 }, SHAMAN = { 2, 3 }, ROGUE = { 2, 2 },
+  DRUID = { 2, 2 }, PRIEST = { 1, 1 }, MAGE = { 1, 1 }, WARLOCK = { 1, 1 },
+}
+local SHIELD_CLASSES = { WARRIOR = true, PALADIN = true, SHAMAN = true }
 
 local SLOTS_BY_EQUIPLOC = {
   INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_CHEST = { 5 },
@@ -95,14 +237,16 @@ local function scoreItem(link)
   local equipLoc = select(9, try(getInfo, link))
   local getStats = (C_Item and C_Item.GetItemStats) or GetItemStats
   local stats = try(getStats, link) or {}
+  local weights = activeWeights()
+  if not weights then return 0 end
   local score = 0
   for key, value in pairs(stats) do
     local short = STAT_KEYS[key]
     if short == "dps" then
       local ranged = equipLoc == "INVTYPE_RANGED" or equipLoc == "INVTYPE_RANGEDRIGHT" or equipLoc == "INVTYPE_THROWN"
-      score = score + value * (ranged and RANGED_DPS_WEIGHT or MELEE_DPS_WEIGHT)
-    elseif short and WEIGHTS[short] then
-      score = score + value * WEIGHTS[short]
+      score = score + value * ((ranged and weights.rdps or weights.dps) or 0)
+    elseif short and weights[short] then
+      score = score + value * weights[short]
     end
   end
   return score
@@ -111,24 +255,34 @@ end
 -- Weighted score of an item against what is equipped in its slot.
 -- Returns nil while the item is not cached yet. Otherwise a table with one of:
 --   skip = reason        not gear the weights apply to (non-equippable, ammo, bags, shirts...)
---   unusable = reason    gear a hunter cannot wear or wield at this level
+--   unusable = reason    gear this class cannot wear or wield at this level
 --   score, current, delta, reqLevel, equipped (true when this exact item is equipped)
 local function evaluateItem(link)
   local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
   local name, _, _, _, reqLevel, _, _, _, equipLoc, _, _, classID, subClassID = try(getInfo, link)
   if not name then return nil end
   if not equipLoc or equipLoc == "" or equipLoc == "INVTYPE_NON_EQUIP_IGNORE" then
-    return { skip = "no es equipable" }
+    return { skip = T("not equippable") }
   end
-  if classID == 2 and not HUNTER_WEAPONS[subClassID] then
-    return { unusable = "arma que un cazador no puede usar" }
+  local class = playerClass()
+  local weapons = CLASS_WEAPONS[class]
+  if classID == 2 and weapons and not weapons[subClassID] then
+    return { unusable = T("a weapon your class cannot use") }
   end
   if classID == 4 then
-    if subClassID == 4 or subClassID == 6 then return { unusable = "placas/escudo, no lo podés usar" } end
-    if subClassID == 3 and UnitLevel("player") < 40 then return { unusable = "malla, recién al 40" } end
+    local limit = ARMOR_LIMIT[class]
+    if subClassID == 6 and not SHIELD_CLASSES[class] then
+      return { unusable = T("your class cannot use shields") }
+    end
+    if limit and subClassID and subClassID >= 1 and subClassID <= 4 then
+      if subClassID > limit[2] then return { unusable = T("armor too heavy for your class") } end
+      if subClassID > limit[1] and UnitLevel("player") < 40 then
+        return { unusable = T("armor type you can wear from level 40") }
+      end
+    end
   end
   local slots = SLOTS_BY_EQUIPLOC[equipLoc]
-  if not slots then return { skip = "ranura no reconocida (" .. tostring(equipLoc) .. ")" } end
+  if not slots then return { skip = string.format(T("unknown slot (%s)"), tostring(equipLoc)) } end
   local result = { score = scoreItem(link), reqLevel = reqLevel }
   local id = itemIdFromLink(link)
   if equipLoc == "INVTYPE_2HWEAPON" then
@@ -152,18 +306,20 @@ local function judgeItem(link)
   if not e then return nil end
   if e.skip or e.unusable then return "GREED", e.skip or e.unusable, 0 end
   local note = ""
-  if e.reqLevel and e.reqLevel > UnitLevel("player") then note = " (requiere nivel " .. e.reqLevel .. ")" end
+  if e.reqLevel and e.reqLevel > UnitLevel("player") then note = string.format(T(" (requires level %d)"), e.reqLevel) end
   if e.delta > 0.5 then
-    return "NEED", string.format("mejora +%.1f puntos%s", e.delta, note), e.delta
+    return "NEED", string.format(T("upgrade, +%.1f points%s"), e.delta, note), e.delta
   end
-  return "GREED", string.format("no mejora lo tuyo (%.1f)%s", e.delta, note), e.delta
+  return "GREED", string.format(T("not better than yours (%.1f)%s"), e.delta, note), e.delta
 end
 
--- The weights, weapon list and armor rules above are for hunters; other classes would get
--- wrong NEED/GREED advice, so the advisor and the tooltip score only run for hunters.
-local function isHunter()
-  return select(2, UnitClass("player")) == "HUNTER"
+-- Loot advice and the tooltip score need stat weights: a class without a default set gets
+-- none until the player sets their own with "/scout weights".
+local function hasWeights()
+  return activeWeights() ~= nil
 end
+
+local NO_WEIGHTS_HELP = "no stat weights for your class yet, so there is no loot advice. Set your own: /scout weights agi=1 sta=0.5 (see /scout weights)."
 
 local function adviseItem(link, attempt)
   local verdict, reason, delta = judgeItem(link)
@@ -172,8 +328,8 @@ local function adviseItem(link, attempt)
     if (attempt or 0) < 5 and C_Timer then C_Timer.After(0.4, function() adviseItem(link, (attempt or 0) + 1) end) end
     return
   end
-  local color = verdict == "NEED" and "|cff00ff00NECESIDAD|r" or "|cffffd100CODICIA|r"
-  print("|cff33ff99ForeverScout|r: " .. link .. " -> " .. color .. " (" .. reason .. ")")
+  local color = verdict == "NEED" and ("|cff00ff00" .. T("NEED") .. "|r") or ("|cffffd100" .. T("GREED") .. "|r")
+  say(link .. " -> " .. color .. " (" .. reason .. ")")
   session.lastRolls = session.lastRolls or {}
   table.insert(session.lastRolls, 1, { item = describeItem(link), verdict = verdict, reason = reason,
                                        delta = math.floor((delta or 0) * 10) / 10, at = date("%H:%M:%S") })
@@ -202,24 +358,25 @@ local function unitMapPos(unit)
 end
 
 -- Tooltip score: one line on every gear tooltip (bags, quest rewards, vendors, links) with the
--- weighted score difference against what is equipped in that slot. Hunter weights only.
+-- weighted score difference against what is equipped in that slot. Needs stat weights (see activeWeights()).
 local function addTooltipScore(tooltip)
   if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end  -- skip comparison tooltips
-  if not isHunter() then return end
+  if not hasWeights() then return end
   local _, link = tooltip:GetItem()
   if not link then return end
   local e = evaluateItem(link)
   if not e or e.skip then return end
   local text
   if e.unusable then
-    text = "|cff808080ForeverScout: not for you (" .. e.unusable .. ")|r"
+    text = "|cff808080ForeverScout: " .. string.format(T("not for you (%s)"), e.unusable) .. "|r"
   elseif e.equipped then
-    text = string.format("|cff808080ForeverScout: equipped, score %.1f|r", e.score)
+    text = "|cff808080ForeverScout: " .. string.format(T("equipped, score %.1f"), e.score) .. "|r"
   else
     local color = e.delta > 0.5 and "|cff00ff00" or (e.delta < -0.5 and "|cffff4040" or "|cffbbbbbb")
-    text = string.format("%sForeverScout: %+.1f vs equipped|r |cff808080(score %.1f)|r", color, e.delta, e.score)
+    text = color .. "ForeverScout: " .. string.format(T("%+.1f vs equipped"), e.delta) .. "|r |cff808080"
+      .. string.format(T("(score %.1f)"), e.score) .. "|r"
     if e.reqLevel and e.reqLevel > UnitLevel("player") then
-      text = text .. " |cffff8000needs level " .. e.reqLevel .. "|r"
+      text = text .. " |cffff8000" .. string.format(T("needs level %d"), e.reqLevel) .. "|r"
     end
   end
   tooltip:AddLine(text)
@@ -1238,7 +1395,10 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
   if event == "PLAYER_LOGIN" then
     onXPUpdate()
     requestRosters()
-    if C_Timer then C_Timer.After(10, function() scheduleAlerts() end) end
+    if C_Timer then
+      C_Timer.After(10, function() scheduleAlerts() end)
+      C_Timer.After(6, function() pcall(welcome) end)
+    end
     -- Keep the snapshot fresh while playing, so a plain /reload always saves current data.
     -- Rosters are re-requested each tick; the server throttles them and the next tick reads them.
     if C_Timer and C_Timer.NewTicker then
@@ -1274,7 +1434,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
     if C_Timer then C_Timer.After(1, function() pcall(captureTradeSkill) end) end
   elseif event == "START_LOOT_ROLL" then
     local link = try(GetLootRollItemLink, arg1)
-    if link and isHunter() then adviseItem(link) end
+    if link and hasWeights() then adviseItem(link) end
   elseif event == "QUEST_DETAIL" then
     captureQuestWindow("offered")
   elseif event == "QUEST_COMPLETE" then
@@ -1287,10 +1447,10 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
   if ALERT_EVENTS[event] then scheduleAlerts() end
 end)
 
--- /wow [question] : store the optional question and build the snapshot.
+-- /scout [question] : store the optional question and build the snapshot.
 -- The player then types /reload themselves: any reload started from addon code
 -- (ReloadUI or a prefilled chat line) is tainted and blocked on this client.
--- /feli and /scout are aliases.
+-- /wow and /feli are older aliases.
 
 -- Compact one-line export of the current snapshot, shown in a copy box so it can be pasted
 -- straight into a chat with Claude without a /reload.
@@ -1298,24 +1458,24 @@ local function compactText(snap)
   local out = {}
   local function add(x) out[#out + 1] = x end
   local loc = snap.location or {}
-  add(string.format("FX1 %s | nv %s %s/%s XP desc %s | %sc | %s - %s %.1f,%.1f",
+  add(string.format("FX1 %s | level %s %s/%s XP rested %s | %s copper | %s - %s %.1f,%.1f",
     tostring(snap.savedAt), tostring(snap.level), tostring(snap.xp), tostring(snap.xpMax),
     tostring(snap.rested), tostring(snap.money), tostring(loc.zone), tostring(loc.subZone),
     tonumber(loc.x) or 0, tonumber(loc.y) or 0))
-  if snap.question then add("PREGUNTA: " .. snap.question) end
+  if snap.question then add("QUESTION: " .. snap.question) end
   local h = snap.hearth or {}
-  add("hogar: " .. tostring(h.bind) .. " cd " .. tostring(h.cooldownLeft))
+  add("hearthstone: " .. tostring(h.bind) .. " cooldown " .. tostring(h.cooldownLeft) .. "s")
   local u = snap.upkeep or {}
-  add("bolsa libre " .. tostring(u.freeSlots) .. " dur min " .. tostring(u.lowestDurability))
+  add("free bag slots " .. tostring(u.freeSlots) .. ", lowest durability " .. tostring(u.lowestDurability) .. "%")
   local b = {}
   for _, a in ipairs(snap.buffs or {}) do b[#b + 1] = tostring(a.name) .. (a.left and ("(" .. a.left .. "s)") or "") end
   add("buffs: " .. table.concat(b, ", "))
   local pet = snap.pet
-  if pet then add(string.format("pet: %s %s nv %s xp %s/%s feliz %s", tostring(pet.name), tostring(pet.family),
+  if pet then add(string.format("pet: %s %s level %s xp %s/%s happiness %s", tostring(pet.name), tostring(pet.family),
     tostring(pet.level), tostring(pet.xp), tostring(pet.xpMax), tostring(pet.happiness))) end
   local party = {}
   for _, m in ipairs(snap.party or {}) do party[#party + 1] = tostring(m.name) .. " " .. tostring(m.class) .. " " .. tostring(m.level) .. " " .. tostring(m.online) .. " " .. tostring(m.mapName) end
-  if #party > 0 then add("grupo: " .. table.concat(party, ", ")) end
+  if #party > 0 then add("party: " .. table.concat(party, ", ")) end
   local friends = {}
   for _, f in ipairs(snap.onlineFriends or {}) do friends[#friends + 1] = tostring(f.name) .. " " .. tostring(f.level) .. " " .. tostring(f.zone) end
   add("friends online: " .. (#friends > 0 and table.concat(friends, ", ") or "none"))
@@ -1327,10 +1487,10 @@ local function compactText(snap)
   local bag = {}
   for _, it in pairs(snap.bags or {}) do bag[#bag + 1] = tostring(it.name) .. " x" .. tostring(it.count) end
   table.sort(bag)
-  add("bolsas: " .. table.concat(bag, ", "))
+  add("bags: " .. table.concat(bag, ", "))
   local eq = {}
   for _, it in pairs(snap.equipment or {}) do if it and it.name then eq[#eq + 1] = it.name end end
-  add("equipo: " .. table.concat(eq, ", "))
+  add("gear: " .. table.concat(eq, ", "))
   return table.concat(out, " || ")
 end
 
@@ -1338,7 +1498,7 @@ local copyFrame
 local function showCopyBox(text)
   if not copyFrame then
     copyFrame = CreateFrame("Frame", "ForeverScoutCopyFrame", UIParent, "BackdropTemplate")
-    copyFrame:SetSize(520, 70)
+    copyFrame:SetSize(520, 88)
     copyFrame:SetPoint("TOP", UIParent, "TOP", 0, -120)
     copyFrame:SetFrameStrata("DIALOG")
     if copyFrame.SetBackdrop then
@@ -1349,7 +1509,11 @@ local function showCopyBox(text)
     end
     local label = copyFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     label:SetPoint("TOP", 0, -8)
-    label:SetText("ForeverScout: Ctrl+C para copiar, pegalo en Claude. Esc para cerrar.")
+    label:SetText("ForeverScout: " .. T("Ctrl+C to copy, then paste it into your AI chat. Esc to close."))
+    -- Second line: says what the text is, since the one-line box only shows a slice of it.
+    local info = copyFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    info:SetPoint("TOP", 0, -24)
+    copyFrame.info = info
     local box = CreateFrame("EditBox", nil, copyFrame, "InputBoxTemplate")
     box:SetSize(480, 24)
     box:SetPoint("BOTTOM", 0, 12)
@@ -1363,8 +1527,11 @@ local function showCopyBox(text)
     copyFrame.box = box
   end
   copyFrame:Show()
+  copyFrame.info:SetText(string.format(T("Summary of your character (%d characters), already selected: just press Ctrl+C."), #text))
   copyFrame.box:SetText(text)
   copyFrame.box:SetFocus()
+  -- Show the start of the summary (level, zone) instead of the tail of the gear list.
+  copyFrame.box:SetCursorPosition(0)
   copyFrame.box:HighlightText()
 end
 
@@ -1373,10 +1540,6 @@ end
 -- uses the current target's NPC id. "/donde off" clears the arrow.
 -- Questie (spawn data) and TomTom (arrow and live distance) must be enabled.
 local YARD_IN_METERS = 0.9144
-
-local function say(text)
-  DEFAULT_CHAT_FRAME:AddMessage("|cFF54E33BForeverScout|r: " .. text)
-end
 
 local function questieModule(name)
   if not (QuestieLoader and QuestieLoader.ImportModule) then return nil end
@@ -1471,14 +1634,14 @@ local function followPartyMember(unit, name)
   local last
   local function update()
     if not UnitExists(unit) or plain(UnitName(unit)) ~= name then
-      say(name .. " left the party; arrow cleared.")
+      say(string.format(T("%s left the party; arrow cleared."), name))
       clearArrow()
       return
     end
     local pos = unitMapPos(unit)
     if not (pos.mapID and pos.x and pos.y) then
       if last then return end  -- keep the last known point
-      say(name .. ": position hidden (instance or other continent).")
+      say(string.format(T("%s: position hidden (instance or other continent)."), name))
       clearArrow()
       return
     end
@@ -1500,17 +1663,17 @@ local function where(msg)
   msg = msg and msg:match("^%s*(.-)%s*$") or ""
   if msg == "off" or msg == "clear" then
     clearArrow()
-    say("arrow cleared.")
+    say(T("arrow cleared."))
     return
   end
   if not (TomTom and TomTom.AddWaypoint) then
-    say("TomTom is not enabled; enable it to get the arrow.")
+    say(T("TomTom is not enabled; enable it to get the arrow."))
     return
   end
   if msg == "" then
     local id = targetNpcId()
     if not id then
-      say("usage: /donde <npc name or id | party member>, /donde off. With no argument it uses your NPC target.")
+      say(T("usage: /donde <npc name or id | party member>, /donde off. With no argument it uses your NPC target."))
       return
     end
     msg = tostring(id)
@@ -1519,29 +1682,29 @@ local function where(msg)
   local unit, member = partyUnitByName(msg)
   if unit then
     clearArrow()
-    say("following " .. member .. " (party member).")
+    say(string.format(T("following %s (party member)."), member))
     followPartyMember(unit, member)
     return
   end
 
   local found = findNpcs(msg)
   if not found then
-    say("Questie is not loaded yet; try again in a few seconds.")
+    say(T("Questie is not loaded yet; try again in a few seconds."))
     return
   end
   if #found == 0 then
-    say("no NPC matches \"" .. msg .. "\". Other players can only be tracked while in your party.")
+    say(string.format(T("no NPC matches \"%s\". Other players can only be tracked while in your party."), msg))
     return
   end
   local best = nearestSpawn(found)
   if not best then
-    say(found[1].name .. ": no known spawn in the database.")
+    say(string.format(T("%s: no known spawn in the database."), found[1].name))
     return
   end
   local zoneDB = questieModule("ZoneDB")
   local mapID = zoneDB and try(zoneDB.GetUiMapIdByAreaId, zoneDB, best.zone)
   if not mapID then
-    say(best.entry.name .. ": spawn zone " .. tostring(best.zone) .. " has no map.")
+    say(string.format(T("%s: spawn zone %s has no map."), best.entry.name, tostring(best.zone)))
     return
   end
   local info = try(C_Map.GetMapInfo, mapID)
@@ -1550,7 +1713,7 @@ local function where(msg)
   setArrow(mapID, best.x, best.y, best.entry.name, true)
   local distance
   if best.dist >= 500000 then
-    distance = "other continent"
+    distance = T("other continent")
   else
     distance = string.format("%d yd (%d m)", math.floor(best.dist + 0.5), math.floor(best.dist * YARD_IN_METERS + 0.5))
   end
@@ -1561,7 +1724,7 @@ local function where(msg)
     for i = 1, math.min(#found, 6) do
       if found[i] ~= best.entry then others[#others + 1] = found[i].name .. " (" .. found[i].id .. ")" end
     end
-    say(#found .. " matches, nearest chosen. Others: " .. table.concat(others, ", ") .. (#found > 6 and ", ..." or "") .. ". Use /donde <id>.")
+    say(string.format(T("%d matches, nearest chosen. Others: %s. Use /donde <id>."), #found, table.concat(others, ", ") .. (#found > 6 and ", ..." or "")))
   end
 end
 
@@ -1571,7 +1734,7 @@ SlashCmdList.FOREVERSCOUTWHERE = where
 
 -- Upkeep alerts: a raid-warning style message, a sound and a chat line when ammo, the pet,
 -- bag space or durability need attention. Each alert fires when its condition starts and
--- repeats every ALERT_LIMITS.repeatSeconds while it lasts. "/wow alerts off" mutes them.
+-- repeats every ALERT_LIMITS.repeatSeconds while it lasts. "/scout alerts off" mutes them.
 local ALERT_LIMITS = {
   ammo = 400,           -- equipped ammo below this (two quiver stacks of 200)
   freeSlots = 2,        -- free bag slots at or below this
@@ -1641,11 +1804,11 @@ local function checkAlerts()
     local equippedID, equipped, total, otherID, other = ammoCounts()
     local name = equippedID and itemNameFromLink(try(GetInventoryItemLink, "player", 0)) or "ammo"
     if not equippedID then
-      alert("ammo", true, total > 0 and "No ammo equipped: drag arrows to the ammo slot." or "No ammo: buy arrows.")
+      alert("ammo", true, total > 0 and T("No ammo equipped: drag arrows to the ammo slot.") or T("No ammo: buy arrows."))
     elseif equipped < ALERT_LIMITS.ammo then
-      local hint = other > equipped and string.format(" Equip %s (%d).", itemNameFromLink(select(2, try(GetItemInfo, otherID))) or "your other ammo", other)
-        or (total < ALERT_LIMITS.ammo and " Buy more." or "")
-      alert("ammo", true, string.format("Low ammo: %d %s left.%s", equipped, name, hint))
+      local hint = other > equipped and string.format(T(" Equip %s (%d)."), itemNameFromLink(select(2, try(GetItemInfo, otherID))) or T("your other ammo"), other)
+        or (total < ALERT_LIMITS.ammo and T(" Buy more.") or "")
+      alert("ammo", true, string.format(T("Low ammo: %d %s left.%s"), equipped, name, hint))
     else
       alert("ammo", false)
     end
@@ -1653,29 +1816,29 @@ local function checkAlerts()
     if UnitExists("pet") then
       alert("petMissing", false)
       local petDead = UnitIsDead("pet")
-      alert("petDead", petDead and not inCombat, "Pet is dead: cast Revive Pet.")
+      alert("petDead", petDead and not inCombat, T("Pet is dead: cast Revive Pet."))
       -- 1 unhappy (75% damage), 2 content (100%), 3 happy (125%).
       local happiness = not petDead and plain(try(GetPetHappiness))
-      alert("petUnhappy", happiness == 1, "Pet is unhappy (75% damage, may run away): Feed Pet now.")
-      alert("petContent", happiness == 2 and not inCombat, "Pet is only content: Feed Pet for +25% damage.")
+      alert("petUnhappy", happiness == 1, T("Pet is unhappy (75% damage, may run away): Feed Pet now."))
+      alert("petContent", happiness == 2 and not inCombat, T("Pet is only content: Feed Pet for +25% damage."))
     else
       alert("petDead", false)
       alert("petUnhappy", false)
       alert("petContent", false)
       local away = (IsResting and IsResting()) or (IsMounted and IsMounted()) or (UnitOnTaxi and UnitOnTaxi("player"))
-      alert("petMissing", UnitLevel("player") >= 10 and not away and not inCombat, "No pet out: Call Pet.")
+      alert("petMissing", UnitLevel("player") >= 10 and not away and not inCombat, T("No pet out: Call Pet."))
     end
   end
 
   local points = unspentTalentPoints()
   alert("talents", points > 0 and not inCombat and not dead,
-    string.format("%d unspent talent point%s: open the talent window.", points, points == 1 and "" or "s"))
+    string.format(T("%d unspent talent point(s): open the talent window."), points))
 
   local u = getUpkeep()
   alert("bags", u.freeSlots <= ALERT_LIMITS.freeSlots,
-    string.format("Bags almost full: %d free slot%s.", u.freeSlots, u.freeSlots == 1 and "" or "s"))
+    string.format(T("Bags almost full: %d free slot(s)."), u.freeSlots))
   alert("durability", not dead and u.lowestDurability < ALERT_LIMITS.durability,
-    string.format("Gear at %d%% durability: repair.", u.lowestDurability))
+    string.format(T("Gear at %d%% durability: repair."), u.lowestDurability))
 end
 
 -- Bag and unit events come in bursts; run one check a second after the last one.
@@ -1694,47 +1857,126 @@ local function alertsCommand(arg)
   local cfg = alertSettings()
   if arg == "off" then
     cfg.enabled = false
-    say("upkeep alerts off (/wow alerts on to enable).")
+    say(T("upkeep alerts off (/scout alerts on to enable)."))
   elseif arg == "on" then
     cfg.enabled = true
     for k in pairs(alertState) do alertState[k] = nil end
-    say("upkeep alerts on.")
+    say(T("upkeep alerts on."))
     scheduleAlerts()
   else
     for k in pairs(alertState) do alertState[k] = nil end
-    say(string.format("upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points. Repeat every %d min. /wow alerts on|off",
-      cfg.enabled and "on" or "off", ALERT_LIMITS.ammo, ALERT_LIMITS.freeSlots, ALERT_LIMITS.durability, ALERT_LIMITS.repeatSeconds / 60))
+    say(string.format(T("upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points. Repeat every %d min. /scout alerts on|off"),
+      cfg.enabled and T("on") or T("off"), ALERT_LIMITS.ammo, ALERT_LIMITS.freeSlots, ALERT_LIMITS.durability, ALERT_LIMITS.repeatSeconds / 60))
     if cfg.enabled then pcall(checkAlerts) end
   end
 end
 
 local function addonsCommand()
   local a = getAddons()
-  say(string.format("%d addons loaded (of %d installed).", #a.loaded, a.total))
+  say(string.format(T("%d addons loaded (of %d installed)."), #a.loaded, a.total))
   if #a.overlaps == 0 then
-    say("no overlapping addons found.")
+    say(T("no overlapping addons found."))
     return
   end
   for _, o in ipairs(a.overlaps) do
     say("|cffffd100" .. o.label .. "|r: " .. table.concat(o.addons, ", "))
   end
-  say("same job twice: keep one per line (Leatrix Plus / ElvUI only clash if that option is on).")
+  say(T("same job twice: keep one per line (Leatrix Plus / ElvUI only clash if that option is on)."))
+end
+
+-- "/scout help": what the addon is for and every command, for someone who never used it.
+local HELP_LINES = {
+  "ForeverScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps.",
+  "/scout [question]: build the snapshot and open a box to copy a summary into an AI chat.",
+  "/reload: writes the full snapshot to disk (the game only saves addon data on reload or logout).",
+  "/donde <npc | party member> (or /where): arrow to an NPC or a party member. Needs Questie and TomTom. /donde off clears it.",
+  "/scout <shift-clicked item>: NEED or GREED verdict against what you wear.",
+  "/scout weights: show or set the stat weights used for loot advice and tooltips.",
+  "/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters.",
+  "/scout addons: loaded addons that do the same job.",
+  "Privacy: the snapshot and the copy box include names of party members, friends, guild and communities. It stays on your computer until you paste or share it.",
+}
+
+local function helpCommand()
+  for _, line in ipairs(HELP_LINES) do say(T(line)) end
+  -- Questie and TomTom are optional: only /donde uses them. Say which ones are loaded.
+  local function status(loaded) return loaded and T("loaded") or T("not installed or disabled") end
+  say(string.format(T("Optional addons, only needed for /donde: Questie %s, TomTom %s."),
+    status(QuestieLoader ~= nil), status(TomTom ~= nil)))
+  if not hasWeights() then say(T(NO_WEIGHTS_HELP)) end
+end
+
+-- "/scout weights": show, set ("agi=2.3 sta=0.7") or reset the stat weights of this character.
+local WEIGHTS_USAGE = "usage: /scout weights agi=2.3 sta=0.7 ... | /scout weights reset. Stats: %s. dps is melee weapon DPS, rdps is ranged weapon DPS."
+
+local function weightsCommand(arg)
+  local h = history()
+  local statList = table.concat(WEIGHT_STATS, ", ")
+  if arg == "reset" then
+    h.weights = nil
+    say(T("stat weights reset to the class default."))
+  elseif arg ~= "" then
+    local valid, parsed = {}, {}
+    for _, stat in ipairs(WEIGHT_STATS) do valid[stat] = true end
+    for stat, value in arg:gmatch("(%a%w*)%s*=%s*(-?[%d%.]+)") do
+      if not valid[stat] then
+        say(string.format(T("unknown stat \"%s\". Stats: %s."), stat, statList))
+        return
+      end
+      parsed[stat] = tonumber(value)
+    end
+    if not next(parsed) then
+      say(string.format(T(WEIGHTS_USAGE), statList))
+      return
+    end
+    -- New values are merged over the weights already in use, so one stat can be tuned alone.
+    local merged = {}
+    for stat, value in pairs(activeWeights() or {}) do merged[stat] = value end
+    for stat, value in pairs(parsed) do merged[stat] = value end
+    h.weights = merged
+    say(T("stat weights saved for this character."))
+  end
+  local weights, source = activeWeights()
+  local parts = {}
+  for _, stat in ipairs(WEIGHT_STATS) do
+    if weights and weights[stat] then parts[#parts + 1] = stat .. "=" .. weights[stat] end
+  end
+  say(string.format(T("stat weights (%s): %s"), T(source), #parts > 0 and table.concat(parts, " ") or "-"))
+  if arg == "" then say(string.format(T(WEIGHTS_USAGE), statList)) end
+end
+
+-- One line on the first login of each character, pointing at the help.
+welcome = function()
+  local h = history()
+  if h.welcomed then return end
+  h.welcomed = true
+  say(T("loaded. Type /scout help to see what it does."))
 end
 
 local function command(msg)
   msg = msg and msg:match("^%s*(.-)%s*$") or ""
-  -- "/wow <shift-clicked item link>" gives an instant Need/Greed verdict, no reload needed.
+  -- "/scout <shift-clicked item link>" gives an instant Need/Greed verdict, no reload needed.
   local link = msg:match("(|c.-|Hitem:.-|h.-|h|r)") or msg:match("(|Hitem:.-|h.-|h)")
   if link then
-    if isHunter() then
+    if hasWeights() then
       adviseItem(link)
     else
-      print("|cff33ff99ForeverScout|r: loot advice uses hunter stat weights; it is off for your class.")
+      say(T(NO_WEIGHTS_HELP))
     end
     return
   end
-  if msg:lower() == "addons" then
+  local lower = msg:lower()
+  if lower == "help" or lower == "?" or lower == "ayuda" then
+    helpCommand()
+    return
+  end
+  if lower == "addons" then
     addonsCommand()
+    return
+  end
+  local weightsArg = lower:match("^weights%s*(.*)$") or lower:match("^pesos%s*(.*)$")
+  if weightsArg then
+    weightsCommand(weightsArg)
     return
   end
   local alertsArg = msg:match("^alerts%s*(%a*)$")
@@ -1743,13 +1985,13 @@ local function command(msg)
     return
   end
   session.question = msg ~= "" and msg or nil
-  invalidateHeavy()  -- an explicit /wow always rebuilds everything
+  invalidateHeavy()  -- an explicit /scout always rebuilds everything
   buildSnapshot()
   -- Show the copy box right away; /reload is still available for the full detailed file.
   showCopyBox(compactText(ForeverScoutDB or {}))
 end
 
-SLASH_FOREVERSCOUT1 = "/wow"
-SLASH_FOREVERSCOUT2 = "/feli"
-SLASH_FOREVERSCOUT3 = "/scout"
+SLASH_FOREVERSCOUT1 = "/scout"
+SLASH_FOREVERSCOUT2 = "/wow"
+SLASH_FOREVERSCOUT3 = "/feli"
 SlashCmdList.FOREVERSCOUT = command

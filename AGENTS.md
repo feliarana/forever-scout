@@ -1,4 +1,4 @@
-# forever-claude — guide for AI assistants
+# forever-scout — guide for AI assistants
 
 You are helping a WoW Forever player use this toolkit: the in-game addon ForeverScout plus the
 offline Python tools that read its snapshot. `CLAUDE.md` holds the repo author's personal rules
@@ -26,8 +26,8 @@ passes.
    the author's defaults. Done when `tools/analyze.py` prints their own character name and a
    snapshot time from today.
 4. **Tour.** Show the player what works for their class (README → *What works for each
-   class*) and the in-game commands they will use most: `/wow`, `/reload`, `/donde`,
-   `/wow alerts`. Done when the player has tried `/donde` on one NPC.
+   class*) and the in-game commands they will use most: `/scout`, `/reload`, `/donde`,
+   `/scout alerts`. Done when the player has tried `/donde` on one NPC.
 
 ## Every session: "read"
 
@@ -51,13 +51,21 @@ with the English name beside it.
 
 ## Class notes
 
-The loot advisor, the tooltip score and the ammo and pet alerts use hunter stat weights and
-run only for hunters (`STAT_WEIGHTS` in `config.py`, `WEIGHTS` in
-`addon/ForeverScout/ForeverScout.lua`). For any other class, judge gear upgrades yourself from the
-item stats in the snapshot, using current stat priorities for that class and spec.
+Only hunters have built-in stat weights (`STAT_WEIGHTS` in `config.py`, `CLASS_WEIGHTS` in
+`addon/ForeverScout/ForeverScout.lua`); the ammo and pet alerts are hunter-only too. For any
+other class:
+
+- In game, the loot advisor and the tooltip score stay off until the player sets weights.
+  Look up current stat priorities for their class and spec, then give them one line to type,
+  for example `/scout weights int=1 sp=0.8 sta=0.5 spi=0.4`. Say where the numbers came from.
+- Offline, `analyze.py` skips the bag-upgrade check: judge upgrades yourself from the item
+  stats in the snapshot.
 
 ## Changing the repo
 
 Write code, comments, script output and docs in English. Keep `CLAUDE.md` as it is: it belongs
 to the author. Personal settings go in `PLAYER.md` or environment variables, never in tracked
 files.
+
+After any change to `addon/ForeverScout/ForeverScout.lua`, run `npm test` (see README →
+*Development*) before asking the player to `/reload`.

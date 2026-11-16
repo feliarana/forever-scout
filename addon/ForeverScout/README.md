@@ -1,31 +1,67 @@
 # ForeverScout
 
-In-game addon for WoW Forever (Interface 16001). It saves a per-character snapshot to
-SavedVariables for the offline tools in `tools/`, gives loot advice in chat, warns about ammo,
-pet, bags and durability, and points a TomTom arrow at NPCs or party members.
+In-game addon for WoW Forever (Interface 16001), for any class and faction.
 
-The game's `Interface/AddOns/ForeverScout` folder is a symlink to this directory.
+ForeverScout takes a snapshot of your character (quests, gear, bags, talents, professions,
+party and online friends) so an AI assistant can read it and plan your next steps with you.
+On its own it also points an arrow at NPCs and party members, warns you about full bags, low
+durability and unspent talent points, and scores gear against what you wear.
 
-Formerly called **FeliExport**. The game keeps addon data in a file named after the addon, so
-after the rename each character starts a new `SavedVariables/ForeverScout.lua`. The offline
-tools still read the old `FeliExport.lua` and merge its history (deaths, dungeon runs,
-level-ups, flight paths, recipes) with the new one, so nothing recorded before is lost.
+## Quick start
+
+1. Copy the `ForeverScout` folder into the game's `_forever_/Interface/AddOns/`, enable it in
+   the AddOns list and log in. Chat shows `ForeverScout: loaded. Type /scout help...` the first
+   time.
+2. Type `/scout help` for the list of commands, in English or Spanish to match your client.
+3. To ask an AI about your character, pick one:
+   - **Quick, no setup:** type `/scout`, press Ctrl+C in the box that opens and paste the line
+     into any AI chat with your question.
+   - **Full detail:** type `/reload` so the game writes the whole snapshot to disk, then let
+     an AI assistant read it with the offline tools from the
+     [forever-scout repository](https://github.com/feliarana/forever-scout) (needs Python).
+
+The game only writes addon data to disk on `/reload`, logout or character switch. That is why
+the full snapshot needs a `/reload`.
+
+### What works for your class
+
+| Feature | Hunter | Other classes |
+|---|---|---|
+| Snapshot, copy box, session history, XP pace | yes | yes |
+| `/donde` NPC and party arrow | yes | yes |
+| Alerts: bags, durability, unspent talent points | yes | yes |
+| Alerts: ammo and pet | yes | — |
+| Loot NEED / GREED advice and tooltip score | yes, built-in weights | after you set your stat weights with `/scout weights` |
+
+### Privacy
+
+The snapshot and the copy box include the names of your party members, online friends, guild
+and communities. Everything stays in your game folder until you paste or share it yourself;
+the addon sends nothing anywhere.
 
 ## Requirements
 
-- Required: none.
+- Required: none. The snapshot, the copy box, the alerts and the loot advice work alone.
 - Optional: **Questie** (NPC spawn data for `/donde`) and **TomTom** (arrow and live distance
-  for `/donde`). Both are listed in `## OptionalDeps`, so they load first when enabled.
+  for `/donde`). Only `/donde` needs them, and it tells you which one is missing.
+  `/scout help` shows whether each one is loaded.
+
+The game never installs one addon for another: install Questie (Forever version) and TomTom
+yourself if you want `/donde`. They are declared as optional (`## OptionalDeps`) on purpose: a
+required dependency would stop ForeverScout from loading at all without them.
 
 ## Slash commands
 
 | Command | What it does |
 |---|---|
-| `/wow [question]` (aliases `/scout`, `/feli`) | Builds the snapshot now and opens a copy box with a one-line summary to paste into a chat. The optional question is stored in the snapshot. Type `/reload` afterwards to write the full snapshot to disk. |
-| `/wow addons` | Lists loaded addons that do the same job (bags, damage meters, action bars, quest auto-accept, map coordinates, fast loot, vendor prices…). Leatrix Plus and ElvUI only clash if the matching option is on. |
-| `/wow alerts` | Shows the upkeep alert thresholds and runs a check now. |
-| `/wow alerts off` / `/wow alerts on` | Mutes or re-enables upkeep alerts (saved per character). |
-| `/wow <shift-clicked item link>` | Instant NEED / GREED verdict for that item against what is equipped. |
+| `/scout [question]` (older aliases `/wow`, `/feli`) | Builds the snapshot now and opens a copy box with a one-line summary to paste into a chat. The optional question is stored in the snapshot. Type `/reload` afterwards to write the full snapshot to disk. |
+| `/scout addons` | Lists loaded addons that do the same job (bags, damage meters, action bars, quest auto-accept, map coordinates, fast loot, vendor prices…). Leatrix Plus and ElvUI only clash if the matching option is on. |
+| `/scout alerts` | Shows the upkeep alert thresholds and runs a check now. |
+| `/scout alerts off` / `/scout alerts on` | Mutes or re-enables upkeep alerts (saved per character). |
+| `/scout <shift-clicked item link>` | Instant NEED / GREED verdict for that item against what is equipped. |
+| `/scout help` (or `?`, `ayuda`) | What the addon does and every command. |
+| `/scout weights` | Shows the stat weights in use and the stats you can set. |
+| `/scout weights agi=2.3 sta=0.7 …` | Sets your own stat weights for this character (merged over the ones in use). `/scout weights reset` goes back to the class default. |
 | `/donde <npc name>` (alias `/where`) | TomTom arrow to the nearest spawn of the NPC, with distance in yards and meters. Partial names work and accents are optional (`jabali` matches `Jabalí`). With several matches the nearest spawn wins and the others are listed with their IDs. |
 | `/donde <npc id>` | Same, by NPC ID. |
 | `/donde` | Same, for the NPC currently targeted (`/target jabalí`, then `/donde`). |
@@ -46,7 +82,7 @@ WoW only writes SavedVariables to disk on `/reload`, logout or character switch.
 rebuilds the snapshot 5 seconds after login and every 20 seconds after that, so a plain
 `/reload` always writes current data. The periodic rebuild is skipped while in combat, and
 the heavy sections (completed quests, spellbook, action bars, addon list) are cached and only
-rebuilt after an event that changes them or an explicit `/wow`. A snapshot taken while logging out (unit data already
+rebuilt after an event that changes them or an explicit `/scout`. A snapshot taken while logging out (unit data already
 torn down) never overwrites a good one.
 
 Each section is built on its own: an API that fails only empties its section, and the error
@@ -56,7 +92,7 @@ is stored under `errors`.
 
 | Key | Content |
 |---|---|
-| `savedAt`, `question`, `locale` | Snapshot time, optional `/wow` question, client locale |
+| `savedAt`, `question`, `locale` | Snapshot time, optional `/scout` question, client locale |
 | `name`, `realm`, `class`, `race`, `faction`, `level` | Identity, with non-localized class/race tokens for quest filtering |
 | `xp`, `xpMax`, `rested`, `money`, `healthMax` | Progress and gold. Current health is a protected value on this client, so only the maximum is kept |
 | `location` | Zone, subzone, map ID, map name and x,y in percent |
@@ -86,8 +122,8 @@ is stored under `errors`.
 
 `ForeverScoutHistory` (per character, kept across sessions): running XP total, level-ups with
 date and zone, deaths with place and level (killer taken from a hostile target, best effort; left empty when unknown),
-dungeon runs with XP gained, flight paths, recipes, the XP pacing session (`pace`) and the
-upkeep alert setting (`alerts`).
+dungeon runs with XP gained, flight paths, recipes, the XP pacing session (`pace`), your own
+stat weights (`weights`) and the upkeep alert setting (`alerts`).
 
 Values from roster APIs can be restricted ("secret") on this client. Storing one in
 SavedVariables triggers the blocked-action dialog, so the addon drops any value that fails a
@@ -117,28 +153,52 @@ them. Thresholds live in `ALERT_LIMITS` in `ForeverScout.lua`.
 
 ## Loot advisor and tooltip score
 
-Hunters only: the weights and the usable-gear rules are for hunters, so other classes get
-no roll advice and no tooltip line.
+Items are scored with stat weights: each stat on the item is multiplied by its weight and the
+total is compared to the equipped item in the same slot.
 
-Items are scored with the RestedXP hunter weights (levels 20-29: ranged DPS 14, agility 2.33,
-spirit 1.12, attack power 0.8, stamina 0.75, intellect 0.55, strength 0.2, armor 0.035) and
-compared to the equipped item in the same slot. For rings and trinkets the weaker equipped one
+- **Hunters** get built-in weights (RestedXP, levels 20-29: ranged DPS 14, agility 2.33, spirit
+  1.12, attack power 0.8, stamina 0.75, intellect 0.55, strength 0.2, armor 0.035).
+- **Every other class** has no built-in weights yet, so there is no roll advice and no tooltip
+  line until you set your own, for example `/scout weights int=1 sp=0.8 sta=0.5 spi=0.4`.
+  Stats: `agi str sta int spi armor ap rap crit hit sp heal mp5 dps rdps` (`dps` is melee
+  weapon DPS, `rdps` ranged weapon DPS). Weights are saved per character.
+
+Gear your class cannot wear is flagged instead of scored: armor heavier than your class uses
+(Classic rules, with the level 40 upgrade for warriors, paladins, hunters and shamans), shields
+for classes without them, and for hunters weapons they cannot wield. Other classes have no
+weapon list yet, so their weapons are always scored. For rings and trinkets the weaker equipped one
 is the comparison; a two-hander is compared to main hand plus off hand.
 
-- **Loot rolls**: when a roll starts (or on `/wow <item link>`), the verdict (NEED or GREED,
+- **Loot rolls**: when a roll starts (or on `/scout <item link>`), the verdict (NEED or GREED,
   a reason and the score difference) is printed in chat and stored in `lastRolls`.
-- **Tooltips**: every gear tooltip (bags, quest rewards, vendors, chat links) gets one line,
-  for hunters only:
+- **Tooltips**: every gear tooltip (bags, quest rewards, vendors, chat links) gets one line:
   - `ForeverScout: +12.3 vs equipped (score 45.1)`: green above +0.5, red below -0.5, gray in
     between; adds `needs level N` when the item requires a higher level.
   - `ForeverScout: equipped, score N` on the item you are wearing.
-  - `ForeverScout: not for you (...)` on plate, shields, mail before 40 and weapons hunters
-    cannot use.
+  - `ForeverScout: not for you (...)` on gear your class cannot use.
   - No line on non-gear items (materials, ammo, bags, shirts). Comparison tooltips are left
     alone.
 
 ## Copy box
 
-`/wow` shows a one-line summary: level, XP, rested XP, gold, location, hearthstone, free bag
+`/scout` shows a one-line summary: level, XP, rested XP, gold, location, hearthstone, free bag
 slots, durability, buffs, pet, party, online friends, quests with objectives, bags and
-equipment. Press Ctrl+C to copy it (the box closes) or Esc to close it.
+equipment. The box is one line wide, so it only shows the start of the text; a line above it
+says what it is and how long. The text is already selected: press Ctrl+C to copy it (the box
+closes) or Esc to close it. The summary is always
+in English, whatever the client language, since it is meant for an AI chat.
+
+## Languages
+
+Chat messages, alerts and tooltip lines follow the game client: Spanish on esMX and esES,
+English everywhere else. Translations live in the `L` table at the top of `ForeverScout.lua`.
+
+## For developers
+
+In the author's setup the game's `Interface/AddOns/ForeverScout` folder is a symlink to this
+directory.
+
+Formerly called **FeliExport**. The game keeps addon data in a file named after the addon, so
+after the rename each character starts a new `SavedVariables/ForeverScout.lua`. The offline
+tools still read the old `FeliExport.lua` and merge its history (deaths, dungeon runs,
+level-ups, flight paths, recipes) with the new one, so nothing recorded before is lost.

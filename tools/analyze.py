@@ -66,7 +66,7 @@ def character(Q, snap, hist):
     age = snapshot_age_minutes(snap)
     print(f"Snapshot {snap.get('savedAt')}" + (f" ({age:.0f} min ago)" if age is not None else ""))
     if age is not None and age > config.STALE_MINUTES:
-        print(f"  !! Stale snapshot (> {config.STALE_MINUTES} min): run /wow or /reload")
+        print(f"  !! Stale snapshot (> {config.STALE_MINUTES} min): run /scout or /reload")
 
     section("Character")
     xp, xp_max, rested = snap.get("xp") or 0, snap.get("xpMax") or 1, snap.get("rested") or 0

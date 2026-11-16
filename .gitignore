@@ -25,3 +25,6 @@ Questie*/
 
 # Personal player profile written by AI assistants (see AGENTS.md)
 PLAYER.md
+
+# Node (addon tests)
+node_modules/

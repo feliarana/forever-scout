@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: ForeverScout
-## Notes: Saves a snapshot of quest log, location, gear and professions on /reload or logout so it can be read offline.
+## Notes: Saves a snapshot of your character (quests, gear, bags, talents, friends) for an AI assistant to read. Type /scout help.
 ## Author: Feli
-## Version: 1.0.0
+## Version: 1.1.0
 ## OptionalDeps: Questie, TomTom
 ## SavedVariablesPerCharacter: ForeverScoutDB, ForeverScoutHistory
 
