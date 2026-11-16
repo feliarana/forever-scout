@@ -160,7 +160,9 @@ def character(Q, snap, hist):
     deaths = [d for d in hist.get("deaths") or [] if d.get("level") == level]
     if deaths:
         pvp = sum(1 for d in deaths if d.get("killerIsPlayer"))
-        print(f"Deaths at level {level}: {len(deaths)} ({pvp} by players)")
+        # No recorded killer means the cause is unknown (older snapshots stored that as False).
+        unknown = sum(1 for d in deaths if not d.get("killer"))
+        print(f"Deaths at level {level}: {len(deaths)} ({pvp} by players, {unknown} unknown killer)")
     taxis = load_known_taxis()
     if taxis:
         print(f"Known flight paths ({len(taxis)}): " + "; ".join(taxis))

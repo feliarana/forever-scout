@@ -44,7 +44,9 @@ Limits of `/donde`:
 
 WoW only writes SavedVariables to disk on `/reload`, logout or character switch. The addon
 rebuilds the snapshot 5 seconds after login and every 20 seconds after that, so a plain
-`/reload` always writes current data. A snapshot taken while logging out (unit data already
+`/reload` always writes current data. The periodic rebuild is skipped while in combat, and
+the heavy sections (completed quests, spellbook, action bars, addon list) are cached and only
+rebuilt after an event that changes them or an explicit `/wow`. A snapshot taken while logging out (unit data already
 torn down) never overwrites a good one.
 
 Each section is built on its own: an API that fails only empties its section, and the error
@@ -81,7 +83,7 @@ is stored under `errors`.
 | `errors` | Error message per failed section |
 
 `ForeverScoutHistory` (per character, kept across sessions): running XP total, level-ups with
-date and zone, deaths with place and level (killer taken from a hostile target, best effort),
+date and zone, deaths with place and level (killer taken from a hostile target, best effort; left empty when unknown),
 dungeon runs with XP gained, flight paths, recipes and the upkeep alert setting (`alerts`).
 
 Values from roster APIs can be restricted ("secret") on this client. Storing one in

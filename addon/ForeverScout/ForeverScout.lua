@@ -348,14 +348,16 @@ local function getBags()
         link, count = l, c
       end
       if link then
-        local id = itemIdFromLink(link)
-        local entry = items[id]
+        -- Stack by the full item string, not the item ID: random-suffix gear ("of the Monkey",
+        -- "of the Bear") shares one ID but has different stats.
+        local key = link:match("|H(item:[^|]+)|h") or itemIdFromLink(link) or link
+        local entry = items[key]
         if entry then
           entry.count = entry.count + (count or 1)
         else
           entry = describeItem(link)
           entry.count = count or 1
-          items[id] = entry
+          items[key] = entry
         end
       end
     end
@@ -907,17 +909,19 @@ end
 
 -- Log each death with place and level. The combat log is restricted on this client,
 -- so the killer is taken from the current target when it is hostile (best effort).
+-- With no hostile target the killer is unknown: killer and killerIsPlayer stay nil, so a
+-- death is never recorded as "not a player" without evidence.
 local function onDeath()
   local loc = getLocation()
   local killer, killerIsPlayer
   if UnitExists("target") and UnitCanAttack("player", "target") then
-    killer = UnitName("target")
+    killer = plain(UnitName("target"))
     killerIsPlayer = UnitIsPlayer("target") and true or false
   end
   push(history().deaths, {
     at = date("%Y-%m-%d %H:%M"), level = UnitLevel("player"),
     zone = loc.zone, subZone = loc.subZone, x = loc.x, y = loc.y,
-    killer = killer, killerIsPlayer = killerIsPlayer or false,
+    killer = killer, killerIsPlayer = killerIsPlayer,
     grouped = IsInGroup() and true or false,
   })
 end
@@ -1013,6 +1017,20 @@ local function getAddons()
   return { loaded = loaded, total = #list, overlaps = addonOverlaps(list) }
 end
 
+-- Heavy sections (thousands of completed quest IDs, the whole spellbook, 120 action slots plus
+-- their bindings, the addon list) are cached and only rebuilt after an event that can change
+-- them, so the periodic refresh stays cheap. A section missing from `heavyFresh` is rebuilt.
+local heavyCache, heavyFresh = {}, {}
+local HEAVY_EVENTS = {
+  QUEST_TURNED_IN = "completedQuests",
+  SPELLS_CHANGED = "spellbook", LEARNED_SPELL_IN_TAB = "spellbook",
+  ACTIONBAR_SLOT_CHANGED = "actionBars", UPDATE_BINDINGS = "actionBars",
+}
+
+local function invalidateHeavy()
+  for key in pairs(heavyFresh) do heavyFresh[key] = nil end
+end
+
 -- Build each section independently so one failing API cannot wipe the whole snapshot.
 -- Any error message is stored under `errors` to help debugging.
 local function buildSnapshot()
@@ -1024,6 +1042,19 @@ local function buildSnapshot()
     else
       errors[key] = tostring(value)
     end
+  end
+  -- Like section(), but reuses the cached value until its event invalidates it. A failed
+  -- build keeps the previous value and is retried on the next snapshot.
+  local function heavySection(key, fn)
+    if not heavyFresh[key] then
+      local ok, value = pcall(fn)
+      if ok then
+        heavyCache[key], heavyFresh[key] = value, true
+      else
+        errors[key] = tostring(value)
+      end
+    end
+    snap[key] = heavyCache[key]
   end
 
   section("savedAt", function() return date("%Y-%m-%d %H:%M:%S") end)
@@ -1061,7 +1092,7 @@ local function buildSnapshot()
   end)
   section("target", getTarget)
   section("quests", getQuestLog)
-  section("completedQuests", getCompletedQuests)
+  heavySection("completedQuests", getCompletedQuests)
   section("equipment", getEquipment)
   section("bags", getBags)
   section("skills", getSkills)
@@ -1074,14 +1105,14 @@ local function buildSnapshot()
   section("recipes", function() return ForeverScoutHistory and ForeverScoutHistory.recipes end)
   section("buffs", function() return getAuras("player", "HELPFUL") end)
   section("debuffs", function() return getAuras("player", "HARMFUL") end)
-  section("spellbook", getSpellbook)
-  section("actionBars", getActionBars)
+  heavySection("spellbook", getSpellbook)
+  heavySection("actionBars", getActionBars)
   section("lastQuestWindow", function() return session.lastQuestWindow end)
   section("lastTrainer", function() return session.lastTrainer end)
   section("lastMerchant", function() return session.lastMerchant end)
   section("lastRolls", function() return session.lastRolls end)
   section("locale", function() return GetLocale() end)
-  section("addons", getAddons)
+  heavySection("addons", getAddons)  -- the loaded addon list cannot change without a /reload
   -- Only collect API diagnostics while some section is still empty.
   local talentsFound = snap.talents and ((snap.talents.trees and #snap.talents.trees > 0) or (snap.talents.tabs and #snap.talents.tabs > 0))
   if not talentsFound or not (snap.skills and #snap.skills > 0) then
@@ -1120,7 +1151,13 @@ local ALERT_EVENTS = {
   PLAYER_UNGHOST = true, PLAYER_UPDATE_RESTING = true, PLAYER_MOUNT_DISPLAY_CHANGED = true,
 }
 for event in pairs(ALERT_EVENTS) do pcall(frame.RegisterEvent, frame, event) end
+for event in pairs(HEAVY_EVENTS) do pcall(frame.RegisterEvent, frame, event) end
 frame:SetScript("OnEvent", function(_, event, arg1, arg2)
+  if HEAVY_EVENTS[event] then
+    -- Only mark the section stale; the next snapshot rebuilds it.
+    heavyFresh[HEAVY_EVENTS[event]] = nil
+    return
+  end
   if event == "PLAYER_LOGIN" then
     onXPUpdate()
     requestRosters()
@@ -1130,8 +1167,12 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
     if C_Timer and C_Timer.NewTicker then
       C_Timer.After(5, function() pcall(buildSnapshot) end)
       C_Timer.NewTicker(20, function()
-        pcall(requestRosters)
-        pcall(buildSnapshot)
+        -- Never spend frame time on a snapshot mid-fight; the first tick after combat catches
+        -- up, and a /reload in combat still refreshes through PLAYER_LOGOUT.
+        if not (InCombatLockdown and InCombatLockdown()) then
+          pcall(requestRosters)
+          pcall(buildSnapshot)
+        end
         scheduleAlerts()
       end)
     end
@@ -1621,6 +1662,7 @@ local function command(msg)
     return
   end
   session.question = msg ~= "" and msg or nil
+  invalidateHeavy()  -- an explicit /wow always rebuilds everything
   buildSnapshot()
   -- Show the copy box right away; /reload is still available for the full detailed file.
   showCopyBox(compactText(ForeverScoutDB or {}))
