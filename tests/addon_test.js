@@ -177,7 +177,8 @@ test("/scout help lists the commands, in the client language", () => {
   withAddon(ONE_ITEM, LOGIN + `
     slash("help")
     assert(STUB.said("/scout weights") and STUB.said("/whereis") and STUB.said("Privacy:"))
-    assert(#STUB.chat == 11, "help should be eleven lines for a class with weights, got " .. #STUB.chat)
+    assert(#STUB.chat == 12, "help should be twelve lines for a class with weights, got " .. #STUB.chat)
+    assert(STUB.said("/scout config"))
     assert(STUB.said("/scout route"))
     assert(STUB.said("Questie not installed or disabled, TomTom not installed or disabled"))
     TomTom = {}
@@ -615,5 +616,239 @@ test("zone sizes in yards are saved for every zone the client knows", () => {
     local count = 0
     for _ in pairs(sizes) do count = count + 1 end
     assert(count == 2, "only zone maps belong in the table, got " .. count)
+  `);
+});
+
+test("/scout config opens a window with a switch per feature and the help", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    login()
+    slash("config")
+    local frame = TrailScoutOptionsFrame
+    assert(frame and frame.shown, "the window did not open")
+    assert(frame.pages.settings.shown and not frame.pages.help.shown, "it must open on the settings page")
+    for _, key in ipairs({ "alerts", "alert_bags", "alert_durability", "alert_talents", "alert_ammo", "alert_pet",
+                           "lootAdvice", "tooltip", "minimap" }) do
+      assert(frame.checks[key], "no switch for " .. key)
+      assert(frame.checks[key].checked == true, key .. " must start switched on")
+    end
+    assert(frame.checks.alert_bags.label.text == "Bags almost full")
+    assert(frame.weights.text:find("agi=2.33", 1, true), "the hunter's stat weights must be shown for editing")
+
+    -- The Help tab explains every feature.
+    STUB.click(frame.tabs.help)
+    assert(frame.pages.help.shown and not frame.pages.settings.shown)
+    for _, word in ipairs({ "/scout", "/whereis", "/scout route", "NEED or GREED", "Questie", "cannot use the internet" }) do
+      assert(frame.helpText.text:find(word, 1, true), "the help does not mention " .. word)
+    end
+
+    slash("config")   -- on another page: switches to settings instead of closing
+    assert(frame.shown and frame.pages.settings.shown)
+    slash("config")   -- same page again: closes
+    assert(not frame.shown)
+    slash("guide")
+    assert(frame.shown and frame.pages.help.shown, "/scout guide opens the help page")
+  `);
+});
+
+test("switching a reminder off in the window silences just that one", () => {
+  withAddon(`
+    local junk = STUB.item({ id = 1, name = "Linen Cloth", type = "Trade Goods" })
+    STUB.bags[0] = { size = 2, [1] = { junk, 5 } }
+    STUB.durability[5] = { 10, 100 }
+  `, LOGIN + `
+    login()
+    assert(STUB.said("Bags almost full") and STUB.said("Gear at 10% durability"))
+    slash("config")
+    STUB.click(TrailScoutOptionsFrame.checks.alert_bags)
+    assert(TrailScoutHistory.settings.alert_bags == false, "the choice must be saved per character")
+    STUB.clearChat()
+    STUB.advance(400)
+    assert(not STUB.said("Bags almost full"), "the bags reminder kept firing")
+    assert(STUB.said("Gear at 10% durability"), "other reminders must keep working")
+
+    -- Switching it back on makes it fire again right away.
+    STUB.clearChat()
+    STUB.click(TrailScoutOptionsFrame.checks.alert_bags)
+    STUB.advance(2)
+    assert(STUB.said("Bags almost full"))
+
+    -- The master switch is the same one "/scout alerts" uses.
+    STUB.click(TrailScoutOptionsFrame.checks.alerts)
+    assert(TrailScoutHistory.alerts.enabled == false)
+    STUB.clearChat()
+    STUB.advance(400)
+    assert(not STUB.said("Bags almost full") and not STUB.said("durability"))
+  `);
+});
+
+test("loot advice on rolls can be switched off; asking about an item still works", () => {
+  withAddon(GEAR + `function GetLootRollItemLink() return BETTER end`, LOGIN + `
+    login()
+    STUB.clearChat()
+    STUB.fire("START_LOOT_ROLL", 1)
+    assert(STUB.said("NEED"), "roll advice is on by default")
+    slash("config")
+    STUB.click(TrailScoutOptionsFrame.checks.lootAdvice)
+    STUB.clearChat()
+    STUB.fire("START_LOOT_ROLL", 2)
+    assert(not STUB.said("NEED") and not STUB.said("GREED"), "roll advice was switched off")
+    slash(BETTER)
+    assert(STUB.said("NEED"), "an explicit /scout <item> must still answer")
+  `);
+});
+
+test("stat weights can be edited and reset from the window", () => {
+  withAddon(GEAR + `STUB.player.class = "MAGE"`, LOGIN + `
+    login()
+    slash("config")
+    local frame = TrailScoutOptionsFrame
+    assert(frame.weights.text == "", "a class without weights starts with an empty line")
+    frame.weights.text = "int=1 sta=0.5"
+    STUB.click(frame.applyWeights)
+    assert(TrailScoutHistory.weights.int == 1 and TrailScoutHistory.weights.sta == 0.5)
+    assert(frame.weights.text == "sta=0.5 int=1", "the line is rewritten in the canonical order, got " .. frame.weights.text)
+    STUB.click(frame.resetWeights)
+    assert(TrailScoutHistory.weights == nil and frame.weights.text == "")
+  `);
+});
+
+test("minimap button: created at login, opens the window, right-click copies, can be hidden", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    login()
+    local button = TrailScoutMinimapButton
+    assert(button and button.shown, "no minimap button after login")
+    -- The window opened by itself on this first login; a left-click toggles it.
+    assert(TrailScoutOptionsFrame.shown and TrailScoutOptionsFrame.page == "start")
+    STUB.click(button, "LeftButton")
+    assert(not TrailScoutOptionsFrame.shown, "left-click on the open Start page must close it")
+    STUB.click(button, "LeftButton")
+    assert(TrailScoutOptionsFrame.shown, "left-click must open the window")
+    STUB.click(button, "RightButton")
+    assert(TrailScoutCopyFrame and TrailScoutCopyFrame.shown, "right-click must open the copy box")
+    STUB.click(TrailScoutOptionsFrame.checks.minimap)
+    assert(not button.shown, "the button must hide when its switch is off")
+    assert(TrailScoutHistory.settings.minimap == false)
+  `);
+});
+
+test("the settings window is in Spanish on an esMX client", () => {
+  withAddon(ONE_ITEM + `STUB.locale = "esMX"`, LOGIN + `
+    slash("opciones")
+    local frame = TrailScoutOptionsFrame
+    assert(frame.checks.alert_bags.label.text == "Bolsas casi llenas")
+    assert(frame.tabs.help.text == "Ayuda" and frame.actions[1].text == "Copiar resumen para una IA")
+    assert(frame.helpText.text:find("Para qué sirve TrailScout", 1, true))
+    assert(not frame.helpText.text:find("What TrailScout is for", 1, true), "help topics must be translated")
+  `);
+});
+
+test("if the window cannot be built, /scout config falls back to the help in chat", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    local realCreateFrame = CreateFrame
+    CreateFrame = function(frameType, name, ...)
+      if name == "TrailScoutOptionsFrame" then error("no such template") end
+      return realCreateFrame(frameType, name, ...)
+    end
+    slash("config")
+    assert(STUB.said("could not be built"), "the failure must be reported, not raised")
+    assert(STUB.said("/scout weights"), "the chat help must follow")
+  `);
+});
+
+test("every string the addon shows has a Spanish translation, in neutral Latin American Spanish", () => {
+  const source = fs.readFileSync(ADDON, "utf8");
+  const literal = '"((?:[^"\\\\]|\\\\.)*)"';
+  const keys = new Set([...source.matchAll(new RegExp("^\\s*L\\[" + literal + "\\]\\s*=", "gm"))].map((m) => m[1]));
+  const shown = new Set([...source.matchAll(new RegExp("\\bT\\(" + literal + "\\)", "g"))].map((m) => m[1]));
+  // Strings kept in tables and passed to T() later: window switches, help topics, help lines,
+  // window buttons and the addon overlap categories.
+  const tables = source.slice(source.indexOf("local OPTION_CHECKS"), source.indexOf("-- Create a frame from a template"));
+  for (const m of tables.matchAll(new RegExp("label = " + literal, "g"))) shown.add(m[1]);
+  for (const m of tables.matchAll(new RegExp("^\\s*\\{ " + literal + ",\\s*$", "gm"))) shown.add(m[1]);
+  for (const m of tables.matchAll(new RegExp("^\\s+" + literal + " \\},\\s*$", "gm"))) shown.add(m[1]);
+  const helpLines = source.slice(source.indexOf("local HELP_LINES = {"), source.indexOf("local function helpCommand"));
+  for (const m of helpLines.matchAll(new RegExp("^\\s*" + literal + ",\\s*$", "gm"))) shown.add(m[1]);
+  const actions = source.slice(source.indexOf("local actions = {"), source.indexOf("frame.actions = {}"));
+  for (const m of actions.matchAll(new RegExp("\\{ " + literal + ", function", "g"))) shown.add(m[1]);
+  for (const m of source.matchAll(new RegExp("\\{ label = " + literal + ", names = ", "g"))) shown.add(m[1]);
+  const questions = source.slice(source.indexOf("local AI_QUESTIONS = {"), source.indexOf("local function refreshOptions"));
+  for (const m of questions.matchAll(new RegExp("(?:label|question) = " + literal, "g"))) shown.add(m[1]);
+  for (const m of questions.matchAll(new RegExp("local AI_STEPS = " + literal, "g"))) shown.add(m[1]);
+  assert.ok(shown.size > 100, "expected to find the addon's strings, found " + shown.size);
+  // Words that read the same in both languages need no entry.
+  const same = new Set(["Chat", "Tooltips"]);
+  const missing = [...shown].filter((text) => !keys.has(text) && !same.has(text));
+  assert.deepStrictEqual(missing, [], "strings without a Spanish translation");
+
+  // Regional verb forms (voseo) must not come back: the Spanish is for all of Latin America.
+  const spanish = source.slice(source.indexOf('if clientLocale == "esMX"'), source.indexOf("local function itemIdFromLink"));
+  const values = [...spanish.matchAll(new RegExp("=\\s*\\n?\\s*" + literal + "\\s*$", "gm"))].map((m) => m[1]).join("\n");
+  const regional = values.match(/(?<![A-Za-zÁÉÍÓÚáéíóúñü])(vos|tenés|podés|querés|apretá|escribí|pegalo|usá|poné|mirá|probá|abrí|comprá|acá)(?![A-Za-zÁÉÍÓÚáéíóúñü])/gi);
+  assert.strictEqual(regional, null, "regional forms found: " + regional);
+});
+
+test("first login opens the window on its Start page, once per character", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    login()
+    assert(TrailScoutOptionsFrame and TrailScoutOptionsFrame.shown, "a new player must see the window without typing anything")
+    assert(TrailScoutOptionsFrame.page == "start")
+    TrailScoutOptionsFrame:Hide()
+    login()   -- a /reload
+    assert(not TrailScoutOptionsFrame.shown, "the window must not come back on every login")
+  `);
+});
+
+test("Start page: a question button copies the summary with that question, in the player's language", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    login()
+    local frame = TrailScoutOptionsFrame
+    assert(#frame.questions == 6 and frame.questions[1].text == "What should I do next?")
+    assert(frame.steps.text:find("press Ctrl+C", 1, true), "the steps must be on the page")
+    STUB.click(frame.questions[1])
+    assert(not frame.shown, "the window steps aside for the copy box")
+    assert(TrailScoutCopyFrame.shown)
+    assert(TrailScoutCopyFrame.box.text:find("QUESTION: What should I do next? Give me the next steps in order.", 1, true))
+    assert(TrailScoutDB.question:find("What should I do next?", 1, true))
+
+    -- Her own question, typed in the box.
+    slash("config")
+    STUB.click(frame.tabs.start)
+    frame.ownQuestion.text = "is this dungeon worth it?"
+    STUB.click(frame.askOwn)
+    assert(TrailScoutCopyFrame.box.text:find("QUESTION: is this dungeon worth it?", 1, true))
+  `);
+  withAddon(ONE_ITEM + `STUB.locale = "esMX"`, LOGIN + `
+    login()
+    local frame = TrailScoutOptionsFrame
+    assert(frame.tabs.start.text == "Inicio" and frame.questions[1].text == "¿Qué hago ahora?")
+    STUB.click(frame.questions[3])
+    local text = TrailScoutCopyFrame.box.text
+    assert(text:find("puntos de talento", 1, true), "the question must be asked in Spanish")
+    assert(text:find("Respóndeme en español", 1, true), "and ask for the answer in Spanish")
+  `);
+});
+
+test("Start page: the search box finds things without typing a command", () => {
+  withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom()`, LOGIN + `
+    login()
+    local frame = TrailScoutOptionsFrame
+    assert(frame.findHelp.text:find("Questie (loaded)", 1, true) and frame.findHelp.text:find("TomTom (loaded)", 1, true))
+    frame.findBox.text = "  lydon "
+    STUB.click(frame.find)
+    assert(STUB.said("Apothecary Lydon (2216)"), "the search did not run")
+    assert(STUB.arrow == "Apothecary Lydon")
+    STUB.click(frame.findMap)
+    assert(STUB.mapOpened == 1267, "Show on map must open the map on the result")
+    STUB.click(frame.findClear)
+    assert(STUB.arrow == nil and STUB.said("arrow cleared."))
+    STUB.clearChat()
+    frame.findBox.text = "   "
+    STUB.click(frame.find)
+    assert(#STUB.chat == 0, "an empty search does nothing")
+  `);
+  withAddon(ONE_ITEM, LOGIN + `
+    login()
+    assert(TrailScoutOptionsFrame.findHelp.text:find("Questie (not installed or disabled)", 1, true),
+      "the page must say when Questie is missing")
   `);
 });

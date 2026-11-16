@@ -76,5 +76,40 @@ class MergeHistoryTest(unittest.TestCase):
         self.assertEqual(merged["runs"], {})
 
 
+class ClientLanguageTest(unittest.TestCase):
+    """Names follow the game client: 'English / Spanish' on a Spanish client, English alone
+    on any other, and objective texts are matched against what that client shows."""
+
+    def setUp(self):
+        self._spanish = common.SPANISH_CLIENT
+
+    def tearDown(self):
+        common.SPANISH_CLIENT = self._spanish
+
+    def test_spanish_clients_see_both_names(self):
+        for locale in ("esMX", "esES"):
+            common.use_locale(locale)
+            self.assertEqual(common.both("Gray Bear", "Oso gris"), "Gray Bear / Oso gris")
+            self.assertEqual(common.client_name(common.both("Gray Bear", "Oso gris")), "Oso gris")
+
+    def test_other_clients_see_the_english_name_only(self):
+        for locale in ("enUS", "enGB", "deDE"):
+            common.use_locale(locale)
+            self.assertEqual(common.both("Gray Bear", "Oso gris"), "Gray Bear")
+            self.assertEqual(common.client_name(common.both("Gray Bear", "Oso gris")), "Gray Bear")
+
+    def test_a_missing_or_equal_translation_never_breaks_a_name(self):
+        common.use_locale("esMX")
+        self.assertEqual(common.both("Kamari", "Kamari"), "Kamari")
+        self.assertEqual(common.both("Kamari", None), "Kamari")
+        self.assertEqual(common.both(None, "Oso gris"), "Oso gris")
+        self.assertEqual(common.both(None, None), "?")
+
+    def test_an_unknown_locale_keeps_the_current_choice(self):
+        common.use_locale("enUS")
+        common.use_locale(None)
+        self.assertFalse(common.SPANISH_CLIENT)
+
+
 if __name__ == "__main__":
     unittest.main()

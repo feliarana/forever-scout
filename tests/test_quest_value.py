@@ -109,6 +109,31 @@ class EstimateTest(unittest.TestCase):
         self.assertIn("count assumed 1", e["notes"])
 
 
+class EnglishClientTest(unittest.TestCase):
+    """Objective progress is read from the snapshot text, which is in the client's language."""
+
+    def setUp(self):
+        import common
+        self.common, self._spanish = common, common.SPANISH_CLIENT
+        self.Q = dict(Q, npcs=dict(Q["npcs"]))
+        self.Q["npcs"][2] = dict(Q["npcs"][2], name_es="Granjero")
+
+    def tearDown(self):
+        self.common.SPANISH_CLIENT = self._spanish
+
+    def test_english_text_matches_on_an_english_client(self):
+        self.common.use_locale("enUS")
+        e = qv.estimate(self.Q, self.Q["quests"][10], log(10, "4/10 Farmer", 4, 10), 30, START, SIZES, UI_MAP)
+        self.assertEqual(e["kills"], 6)
+        self.assertEqual(e["notes"], [])
+
+    def test_spanish_text_matches_on_a_spanish_client(self):
+        self.common.use_locale("esMX")
+        e = qv.estimate(self.Q, self.Q["quests"][10], log(10, "4/10 Granjero", 4, 10), 30, START, SIZES, UI_MAP)
+        self.assertEqual(e["kills"], 6)
+        self.assertEqual(e["notes"], [])
+
+
 class RankTest(unittest.TestCase):
     def test_local_quests_first_then_other_zones_then_untimed(self):
         snap = {"level": 30, "location": {"mapID": 1424, "x": 60.0, "y": 20.0}, "mapSizes": SIZES, "quests": [

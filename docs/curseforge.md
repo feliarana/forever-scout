@@ -38,6 +38,10 @@ From CurseForge's moderation policies (read November 2026):
   at the bottom, as source and issue tracker, not as a place to download the addon. Personal
   and cross-hosting links belong after the description.
 - **Every file needs a changelog** describing what changed since the previous one.
+- **Other languages** are allowed in the description, after the English text. CurseForge shows
+  the same description to every visitor (it does not pick one by browser or game language),
+  so the Spanish version is a second section below the English one. The project name and the
+  summary stay in English.
 - **Showcase images** that are AI-generated or edited in a way that could misrepresent the
   addon need a visible disclaimer: use real in-game screenshots in the gallery.
 

@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (  # noqa: E402
-    fmt_xp, load_q, quest_xp_text, load_snapshot, objective_targets, take_char_arg, quest_name, resolve_zone, spawns_of,
+    client_name, fmt_xp, load_q, quest_xp_text, load_snapshot, objective_targets, take_char_arg, quest_name, resolve_zone, spawns_of,
     xp_at_level, zone_name,
 )
 
@@ -111,7 +111,7 @@ def main():
             for t in targets:
                 rank, text = verdict(Q, closest(t["points"], route), t["points"])
                 # Objective already finished in game: does not count against the route.
-                if any(t["label"].split(" / ")[-1] in (o.get("text") or "") for o in done_texts):
+                if any(client_name(t["label"]) in (o.get("text") or "") for o in done_texts):
                     text, rank = "done", 0
                 worst = max(worst, rank)
                 lines.append(f"    {t['label']}: {text}")

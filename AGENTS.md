@@ -65,7 +65,10 @@ as this routine:
    *Quest value here* section (estimated XP per minute, each quest timed alone) to rank what
    is left: a low number backs a skip, but say it is an estimate and name its caveats
    (assumed drop rate, elite, gray mobs).
-7. When you propose a route, also draw it: if `WOW_AI_MAP_FILE` is set (a wow-ai chat), run
+7. The whole-zone route from `tools/map_route.py` is a starting point, not the plan: read it
+   against the player's situation and cut what does not fit (stops marked `(elite)` when they
+   are solo, stops next to an enemy town on a PvP realm, poor XP per minute) with `--skip ID,ID`, which keeps the chains
+   of everything else. When you propose a route, also draw it: if `WOW_AI_MAP_FILE` is set (a wow-ai chat), run
    `tools/map_route.py` with the quest IDs and waypoints of your plan; otherwise, for players
    with TomTom, run `tools/map_route.py --addon` and tell them to `/reload` and type
    `/scout route`.
@@ -119,7 +122,7 @@ English or the client language (`17`, `barrens`, `"Mil Agujas"`).
 | `tools/guide.py [--char NAME] <questID …>` | Start, turn-in, text, objectives with levels, ELITE and spawn clusters |
 | `tools/route_check.py [--char NAME] ZONE:X,Y …` | Distance of each logged quest to a route, and XP at the current level |
 | `tools/quest_value.py [--char NAME]` | Every logged quest ranked by estimated XP per minute, with minutes, quest XP and kill XP; other zones are timed from arriving there |
-| `tools/map_route.py [--char NAME] [--addon \| --tomtom] [QUESTID \| turnin:QUESTID \| ZONE:X,Y=label …]` | Numbered route for the in-game map (objectives first, turn-ins last); no stops = every quest in the current zone. `--addon` writes it for `/scout route`; writes to `$WOW_AI_MAP_FILE` when set |
+| `tools/map_route.py [--char NAME] [--addon \| --tomtom] [QUESTID \| turnin:QUESTID \| ZONE:X,Y=label …]` | Numbered route for the in-game map. No stops = the whole current zone with its quest chains: logged quests, what their turn-ins unlock and new quests to pick up, in dependency order (`--no-chains`, `--no-accept` to limit it). With stops: just those, turn-ins last. `--addon` writes it for `/scout route`; writes to `$WOW_AI_MAP_FILE` when set |
 | `tools/inventory.py [--all]` | Vendor / auction / use / keep / turn-in for every character's bags, bank and mail (Syndicator + Auctionator). Ask for an Auctionator full scan and a `/reload` when prices are stale. Keep list: `config.KEEP_ITEMS` |
 | `tools/build_q.py` | Rebuild the `data/Q.pkl` cache from QuestieDB (the other tools do it when it is stale) |
 

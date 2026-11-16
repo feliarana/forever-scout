@@ -270,6 +270,7 @@ def load_snapshot(char_dir=None):
     if char_dir is None and config.SNAPSHOT_OVERRIDE:
         snap = _snapshot_at(config.SNAPSHOT_OVERRIDE)
         IDENTITY.update({k: snap[0].get(k) for k in ("class", "race", "faction")})
+        use_locale(snap[0].get("locale"))
         return snap
     return char_snapshot(char_dir or main_character())
 
@@ -296,11 +297,32 @@ def snapshot_age_minutes(snap):
 
 
 # -- names -----------------------------------------------------------------------------
+# Names are shown as "English / Spanish" for a Spanish game client, because the player sees
+# the Spanish one in game and most outside sources use the English one. On any other client
+# only the English name is shown, and it is also what objective texts are matched against.
+# Set from the snapshot's `locale` by use_locale(); Spanish until a snapshot says otherwise.
+SPANISH_CLIENT = True
+
+
+def use_locale(locale):
+    """Follow the game client's language (snapshot `locale`, e.g. "esMX" or "enUS")."""
+    global SPANISH_CLIENT
+    if locale:
+        SPANISH_CLIENT = str(locale).lower().startswith("es")
+
+
 def both(en, es):
-    """'English / esMX' name pair (or whichever exists)."""
-    if en and es and en != es:
+    """A display name: 'English / Spanish' on a Spanish client, English otherwise (or
+    whichever exists)."""
+    if SPANISH_CLIENT and en and es and en != es:
         return f"{en} / {es}"
     return en or es or "?"
+
+
+def client_name(label):
+    """The half of a display name the game client itself shows (what objective texts and
+    map pins should use): the Spanish half of 'English / Spanish', or the whole name."""
+    return label.split(" / ")[-1]
 
 
 def quest_name(Q, qid):
@@ -467,7 +489,10 @@ def identity_of(char_dir):
 
 
 def use_identity(char_dir):
+    """Adopt a character for the rest of the run: who it is (quest filters) and which
+    language its game client is in (how names are shown and matched)."""
     IDENTITY.update(identity_of(char_dir))
+    use_locale(char_snapshot(char_dir)[0].get("locale"))
     return IDENTITY
 
 

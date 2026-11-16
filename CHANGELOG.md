@@ -3,6 +3,16 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.6.0
+
+- New TrailScout window: click the button on the minimap. It opens by itself the first time you log in with a character, so nothing has to be typed.
+- Start page: six ready-made questions for an AI (what to do next, quests to do or skip, talents, what to sell, gear in your bags, stat weights for your class) and a box for your own. One click copies the summary with the question in it, in your language.
+- Start page: a search box to find NPCs, objects and party members, with Show on map and Clear arrow.
+- Settings page: switch each reminder on or off (bags, durability, talent points, ammo, pet), the loot roll advice, the tooltip score line and the minimap button; edit your stat weights in place; buttons to copy the summary, start or clear a route and check your addons.
+- Help page: every feature explained, with its commands. `/scout guide` opens it directly.
+- The minimap button can be dragged around the minimap; right-click opens the copy box.
+- Spanish is now neutral Latin American, and covers everything: the new window, the addon list note and the `/scout addons` categories.
+
 ## TrailScout 1.5.2
 
 - The snapshot now includes the size of every zone in yards, measured from the game client. The offline tools use it to estimate walking time and rank your quests by XP per minute.

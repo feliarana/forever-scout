@@ -12,6 +12,7 @@ import advice  # noqa: E402
 import quest_value  # noqa: E402
 import stash  # noqa: E402
 import config  # noqa: E402
+import common  # noqa: E402
 from common import (  # noqa: E402
     char_name, client_places, collect_items, fits_character, quest_xp_text, flatten_items, item_name, syndicator_characters, fmt_loc, fmt_xp, is_horde_ok, load_known_taxis, load_q, load_snapshot, main_character, snapshots, take_char_arg, IDENTITY,
     dist, locate, money, player_pos, prereqs_met, quest_level, quest_name, resolve_zone,
@@ -277,7 +278,7 @@ def stashed(Q, snap, me):
     print("\n".join(stash.coverage_lines(characters, time.time(), config.MAIL_EXPIRY_WARN_DAYS)))
     rows = collect_items(snapshots())
     lines = stash.quest_lines(snap.get("quests"), Q["quests"], rows, char_name(me), config.ITEM_PARTS,
-                              lambda iid: item_name(Q, iid).split(" / ")[-1])
+                              lambda iid: common.client_name(item_name(Q, iid)))
     if lines:
         print("Quest items you already own outside your bags:")
         print("\n".join(lines))

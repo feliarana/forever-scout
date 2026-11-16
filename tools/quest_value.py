@@ -112,7 +112,7 @@ def _average_level(source):
 def _remaining(target, log_quest):
     """(remaining count, done, known) for a target, matched to the snapshot objective by its
     client-language name."""
-    name = target["label"].split(" / ")[-1]
+    name = common.client_name(target["label"])
     for objective in log_quest.get("objectives") or []:
         if name in (objective.get("text") or ""):
             if objective.get("done"):

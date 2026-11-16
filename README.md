@@ -18,8 +18,9 @@ and reminders. Any class, Horde or Alliance. English and Spanish.
 
 ## What it does for you
 
-- **Ask an AI about your character.** Type `/scout`, press Ctrl+C, paste into ChatGPT, Claude
-  or any AI chat and ask your question. No setup, nothing to install besides the addon.
+- **Ask an AI about your character.** Click the minimap button, pick a question (*What should
+  I do next?*), press Ctrl+C and paste into ChatGPT, Claude or any AI chat. No commands, no
+  setup, nothing to install besides the addon. `/scout` does the same from chat.
 - **Find any NPC or object.** `/whereis Lydon` puts an arrow on the nearest one, tells you
   how far it is and gives you a **[Show on map]** link to click when it is far away. It works
   for things in the world too (`/whereis mudsnout blossom`) and follows a party member:
@@ -49,7 +50,8 @@ for another, so get those two yourself.
 
 | Type this | What happens |
 |---|---|
-| `/scout help` | The list of commands, in your game's language. |
+| Click the **minimap button** | The TrailScout window: ready-made questions to copy into an AI chat, a search box for NPCs and objects, a switch for every feature and a Help page. It opens by itself the first time, so nothing has to be typed. |
+| `/scout help` | The list of commands in chat, in your game's language. |
 | `/scout` | A box with a summary of your character, already selected. Ctrl+C, then paste it into an AI chat with your question. |
 | `/scout is this ring good for me?` | Same, with your question included in the summary. |
 | `/whereis <npc or object name>` | Where it is, an arrow to it and a **[Show on map]** link. `/whereis off` removes the arrow. |
@@ -60,7 +62,8 @@ for another, so get those two yourself.
 | Command | What it does |
 |---|---|
 | `/scout [question]` | Summary of your character to copy into an AI chat. |
-| `/scout help` | Every command, explained. |
+| `/scout config` | The settings and help window (same as the minimap button). |
+| `/scout help` | Every command, explained in chat. |
 | `/whereis <npc \| object \| party member>` | Finds it: distance, arrow and a link to see it on the world map. `/whereis` alone uses your target, `/whereis map` opens the map again. |
 | `/scout route` | Start (or resume) the loaded route. `/scout route next` moves on, `/scout route clear` removes it. |
 | `/scout <item link>` | NEED or GREED for that item. |
@@ -105,7 +108,9 @@ The game only writes addon data to disk on `/reload` or logout. `/scout` and the
 not need it; the offline tools do.
 
 **It is in Spanish / English and I want the other one.**
-Messages follow your game client: Spanish on esMX and esES, English everywhere else.
+Everything follows your game client: Spanish on esMX and esES, English everywhere else. Quest,
+item and NPC names always come from the game itself, in your language. The offline tools do the
+same, and on a Spanish client show names as `English / Spanish`.
 
 **Something is wrong or I have an idea.**
 Open an issue on this page (the **Issues** tab).
@@ -158,7 +163,7 @@ quests and NPCs the way your game client shows them.
 | `guide.py` | Per quest: start and turn-in NPCs, quest text, objectives with mob levels, elite flags and spawn clusters |
 | `route_check.py` | Distance from every logged quest's objectives and turn-in to a planned route (on route / short detour / off route) and real XP at the current level |
 | `quest_value.py` | Every logged quest ranked by estimated XP per minute: minutes to finish it from where the character stands, quest XP plus the XP of the kills it needs. Quests of the current zone first, other zones timed from arriving there. A model for ranking and for spotting quests not worth doing, not a schedule |
-| `map_route.py` | A numbered route for the in-game world map from quests and waypoints: objectives first (nearest-neighbour order), turn-ins last, one pin per spot. Writes it into the addon for `/scout route` (`--addon`), as a [wow-ai](https://github.com/chelinho139/wow-ai) map layer, or as TomTom `/way` lines (`--tomtom`) |
+| `map_route.py` | A numbered route for the in-game world map. With no arguments it plans the whole zone and follows quest chains: logged quests, the quests their turn-ins unlock, and new quests worth picking up, each stop after what it needs and within the room left in the quest log. With quest IDs or waypoints it routes just those, one pin per spot. Writes it into the addon for `/scout route` (`--addon`), as a [wow-ai](https://github.com/chelinho139/wow-ai) map layer, or as TomTom `/way` lines (`--tomtom`) |
 | `inventory.py` | Vendor / auction / use / keep / turn-in for every character's bags, bank and mail, with Auctionator prices |
 | `build_q.py` | Builds the `data/Q.pkl` cache from QuestieDB plus real Forever quest XP (the other tools rebuild it when stale) |
 
@@ -256,6 +261,15 @@ mains, alts and bank alts works. Install TrailScout and log in once with each ch
   as a TomTom waypoint and points the arrow at the first; `/scout route next` moves on. No
   pasting, and a `/reload` resumes where you were.
 - **TomTom alone**: `--tomtom` prints one `/way` line per stop to paste into the game chat.
+
+With no stops, the route is the whole zone with its chains. Take *Battle of Hillsbrad*: the
+route kills the farmers, turns the quest in, accepts the next part on the spot, goes back
+out for it, and so on through the chain. A turn-in that unlocks nothing waits for a later
+pass by town; one that opens the next quest does not. New quests are picked up only when
+they can be finished in the zone, still pay most of their XP and the log has a free slot
+(turn-ins free slots as the route goes). Stops where every source is elite are marked
+`(elite)`. `--skip 547,567` leaves quests out together with whatever only they unlock;
+`--no-chains` and `--no-accept` switch the two additions off.
 
 Without `WOW_AI_MAP_FILE` or `--out FILE`, the map command is printed. Stops can be quest IDs
 (unfinished objectives plus the turn-in), `turnin:QUESTID`, or `ZONE:X,Y=label` waypoints.

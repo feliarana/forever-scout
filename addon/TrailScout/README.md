@@ -12,7 +12,10 @@ durability and unspent talent points, and scores gear against what you wear.
 1. Copy the `TrailScout` folder into the game's `_forever_/Interface/AddOns/`, enable it in
    the AddOns list and log in. Chat shows `TrailScout: loaded. Type /scout help...` the first
    time.
-2. Type `/scout help` for the list of commands, in English or Spanish to match your client.
+2. The TrailScout window opens by itself the first time. Later, click the **TrailScout button
+   on the minimap**: ready-made questions for an AI, a search box, a switch for every feature
+   and a Help page that explains each one. `/scout help` prints the
+   list of commands in chat. Both follow your client's language, English or Spanish.
 3. To ask an AI about your character, pick one:
    - **Quick, no setup:** type `/scout`, press Ctrl+C in the box that opens and paste the line
      into any AI chat with your question.
@@ -64,6 +67,7 @@ required dependency would stop TrailScout from loading at all without them.
 | `/scout route` (or `ruta`) | Walks the route written by `tools/map_route.py --addon`: one TomTom waypoint per stop, arrow on the current one. Carries on from the saved stop after a `/reload`. |
 | `/scout route next` / `/scout route <n>` / `/scout route clear` | Move to the next stop, jump to stop n, or remove the route's waypoints. |
 | `/scout help` (or `?`, `ayuda`) | What the addon does and every command. |
+| `/scout config` (or `options`, `settings`, `opciones`) | Opens the settings window; `/scout guide` opens it on the Help page. |
 | `/scout weights` | Shows the stat weights in use and the stats you can set. |
 | `/scout weights agi=2.3 sta=0.7 …` | Sets your own stat weights for this character (merged over the ones in use). `/scout weights reset` goes back to the class default. |
 | `/whereis <npc name>` (alias `/where`) | TomTom arrow to the nearest spawn of the NPC, with distance in yards and meters. Partial names work and accents are optional (`jabali` matches `Jabalí`). With several matches the nearest spawn wins and the others are listed with their IDs. |
@@ -81,6 +85,30 @@ Limits of `/whereis`:
 - Players outside the party cannot be located: the client only gives party member positions.
   For friends outside the party, the snapshot records their zone (see `onlineFriends`).
 - A failed search keeps the current arrow.
+
+## Settings window and minimap button
+
+The window opens by itself the first time a character logs in. After that, a left-click on
+the minimap button opens it on **Start**, and `/scout config` on **Settings**. Three pages:
+
+- **Start**: everything a new player needs without typing a command. The four steps to ask an
+  AI, six ready-made questions (what to do next, which quests to do or skip, talents, what to
+  sell, gear in the bags, stat weights for the class) and a box for your own; each one copies
+  the summary with the question in it, written in your language and asking for the answer in
+  it. Below, a search box for NPCs, objects and party members with **Find**, **Show on map**
+  and **Clear arrow**, and a line saying whether Questie and TomTom are loaded.
+
+- **Settings**: a switch for the reminders as a whole and for each one (bags, durability,
+  talent points, ammo, pet), for the loot roll advice, for the tooltip score line and for the
+  minimap button itself; the stat weights as an editable line with Apply and Reset; and
+  buttons for the things you would otherwise type (copy the summary, start or clear the
+  route, check your addons).
+- **Help**: every feature explained in a few sentences, with its commands.
+
+The minimap button: left-click opens the window on Start, right-click opens the copy box, and it can
+be dragged around the minimap. Esc closes the window. Every choice is saved per character
+(`settings`, `minimapAngle` and `introduced` in `TrailScoutHistory`). On clients with an addon compartment,
+TrailScout is listed there too.
 
 ## Routes
 
@@ -212,8 +240,17 @@ in English, whatever the client language, since it is meant for an AI chat.
 
 ## Languages
 
-Chat messages, alerts and tooltip lines follow the game client: Spanish on esMX and esES,
-English everywhere else. Translations live in the `L` table at the top of `TrailScout.lua`.
+Everything the addon shows follows the game client: chat messages, alerts, tooltip lines,
+the settings and help window and the addon list note are in Spanish on esMX and esES, and in
+English everywhere else. The Spanish is neutral Latin American. Names of quests, items, NPCs
+and zones are never translated by the addon: they come from the client, so they are already
+in your language. Translations live in the `L` table at the top of `TrailScout.lua`; the
+TOC carries `Notes-esMX` and `Notes-esES`.
+
+The offline tools follow the same client language, read from the snapshot: on a Spanish
+client they show names as `English / Spanish` (you see the Spanish one in game, most guides
+use the English one), and on any other client the English name alone. They support English
+and Spanish clients; another language would show English names and miss objective progress.
 
 ## For developers
 

@@ -73,6 +73,17 @@ function Methods.Hide(self) self.shown = false end
 function Methods.SetText(self, text) self.text = text; self.cursor = #tostring(text) end
 function Methods.SetCursorPosition(self, position) self.cursor = position end
 function Methods.CreateFontString() return newObject() end
+function Methods.CreateTexture() return newObject() end
+function Methods.IsShown(self) return self.shown end
+function Methods.SetShown(self, shown) self.shown = shown and true or false end
+function Methods.SetChecked(self, checked) self.checked = checked and true or false end
+function Methods.GetChecked(self) return self.checked end
+function Methods.GetText(self) return self.text end
+-- Play a click on a button or check box (check boxes flip first, as the game does).
+function STUB.click(widget, mouseButton)
+  if widget.checked ~= nil then widget.checked = not widget.checked end
+  widget.scripts.OnClick(widget, mouseButton or "LeftButton")
+end
 function Methods.AddMessage(_, text) STUB.chat[#STUB.chat + 1] = text end
 
 function CreateFrame(_, name)
@@ -82,6 +93,8 @@ function CreateFrame(_, name)
 end
 
 UIParent = newObject("UIParent")
+Minimap = newObject("Minimap")
+UISpecialFrames = {}
 DEFAULT_CHAT_FRAME = newObject("DEFAULT_CHAT_FRAME")
 SlashCmdList = {}
 

@@ -16,7 +16,7 @@ local session = {}
 
 -- Upkeep alerts (ammo, pet, bags, durability) and the first-login welcome line; defined
 -- further down, used by the event handler.
-local scheduleAlerts, welcome, routeResume
+local scheduleAlerts, welcome, routeResume, setupUi
 
 -- Call a function safely; return nil instead of raising if the API is missing or errors.
 local function try(fn, ...)
@@ -46,18 +46,18 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["a weapon your class cannot use"] = "arma que tu clase no puede usar"
   L["armor too heavy for your class"] = "armadura demasiado pesada para tu clase"
   L["your class cannot use shields"] = "tu clase no puede usar escudos"
-  L["armor type you can wear from level 40"] = "tipo de armadura que podés usar desde el nivel 40"
+  L["armor type you can wear from level 40"] = "tipo de armadura que puedes usar desde el nivel 40"
   L["unknown slot (%s)"] = "ranura no reconocida (%s)"
   L[" (requires level %d)"] = " (requiere nivel %d)"
   L["upgrade, +%.1f points%s"] = "mejora, +%.1f puntos%s"
   L["not better than yours (%.1f)%s"] = "no mejora lo tuyo (%.1f)%s"
-  L["not for you (%s)"] = "no es para vos (%s)"
+  L["not for you (%s)"] = "no es para ti (%s)"
   L["equipped, score %.1f"] = "equipado, puntaje %.1f"
   L["%+.1f vs equipped"] = "%+.1f contra lo equipado"
   L["(score %.1f)"] = "(puntaje %.1f)"
   L["needs level %d"] = "requiere nivel %d"
   L["no stat weights for your class yet, so there is no loot advice. Set your own: /scout weights agi=1 sta=0.5 (see /scout weights)."] =
-    "todavía no hay pesos de estadísticas para tu clase, así que no hay consejo de botín. Poné los tuyos: /scout weights agi=1 sta=0.5 (mirá /scout weights)."
+    "todavía no hay pesos de estadísticas para tu clase, así que no hay consejo de botín. Pon los tuyos: /scout weights agi=1 sta=0.5 (mira /scout weights)."
   -- Stat weights command
   L["stat weights (%s): %s"] = "pesos de estadísticas (%s): %s"
   L["yours"] = "tuyos"
@@ -69,40 +69,40 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["stat weights saved for this character."] = "pesos de estadísticas guardados para este personaje."
   L["stat weights reset to the class default."] = "pesos de estadísticas restablecidos a los de la clase."
   -- Copy box
-  L["Ctrl+C to copy, then paste it into your AI chat. Esc to close."] = "Ctrl+C para copiar y pegalo en tu chat de IA. Esc para cerrar."
+  L["Ctrl+C to copy, then paste it into your AI chat. Esc to close."] = "Ctrl+C para copiar y pégalo en tu chat de IA. Esc para cerrar."
   L["Summary of your character (%d characters), already selected: just press Ctrl+C."] =
-    "Resumen de tu personaje (%d caracteres), ya seleccionado: solo apretá Ctrl+C."
+    "Resumen de tu personaje (%d caracteres), ya seleccionado: solo presiona Ctrl+C."
   -- /whereis
   L["%s left the party; arrow cleared."] = "%s salió del grupo; flecha borrada."
   L["%s: position hidden (instance or other continent)."] = "%s: posición oculta (instancia u otro continente)."
   L["arrow cleared."] = "flecha borrada."
-  L["TomTom is not enabled; enable it to get the arrow."] = "TomTom no está activado; activalo para tener la flecha."
+  L["TomTom is not enabled; enable it to get the arrow."] = "TomTom no está activado; actívalo para tener la flecha."
   L["usage: /whereis <npc or object name, npc id | party member>, /whereis map, /whereis off. With no argument it uses your NPC target."] =
-    "uso: /whereis <nombre de npc u objeto, id de npc | miembro del grupo>, /whereis map, /whereis off. Sin argumento usa el NPC que tenés de objetivo."
+    "uso: /whereis <nombre de npc u objeto, id de npc | miembro del grupo>, /whereis map, /whereis off. Sin argumento usa el NPC que tienes de objetivo."
   L["following %s (party member)."] = "siguiendo a %s (miembro del grupo)."
-  L["Questie is not loaded yet; try again in a few seconds."] = "Questie todavía no cargó; probá de nuevo en unos segundos."
+  L["Questie is not loaded yet; try again in a few seconds."] = "Questie todavía no cargó; prueba de nuevo en unos segundos."
   L["nothing matches \"%s\" (NPCs and objects). Other players can only be tracked while in your party."] =
     "nada coincide con \"%s\" (NPCs y objetos). A otros jugadores solo se los puede seguir si están en tu grupo."
   L["Show on map"] = "Ver en mapa"
-  L["nothing to show yet: use /whereis <name> first."] = "todavía no hay nada para mostrar: usá /whereis <nombre> primero."
+  L["nothing to show yet: use /whereis <name> first."] = "todavía no hay nada para mostrar: usa /whereis <nombre> primero."
   L["%s: no known spawn in the database."] = "%s: sin aparición conocida en la base de datos."
   L["%s: spawn zone %s has no map."] = "%s: la zona de aparición %s no tiene mapa."
   L["other continent"] = "otro continente"
-  L["%d matches, nearest chosen. Others: %s. Use /whereis <id>."] = "%d coincidencias, se eligió la más cercana. Otras: %s. Usá /whereis <id>."
+  L["%d matches, nearest chosen. Others: %s. Use /whereis <id>."] = "%d coincidencias, se eligió la más cercana. Otras: %s. Usa /whereis <id>."
   -- Upkeep alerts
-  L["No ammo equipped: drag arrows to the ammo slot."] = "Sin munición equipada: arrastrá flechas a la ranura de munición."
-  L["No ammo: buy arrows."] = "Sin munición: comprá flechas."
+  L["No ammo equipped: drag arrows to the ammo slot."] = "Sin munición equipada: arrastra flechas a la ranura de munición."
+  L["No ammo: buy arrows."] = "Sin munición: compra flechas."
   L["your other ammo"] = "tu otra munición"
-  L[" Equip %s (%d)."] = " Equipá %s (%d)."
-  L[" Buy more."] = " Comprá más."
+  L[" Equip %s (%d)."] = " Equipa %s (%d)."
+  L[" Buy more."] = " Compra más."
   L["Low ammo: %d %s left.%s"] = "Poca munición: quedan %d %s.%s"
-  L["Pet is dead: cast Revive Pet."] = "La mascota está muerta: lanzá Revivir mascota."
-  L["Pet is unhappy (75% damage, may run away): Feed Pet now."] = "La mascota está descontenta (75% de daño, puede escaparse): alimentala ya."
-  L["Pet is only content: Feed Pet for +25% damage."] = "La mascota solo está conforme: alimentala para +25% de daño."
-  L["No pet out: Call Pet."] = "Sin mascota: lanzá Llamar a mascota."
-  L["%d unspent talent point(s): open the talent window."] = "%d punto(s) de talento sin gastar: abrí la ventana de talentos."
+  L["Pet is dead: cast Revive Pet."] = "La mascota está muerta: lanza Revivir mascota."
+  L["Pet is unhappy (75% damage, may run away): Feed Pet now."] = "La mascota está descontenta (75% de daño, puede escaparse): aliméntala ya."
+  L["Pet is only content: Feed Pet for +25% damage."] = "La mascota solo está conforme: aliméntala para +25% de daño."
+  L["No pet out: Call Pet."] = "Sin mascota: lanza Llamar a mascota."
+  L["%d unspent talent point(s): open the talent window."] = "%d punto(s) de talento sin gastar: abre la ventana de talentos."
   L["Bags almost full: %d free slot(s)."] = "Bolsas casi llenas: %d lugar(es) libre(s)."
-  L["Gear at %d%% durability: repair."] = "Equipo al %d%% de durabilidad: reparalo."
+  L["Gear at %d%% durability: repair."] = "Equipo al %d%% de durabilidad: repáralo."
   L["upkeep alerts off (/scout alerts on to enable)."] = "alertas apagadas (/scout alerts on para activarlas)."
   L["upkeep alerts on."] = "alertas activadas."
   L["on"] = "activadas"
@@ -110,15 +110,146 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points. Repeat every %d min. /scout alerts on|off"] =
     "alertas %s: munición < %d, lugares libres <= %d, durabilidad < %d%%, mascota muerta / descontenta / conforme / ausente, puntos de talento sin gastar. Se repiten cada %d min. /scout alerts on|off"
   -- Addon overlap check
+  L["Bags"] = "Bolsas"
+  L["Damage meters"] = "Medidores de daño"
+  L["Action bars"] = "Barras de acción"
+  L["Unit frames"] = "Marcos de unidad"
+  L["Nameplates"] = "Placas de nombre"
+  L["Leveling guides"] = "Guías de subida de nivel"
+  L["Quest auto-accept"] = "Aceptar misiones automáticamente"
+  L["Waypoint arrows"] = "Flechas de ruta"
+  L["World map coordinates"] = "Coordenadas en el mapa"
+  L["Auction house"] = "Casa de subastas"
+  L["Vendor price in tooltips"] = "Precio de vendedor en tooltips"
+  L["Fast loot"] = "Botín rápido"
+  L["Swing / auto shot timers"] = "Temporizadores de golpe / disparo automático"
+  L["Rare scanners"] = "Detectores de raros"
   L["%d addons loaded (of %d installed)."] = "%d addons cargados (de %d instalados)."
   L["no overlapping addons found."] = "no hay addons superpuestos."
   L["same job twice: keep one per line (Leatrix Plus / ElvUI only clash if that option is on)."] =
-    "mismo trabajo dos veces: dejá uno por línea (Leatrix Plus / ElvUI solo chocan si esa opción está activa)."
+    "mismo trabajo dos veces: deja uno por línea (Leatrix Plus / ElvUI solo chocan si esa opción está activa)."
+  -- Settings and help window
+  L["Start"] =
+    "Inicio"
+  L["Copy with my question"] =
+    "Copiar con mi pregunta"
+  L["Find an NPC, an object or a party member"] =
+    "Encontrar un NPC, un objeto o un miembro del grupo"
+  L["Find"] =
+    "Buscar"
+  L["Clear arrow"] =
+    "Quitar flecha"
+  L["Type part of the name; the answer appears in chat. Questie (%s) is needed to find things, TomTom (%s) adds the arrow."] =
+    "Escribe parte del nombre; la respuesta aparece en el chat. Hace falta Questie (%s) para encontrar cosas, y TomTom (%s) agrega la flecha."
+  L["Left-click: ask an AI, find things, settings and help"] =
+    "Clic izquierdo: preguntarle a una IA, buscar cosas, ajustes y ayuda"
+  L["What should I do next?"] =
+    "¿Qué hago ahora?"
+  L["What should I do next? Give me the next steps in order."] =
+    "¿Qué me conviene hacer ahora? Dame los próximos pasos en orden. Respóndeme en español."
+  L["Which quests do I do or skip?"] =
+    "¿Qué misiones hago o salteo?"
+  L["Which of my quests should I do now, and which should I skip or abandon? Say why."] =
+    "¿Cuáles de mis misiones me conviene hacer ahora, y cuáles saltear o abandonar? Explícame por qué. Respóndeme en español."
+  L["Where do my talent points go?"] =
+    "¿Dónde pongo mis talentos?"
+  L["Where should I put my next talent points for my class and the way I am playing?"] =
+    "¿Dónde me conviene poner mis próximos puntos de talento, para mi clase y mi forma de jugar? Respóndeme en español."
+  L["What do I sell or keep?"] =
+    "¿Qué vendo y qué guardo?"
+  L["Looking at my bags, what should I sell and what should I keep?"] =
+    "Mirando mis bolsas, ¿qué me conviene vender y qué guardar? Respóndeme en español."
+  L["Is anything in my bags better?"] =
+    "¿Tengo algo mejor en las bolsas?"
+  L["Is any gear in my bags better than what I am wearing?"] =
+    "¿Hay en mis bolsas algún equipo mejor que el que llevo puesto? Respóndeme en español."
+  L["Stat weights for my class"] =
+    "Pesos para mi clase"
+  L["What stat weights should I use for my class and role while leveling? Answer with a single line I can type in game, in this exact form: /scout weights int=1 spi=0.8 sta=0.5"] =
+    "¿Qué pesos de estadísticas me conviene usar para mi clase y mi rol mientras subo de nivel? Respóndeme en español, con una sola línea que pueda escribir en el juego, exactamente con esta forma: /scout weights int=1 spi=0.8 sta=0.5"
+  L["1. Press one of the questions below, or write your own.\n2. A box opens with the text already selected: press Ctrl+C.\n3. Open your AI chat (ChatGPT, Claude, Gemini or any other) and paste with Ctrl+V.\n4. Read the answer. Ask again whenever your character changes."] =
+    "1. Presiona una de las preguntas de abajo, o escribe la tuya.\n2. Se abre una caja con el texto ya seleccionado: presiona Ctrl+C.\n3. Abre tu chat de IA (ChatGPT, Claude, Gemini o cualquier otro) y pega con Ctrl+V.\n4. Lee la respuesta. Vuelve a preguntar cada vez que tu personaje cambie."
+  L["the settings window could not be built on this client; here is the help instead."] =
+    "no se pudo armar la ventana de ajustes en este cliente; va la ayuda en su lugar."
+  L["/scout config: a window with every switch and the full help (also on the minimap button)."] =
+    "/scout config: una ventana con todos los interruptores y la ayuda completa (también en el botón del minimapa)."
+  L["Settings"] =
+    "Ajustes"
+  L["Help"] =
+    "Ayuda"
+  L["Apply"] =
+    "Aplicar"
+  L["Reset"] =
+    "Restablecer"
+  L["Reminders (master switch)"] =
+    "Avisos (interruptor general)"
+  L["Bags almost full"] =
+    "Bolsas casi llenas"
+  L["Gear about to break"] =
+    "Equipo a punto de romperse"
+  L["Unspent talent points"] =
+    "Puntos de talento sin gastar"
+  L["Low ammo (hunters)"] =
+    "Poca munición (cazadores)"
+  L["Pet dead, missing or unhappy (hunters)"] =
+    "Mascota muerta, ausente o descontenta (cazadores)"
+  L["NEED / GREED advice in chat when a loot roll starts"] =
+    "Consejo de NECESIDAD / CODICIA en el chat cuando empieza una tirada de botín"
+  L["Score line on gear tooltips"] =
+    "Línea de puntaje en los tooltips de equipo"
+  L["Minimap button"] =
+    "Botón del minimapa"
+  L["Stat weights (%s). Stats: %s"] =
+    "Pesos de estadísticas (%s). Estadísticas: %s"
+  L["Copy summary for an AI"] =
+    "Copiar resumen para una IA"
+  L["Start route"] =
+    "Iniciar ruta"
+  L["Clear route"] =
+    "Borrar ruta"
+  L["Check my addons"] =
+    "Revisar mis addons"
+  L["Right-click: copy the summary for an AI"] =
+    "Clic derecho: copiar el resumen para una IA"
+  L["Drag: move this button"] =
+    "Arrastrar: mover este botón"
+  L["What TrailScout is for"] =
+    "Para qué sirve TrailScout"
+  L["It takes a snapshot of your character (quests with progress, gear, bags, talents, professions, party and friends online) so an AI assistant can plan your next steps with you. It never plays for you: it only reads what any addon can read and shows you information."] =
+    "Saca una foto de tu personaje (misiones con su progreso, equipo, bolsas, talentos, profesiones, grupo y amigos conectados) para que un asistente de IA planifique contigo los próximos pasos. Nunca juega por ti: solo lee lo que cualquier addon puede leer y te muestra información."
+  L["Ask an AI about your character"] =
+    "Preguntarle a una IA por tu personaje"
+  L["/scout opens a box with a summary of your character. Press Ctrl+C and paste it into any AI chat with your question. /scout <question> puts the question inside the summary. /reload writes the full snapshot to disk for the offline tools; the game only saves addon data on reload or logout."] =
+    "/scout abre una caja con un resumen de tu personaje. Presiona Ctrl+C y pégalo en cualquier chat de IA con tu pregunta. /scout <pregunta> mete la pregunta dentro del resumen. /reload escribe la foto completa al disco para las herramientas offline; el juego solo guarda datos de addons al recargar o salir."
+  L["Find NPCs, objects and party members"] =
+    "Encontrar NPCs, objetos y miembros del grupo"
+  L["/whereis <name> finds the nearest NPC or world object with that name: how far it is, an arrow to it and a [Show on map] link. /whereis <party member> follows them. /whereis alone uses your target, /whereis map opens the map again and /whereis off removes the arrow. Needs Questie; TomTom adds the arrow."] =
+    "/whereis <nombre> encuentra el NPC u objeto del mundo más cercano con ese nombre: a qué distancia está, una flecha y un link [Ver en mapa]. /whereis <miembro del grupo> lo sigue. /whereis solo usa tu objetivo, /whereis map vuelve a abrir el mapa y /whereis off saca la flecha. Necesita Questie; TomTom agrega la flecha."
+  L["Routes"] =
+    "Rutas"
+  L["/scout route walks a route stop by stop with waypoints. At a quest stop it tells you that you arrived and waits: type /scout route next when you are done. /scout route <number> jumps to a stop and /scout route clear removes it. A reload resumes where you were. Routes are made outside the game by the offline tools. Needs TomTom."] =
+    "/scout route recorre una ruta parada por parada con puntos en el mapa. En una parada de misión te avisa que llegaste y espera: escribe /scout route next cuando termines. /scout route <número> salta a una parada y /scout route clear la borra. Al recargar retoma donde estabas. Las rutas se arman fuera del juego con las herramientas offline. Necesita TomTom."
+  L["Loot advice"] =
+    "Consejo de botín"
+  L["When a loot roll starts, chat says NEED or GREED for you, and every gear tooltip gets a line with how much better or worse the item is than what you wear. /scout <shift-clicked item> checks any item. It works from stat weights: hunters have them built in, every other class sets its own below or with /scout weights."] =
+    "Cuando empieza una tirada de botín, el chat te dice NECESIDAD o CODICIA, y cada tooltip de equipo suma una línea con cuánto mejor o peor es el item que lo que tienes puesto. /scout <item con shift-clic> revisa cualquier item. Funciona con pesos de estadísticas: los cazadores los traen de fábrica y las demás clases cargan los suyos aquí abajo o con /scout weights."
+  L["Reminders"] =
+    "Avisos"
+  L["A warning on screen and a sound when your bags are almost full, your gear is about to break or you have a talent point to spend. Hunters also get low ammo and a dead, missing or unhappy pet. Each reminder repeats every five minutes while it lasts and can be switched off on the Settings page."] =
+    "Un aviso en pantalla y un sonido cuando tus bolsas están casi llenas, tu equipo está por romperse o tienes un punto de talento para gastar. Los cazadores también reciben poca munición y mascota muerta, ausente o descontenta. Cada aviso se repite cada cinco minutos mientras dure y se puede apagar en la página de Ajustes."
+  L["What is saved, and privacy"] =
+    "Qué se guarda, y privacidad"
+  L["The snapshot also keeps your XP pace, deaths, dungeon runs, known flight paths, recipes and where you accepted each quest. It includes the names of your party members, friends, guild and communities. Everything stays on your computer until you paste or share it: the addon cannot use the internet."] =
+    "La foto también guarda tu ritmo de XP, muertes, mazmorras, rutas de vuelo conocidas, recetas y dónde aceptaste cada misión. Incluye los nombres de los miembros de tu grupo, amigos, hermandad y comunidades. Todo queda en tu computadora hasta que lo pegues o compartas: el addon no puede usar internet."
+  L["Other addons"] =
+    "Otros addons"
+  L["Questie and TomTom are optional and only used by /whereis and /scout route. /scout addons lists addons you have that do the same job twice. The offline tools can also read Syndicator (bank and mail) and Auctionator (prices)."] =
+    "Questie y TomTom son opcionales y solo los usan /whereis y /scout route. /scout addons lista los addons que tienes que hacen el mismo trabajo dos veces. Las herramientas offline también pueden leer Syndicator (banco y correo) y Auctionator (precios)."
   -- Help and welcome
   L["loaded"] = "cargado"
   L["not installed or disabled"] = "no instalado o desactivado"
   L["Optional addons, only needed for /whereis: Questie %s, TomTom %s."] = "Addons opcionales, solo necesarios para /whereis: Questie %s, TomTom %s."
-  L["loaded. Type /scout help to see what it does."] = "cargado. Escribí /scout help para ver qué hace."
+  L["loaded. Type /scout help to see what it does."] = "cargado. Escribe /scout help para ver qué hace."
   L["TrailScout saves a snapshot of your character (quests, gear, bags, talents, friends) that an AI assistant or the offline tools can read to plan your next steps."] =
     "TrailScout guarda una foto de tu personaje (misiones, equipo, bolsas, talentos, amigos) que un asistente de IA o las herramientas offline pueden leer para planificar tus próximos pasos."
   L["/scout [question]: build the snapshot and open a box to copy a summary into an AI chat."] =
@@ -128,7 +259,7 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["/whereis <npc | object | party member>: finds it, with an arrow (TomTom) and a link to see it on the map. /whereis map opens the map again, /whereis off clears the arrow. Needs Questie."] =
     "/whereis <npc | objeto | miembro del grupo>: lo encuentra, con flecha (TomTom) y un link para verlo en el mapa. /whereis map vuelve a abrir el mapa, /whereis off borra la flecha. Necesita Questie."
   L["/scout <shift-clicked item>: NEED or GREED verdict against what you wear."] =
-    "/scout <item con shift-clic>: veredicto de NECESIDAD o CODICIA contra lo que tenés puesto."
+    "/scout <item con shift-clic>: veredicto de NECESIDAD o CODICIA contra lo que tienes puesto."
   L["/scout weights: show or set the stat weights used for loot advice and tooltips."] =
     "/scout weights: muestra o cambia los pesos de estadísticas del consejo de botín y los tooltips."
   L["/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters."] =
@@ -138,11 +269,11 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["route finished."] = "ruta terminada."
   L["route cleared."] = "ruta borrada."
   L["next stop: %s (%d of %d)"] = "próxima parada: %s (%d de %d)"
-  L["you reached %s. Type /scout route next when you are done here."] = "llegaste a %s. Escribí /scout route next cuando termines acá."
+  L["you reached %s. Type /scout route next when you are done here."] = "llegaste a %s. Escribe /scout route next cuando termines aquí."
   L["no route loaded. Create one with tools/map_route.py --addon, then /reload."] =
-    "no hay ruta cargada. Creá una con tools/map_route.py --addon y después /reload."
+    "no hay ruta cargada. Crea una con tools/map_route.py --addon y después /reload."
   L["route \"%s\": %d stops."] = "ruta \"%s\": %d paradas."
-  L["new route loaded: %s (%d stops). Type /scout route to start."] = "ruta nueva cargada: %s (%d paradas). Escribí /scout route para empezar."
+  L["new route loaded: %s (%d stops). Type /scout route to start."] = "ruta nueva cargada: %s (%d paradas). Escribe /scout route para empezar."
   L["/scout addons: loaded addons that do the same job."] = "/scout addons: addons cargados que hacen el mismo trabajo."
   L["Privacy: the snapshot and the copy box include names of party members, friends, guild and communities. It stays on your computer until you paste or share it."] =
     "Privacidad: la foto y la caja de copiar incluyen nombres de miembros del grupo, amigos, hermandad y comunidades. Queda en tu computadora hasta que la pegues o compartas."
@@ -155,6 +286,23 @@ local function plainText(value)
   if type(value) ~= "string" then return nil end
   local ok = pcall(function() return value == value end)
   return ok and value or nil
+end
+
+-- Per-character switches, changed from the settings window ("/scout config"). Stored in
+-- TrailScoutHistory.settings; a feature is on unless its key was explicitly set to false.
+--   tooltip, lootAdvice, minimap, alert_ammo, alert_pet, alert_bags, alert_durability,
+--   alert_talents
+local function setting(key)
+  local h = TrailScoutHistory
+  local s = h and h.settings
+  return not (type(s) == "table" and s[key] == false)
+end
+
+local function setSetting(key, value)
+  TrailScoutHistory = TrailScoutHistory or {}
+  local h = TrailScoutHistory
+  h.settings = h.settings or {}
+  h.settings[key] = value and true or false
 end
 
 local function itemIdFromLink(link)
@@ -382,7 +530,7 @@ end
 -- weighted score difference against what is equipped in that slot. Needs stat weights (see activeWeights()).
 local function addTooltipScore(tooltip)
   if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end  -- skip comparison tooltips
-  if not hasWeights() then return end
+  if not hasWeights() or not setting("tooltip") then return end
   local _, link = tooltip:GetItem()
   if not link then return end
   local e = evaluateItem(link)
@@ -1691,6 +1839,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
       C_Timer.After(10, function() scheduleAlerts() end)
       C_Timer.After(6, function() pcall(welcome) end)
       C_Timer.After(4, function() pcall(routeResume) end)
+      C_Timer.After(2, function() pcall(setupUi) end)
     end
     -- Keep the snapshot fresh while playing, so a plain /reload always saves current data.
     -- Rosters are re-requested each tick; the server throttles them and the next tick reads them.
@@ -1727,7 +1876,7 @@ frame:SetScript("OnEvent", function(_, event, arg1, arg2)
     if C_Timer then C_Timer.After(1, function() pcall(captureTradeSkill) end) end
   elseif event == "START_LOOT_ROLL" then
     local link = try(GetLootRollItemLink, arg1)
-    if link and hasWeights() then adviseItem(link) end
+    if link and hasWeights() and setting("lootAdvice") then adviseItem(link) end
   elseif event == "QUEST_ACCEPTED" then
     pcall(onQuestAccepted, arg1, arg2)
   elseif event == "QUEST_DETAIL" then
@@ -2222,7 +2371,14 @@ local function alertSettings()
   return h.alerts
 end
 
+-- Which settings switch each alert belongs to.
+local ALERT_SETTING = {
+  ammo = "alert_ammo", petDead = "alert_pet", petUnhappy = "alert_pet", petContent = "alert_pet",
+  petMissing = "alert_pet", bags = "alert_bags", durability = "alert_durability", talents = "alert_talents",
+}
+
 local function alert(key, active, text)
+  if ALERT_SETTING[key] and not setting(ALERT_SETTING[key]) then active = false end
   if not active then
     alertState[key] = nil
     return
@@ -2351,7 +2507,7 @@ local function addonsCommand()
     return
   end
   for _, o in ipairs(a.overlaps) do
-    say("|cffffd100" .. o.label .. "|r: " .. table.concat(o.addons, ", "))
+    say("|cffffd100" .. T(o.label) .. "|r: " .. table.concat(o.addons, ", "))
   end
   say(T("same job twice: keep one per line (Leatrix Plus / ElvUI only clash if that option is on)."))
 end
@@ -2367,6 +2523,7 @@ local HELP_LINES = {
   "/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters.",
   "/scout route [next|<n>|clear]: walk a route made by tools/map_route.py --addon, one TomTom waypoint per stop.",
   "/scout addons: loaded addons that do the same job.",
+  "/scout config: a window with every switch and the full help (also on the minimap button).",
   "Privacy: the snapshot and the copy box include names of party members, friends, guild and communities. It stays on your computer until you paste or share it.",
 }
 
@@ -2426,7 +2583,413 @@ welcome = function()
   say(T("loaded. Type /scout help to see what it does."))
 end
 
-local function command(msg)
+-- Settings and help window ("/scout config", or the minimap button). Everything the addon
+-- does is explained on the Help page, and every switch is on the Settings page.
+local command  -- defined below; the window's buttons call it
+local optionsFrame, minimapButton
+local updateMinimapButton
+
+-- Settings page switches, top to bottom. "alerts" is the master switch kept by
+-- "/scout alerts on|off"; the others are setting() keys.
+local OPTION_CHECKS = {
+  { key = "alerts", label = "Reminders (master switch)" },
+  { key = "alert_bags", label = "Bags almost full", indent = true },
+  { key = "alert_durability", label = "Gear about to break", indent = true },
+  { key = "alert_talents", label = "Unspent talent points", indent = true },
+  { key = "alert_ammo", label = "Low ammo (hunters)", indent = true },
+  { key = "alert_pet", label = "Pet dead, missing or unhappy (hunters)", indent = true },
+  { key = "lootAdvice", label = "NEED / GREED advice in chat when a loot roll starts" },
+  { key = "tooltip", label = "Score line on gear tooltips" },
+  { key = "minimap", label = "Minimap button" },
+}
+
+-- Help page: one entry per feature, title then explanation.
+local HELP_TOPICS = {
+  { "What TrailScout is for",
+    "It takes a snapshot of your character (quests with progress, gear, bags, talents, professions, party and friends online) so an AI assistant can plan your next steps with you. It never plays for you: it only reads what any addon can read and shows you information." },
+  { "Ask an AI about your character",
+    "/scout opens a box with a summary of your character. Press Ctrl+C and paste it into any AI chat with your question. /scout <question> puts the question inside the summary. /reload writes the full snapshot to disk for the offline tools; the game only saves addon data on reload or logout." },
+  { "Find NPCs, objects and party members",
+    "/whereis <name> finds the nearest NPC or world object with that name: how far it is, an arrow to it and a [Show on map] link. /whereis <party member> follows them. /whereis alone uses your target, /whereis map opens the map again and /whereis off removes the arrow. Needs Questie; TomTom adds the arrow." },
+  { "Routes",
+    "/scout route walks a route stop by stop with waypoints. At a quest stop it tells you that you arrived and waits: type /scout route next when you are done. /scout route <number> jumps to a stop and /scout route clear removes it. A reload resumes where you were. Routes are made outside the game by the offline tools. Needs TomTom." },
+  { "Loot advice",
+    "When a loot roll starts, chat says NEED or GREED for you, and every gear tooltip gets a line with how much better or worse the item is than what you wear. /scout <shift-clicked item> checks any item. It works from stat weights: hunters have them built in, every other class sets its own below or with /scout weights." },
+  { "Reminders",
+    "A warning on screen and a sound when your bags are almost full, your gear is about to break or you have a talent point to spend. Hunters also get low ammo and a dead, missing or unhappy pet. Each reminder repeats every five minutes while it lasts and can be switched off on the Settings page." },
+  { "What is saved, and privacy",
+    "The snapshot also keeps your XP pace, deaths, dungeon runs, known flight paths, recipes and where you accepted each quest. It includes the names of your party members, friends, guild and communities. Everything stays on your computer until you paste or share it: the addon cannot use the internet." },
+  { "Other addons",
+    "Questie and TomTom are optional and only used by /whereis and /scout route. /scout addons lists addons you have that do the same job twice. The offline tools can also read Syndicator (bank and mail) and Auctionator (prices)." },
+}
+
+-- Create a frame from a template when the client has it, plain otherwise.
+local function make(frameType, name, parent, template)
+  if template then
+    local ok, created = pcall(CreateFrame, frameType, name, parent, template)
+    if ok and created then return created end
+  end
+  return CreateFrame(frameType, name, parent)
+end
+
+local function optionValue(key)
+  if key == "alerts" then return alertSettings().enabled and true or false end
+  return setting(key)
+end
+
+local function setOption(key, value)
+  if key == "alerts" then
+    alertSettings().enabled = value and true or false
+  else
+    setSetting(key, value)
+  end
+  -- A reminder switched back on should be able to fire right away.
+  for k in pairs(alertState) do alertState[k] = nil end
+  if key == "minimap" and updateMinimapButton then updateMinimapButton() end
+  if value then scheduleAlerts() end
+end
+
+local function weightsText()
+  local weights = activeWeights()
+  local parts = {}
+  for _, stat in ipairs(WEIGHT_STATS) do
+    if weights and weights[stat] then parts[#parts + 1] = stat .. "=" .. weights[stat] end
+  end
+  return table.concat(parts, " ")
+end
+
+local function helpText()
+  local parts = {}
+  for _, topic in ipairs(HELP_TOPICS) do
+    parts[#parts + 1] = "|cffffd100" .. T(topic[1]) .. "|r\n" .. T(topic[2])
+  end
+  return table.concat(parts, "\n\n")
+end
+
+local function showOptionsPage(name)
+  for pageName, page in pairs(optionsFrame.pages) do page:SetShown(pageName == name) end
+  optionsFrame.page = name
+end
+
+-- Start page: the questions most players ask an AI, ready to copy. `label` is the button,
+-- `question` what goes into the summary. Both are translated, so the AI is asked in the
+-- player's language and answers in it.
+local AI_QUESTIONS = {
+  { label = "What should I do next?",
+    question = "What should I do next? Give me the next steps in order." },
+  { label = "Which quests do I do or skip?",
+    question = "Which of my quests should I do now, and which should I skip or abandon? Say why." },
+  { label = "Where do my talent points go?",
+    question = "Where should I put my next talent points for my class and the way I am playing?" },
+  { label = "What do I sell or keep?",
+    question = "Looking at my bags, what should I sell and what should I keep?" },
+  { label = "Is anything in my bags better?",
+    question = "Is any gear in my bags better than what I am wearing?" },
+  { label = "Stat weights for my class",
+    question = "What stat weights should I use for my class and role while leveling? Answer with a single line I can type in game, in this exact form: /scout weights int=1 spi=0.8 sta=0.5" },
+}
+local AI_STEPS = "1. Press one of the questions below, or write your own.\n2. A box opens with the text already selected: press Ctrl+C.\n3. Open your AI chat (ChatGPT, Claude, Gemini or any other) and paste with Ctrl+V.\n4. Read the answer. Ask again whenever your character changes."
+
+local function refreshOptions()
+  -- Say which of the two helper addons the search can count on right now.
+  local function status(loaded) return loaded and T("loaded") or T("not installed or disabled") end
+  optionsFrame.findHelp:SetText(string.format(
+    T("Type part of the name; the answer appears in chat. Questie (%s) is needed to find things, TomTom (%s) adds the arrow."),
+    status(QuestieLoader ~= nil), status(TomTom ~= nil)))
+  for key, check in pairs(optionsFrame.checks) do check:SetChecked(optionValue(key)) end
+  optionsFrame.weights:SetText(weightsText())
+  local _, source = activeWeights()
+  optionsFrame.weightsSource:SetText(string.format(T("Stat weights (%s). Stats: %s"), T(source), table.concat(WEIGHT_STATS, " ")))
+end
+
+local function buildOptions()
+  local frame = make("Frame", "TrailScoutOptionsFrame", UIParent, "BackdropTemplate")
+  frame:SetSize(600, 560)
+  frame:SetPoint("CENTER")
+  frame:SetFrameStrata("DIALOG")
+  if frame.SetBackdrop then
+    frame:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+      edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
+      insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+    frame:SetBackdropColor(0.05, 0.08, 0.10, 0.96)
+  end
+  frame:EnableMouse(true)
+  frame:SetMovable(true)
+  frame:RegisterForDrag("LeftButton")
+  frame:SetScript("OnDragStart", frame.StartMoving)
+  frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "TrailScoutOptionsFrame") end  -- Esc closes it
+
+  local version = (C_AddOns and try(C_AddOns.GetAddOnMetadata, "TrailScout", "Version")) or try(GetAddOnMetadata, "TrailScout", "Version")
+  local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  title:SetPoint("TOPLEFT", 18, -16)
+  title:SetText("TrailScout" .. (version and (" " .. version) or ""))
+
+  local close = make("Button", nil, frame, "UIPanelCloseButton")
+  close:SetPoint("TOPRIGHT", -4, -4)
+  close:SetScript("OnClick", function() frame:Hide() end)
+
+  local function button(parent, text, width, onClick)
+    local b = make("Button", nil, parent, "UIPanelButtonTemplate")
+    b:SetSize(width, 24)
+    b:SetText(text)
+    b:SetScript("OnClick", onClick)
+    return b
+  end
+
+  frame.pages = { start = CreateFrame("Frame", nil, frame), settings = CreateFrame("Frame", nil, frame),
+                  help = CreateFrame("Frame", nil, frame) }
+  for _, page in pairs(frame.pages) do
+    page:SetPoint("TOPLEFT", 16, -76)
+    page:SetPoint("BOTTOMRIGHT", -16, 16)
+  end
+  local startTab = button(frame, T("Start"), 110, function() showOptionsPage("start") end)
+  startTab:SetPoint("TOPLEFT", 16, -44)
+  local settingsTab = button(frame, T("Settings"), 110, function() showOptionsPage("settings") end)
+  settingsTab:SetPoint("LEFT", startTab, "RIGHT", 6, 0)
+  local helpTab = button(frame, T("Help"), 110, function() showOptionsPage("help") end)
+  helpTab:SetPoint("LEFT", settingsTab, "RIGHT", 6, 0)
+  frame.tabs = { start = startTab, settings = settingsTab, help = helpTab }
+
+  -- Start page: ask an AI without typing a command, and find things by name.
+  local start = frame.pages.start
+  local function heading(text, y)
+    local h = start:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    h:SetPoint("TOPLEFT", 0, y)
+    h:SetText(text)
+    return h
+  end
+  -- Copy the summary with a question in it. The window steps aside for the copy box.
+  local function ask(question)
+    frame:Hide()
+    session.question = question ~= "" and question or nil
+    buildSnapshot()
+    showCopyBox(compactText(TrailScoutDB or {}))
+  end
+  heading(T("Ask an AI about your character"), 0)
+  frame.steps = start:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  frame.steps:SetPoint("TOPLEFT", 0, -22)
+  frame.steps:SetWidth(560)
+  frame.steps:SetJustifyH("LEFT")
+  frame.steps:SetText(T(AI_STEPS))
+  frame.questions = {}
+  for i, entry in ipairs(AI_QUESTIONS) do
+    local question = entry.question
+    local b = button(start, T(entry.label), 276, function() ask(T(question)) end)
+    b:SetPoint("TOPLEFT", ((i - 1) % 2) * 284, -104 - math.floor((i - 1) / 2) * 30)
+    frame.questions[i] = b
+  end
+  frame.ownQuestion = make("EditBox", nil, start, "InputBoxTemplate")
+  frame.ownQuestion:SetSize(430, 24)
+  frame.ownQuestion:SetPoint("TOPLEFT", 6, -204)
+  frame.ownQuestion:SetAutoFocus(false)
+  frame.ownQuestion:SetMaxLetters(0)
+  frame.ownQuestion:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  local function askOwn() ask(frame.ownQuestion:GetText() or "") end
+  frame.ownQuestion:SetScript("OnEnterPressed", askOwn)
+  frame.askOwn = button(start, T("Copy with my question"), 150, askOwn)
+  frame.askOwn:SetPoint("LEFT", frame.ownQuestion, "RIGHT", 8, 0)
+
+  heading(T("Find an NPC, an object or a party member"), -252)
+  frame.findBox = make("EditBox", nil, start, "InputBoxTemplate")
+  frame.findBox:SetSize(250, 24)
+  frame.findBox:SetPoint("TOPLEFT", 6, -276)
+  frame.findBox:SetAutoFocus(false)
+  frame.findBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  local function find()
+    local name = (frame.findBox:GetText() or ""):match("^%s*(.-)%s*$")
+    if name ~= "" then where(name) end
+    frame.findBox:ClearFocus()
+  end
+  frame.findBox:SetScript("OnEnterPressed", find)
+  frame.find = button(start, T("Find"), 90, find)
+  frame.find:SetPoint("LEFT", frame.findBox, "RIGHT", 8, 0)
+  frame.findMap = button(start, T("Show on map"), 100, function() where("map") end)
+  frame.findMap:SetPoint("LEFT", frame.find, "RIGHT", 6, 0)
+  frame.findClear = button(start, T("Clear arrow"), 100, function() where("off") end)
+  frame.findClear:SetPoint("LEFT", frame.findMap, "RIGHT", 6, 0)
+  frame.findHelp = start:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  frame.findHelp:SetPoint("TOPLEFT", 0, -308)
+  frame.findHelp:SetWidth(560)
+  frame.findHelp:SetJustifyH("LEFT")
+
+  -- Settings page: one switch per feature.
+  local page = frame.pages.settings
+  frame.checks = {}
+  local y = 0
+  for _, option in ipairs(OPTION_CHECKS) do
+    local check = make("CheckButton", nil, page, "UICheckButtonTemplate")
+    check:SetSize(24, 24)
+    check:SetPoint("TOPLEFT", option.indent and 24 or 0, y)
+    local label = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    label:SetPoint("LEFT", check, "RIGHT", 4, 0)
+    label:SetText(T(option.label))
+    check.label = label
+    local key = option.key
+    check:SetScript("OnClick", function(self) setOption(key, self:GetChecked() and true or false) end)
+    frame.checks[key] = check
+    y = y - 26
+  end
+
+  -- Stat weights: the line "/scout weights" takes, editable in place.
+  frame.weightsSource = page:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  frame.weightsSource:SetPoint("TOPLEFT", 0, y - 12)
+  frame.weightsSource:SetWidth(560)
+  frame.weightsSource:SetJustifyH("LEFT")
+  frame.weights = make("EditBox", nil, page, "InputBoxTemplate")
+  frame.weights:SetSize(380, 24)
+  frame.weights:SetPoint("TOPLEFT", 6, y - 46)
+  frame.weights:SetAutoFocus(false)
+  frame.weights:SetMaxLetters(0)
+  frame.weights:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  local function applyWeights()
+    weightsCommand((frame.weights:GetText() or ""):lower())
+    frame.weights:ClearFocus()
+    refreshOptions()
+  end
+  frame.weights:SetScript("OnEnterPressed", applyWeights)
+  frame.applyWeights = button(page, T("Apply"), 80, applyWeights)
+  frame.applyWeights:SetPoint("LEFT", frame.weights, "RIGHT", 8, 0)
+  frame.resetWeights = button(page, T("Reset"), 80, function()
+    weightsCommand("reset")
+    refreshOptions()
+  end)
+  frame.resetWeights:SetPoint("LEFT", frame.applyWeights, "RIGHT", 6, 0)
+
+  -- The things you would otherwise type.
+  local actions = {
+    { "Copy summary for an AI", function() frame:Hide(); command("") end },
+    { "Start route", function() routeCommand("") end },
+    { "Clear route", function() routeCommand("clear") end },
+    { "Check my addons", function() addonsCommand() end },
+  }
+  frame.actions = {}
+  local previous
+  for i, action in ipairs(actions) do
+    local b = button(page, T(action[1]), 136, action[2])
+    if previous then b:SetPoint("LEFT", previous, "RIGHT", 6, 0) else b:SetPoint("BOTTOMLEFT", 0, 4) end
+    previous = b
+    frame.actions[i] = b
+  end
+
+  -- Help page: every feature explained, scrollable.
+  local help = frame.pages.help
+  local scroll = make("ScrollFrame", "TrailScoutOptionsScroll", help, "UIPanelScrollFrameTemplate")
+  scroll:SetPoint("TOPLEFT", 0, 0)
+  scroll:SetPoint("BOTTOMRIGHT", -26, 0)
+  local content = CreateFrame("Frame", nil, scroll)
+  content:SetSize(530, 10)
+  frame.helpText = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  frame.helpText:SetPoint("TOPLEFT", 0, 0)
+  frame.helpText:SetWidth(530)
+  frame.helpText:SetJustifyH("LEFT")
+  frame.helpText:SetText(helpText())
+  content:SetHeight((frame.helpText.GetStringHeight and frame.helpText:GetStringHeight() or 0) + 20)
+  if scroll.SetScrollChild then scroll:SetScrollChild(content) end
+
+  frame:Hide()
+  return frame
+end
+
+-- Open the window on a page ("start", "settings" or "help"), or close it when it already
+-- shows that one.
+local function toggleOptions(page)
+  if not optionsFrame then
+    -- The window uses the client's own widget templates; if this client lacks one, say so
+    -- and fall back to the help in chat instead of raising an error.
+    local ok, built = pcall(buildOptions)
+    if not ok or not built then
+      say(T("the settings window could not be built on this client; here is the help instead.") .. " (" .. tostring(built) .. ")")
+      helpCommand()
+      return
+    end
+    optionsFrame = built
+  end
+  page = page or "start"
+  if optionsFrame:IsShown() and optionsFrame.page == page then
+    optionsFrame:Hide()
+    return
+  end
+  refreshOptions()
+  showOptionsPage(page)
+  optionsFrame:Show()
+end
+
+-- Minimap button: left-click opens the window, right-click copies the summary, drag moves
+-- it around the minimap.
+local MINIMAP_RADIUS = 80
+updateMinimapButton = function()
+  if not minimapButton then return end
+  local h = history()
+  local angle = math.rad(h.minimapAngle or 215)
+  minimapButton:ClearAllPoints()
+  minimapButton:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * MINIMAP_RADIUS, math.sin(angle) * MINIMAP_RADIUS)
+  minimapButton:SetShown(setting("minimap"))
+end
+
+local function buildMinimapButton()
+  if not Minimap then return nil end
+  local b = CreateFrame("Button", "TrailScoutMinimapButton", Minimap)
+  b:SetSize(31, 31)
+  b:SetFrameStrata("MEDIUM")
+  b:SetFrameLevel(8)
+  b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  b:RegisterForDrag("LeftButton")
+  local icon = b:CreateTexture(nil, "BACKGROUND")
+  icon:SetTexture("Interface\\Icons\\INV_Misc_Map_01")
+  icon:SetSize(20, 20)
+  icon:SetPoint("CENTER", 0, 0)
+  local border = b:CreateTexture(nil, "OVERLAY")
+  border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+  border:SetSize(53, 53)
+  border:SetPoint("TOPLEFT", 0, 0)
+  b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+  b:SetScript("OnClick", function(_, mouseButton)
+    if mouseButton == "RightButton" then command("") else toggleOptions("start") end
+  end)
+  b:SetScript("OnEnter", function(self)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:AddLine("TrailScout")
+    GameTooltip:AddLine(T("Left-click: ask an AI, find things, settings and help"), 1, 1, 1)
+    GameTooltip:AddLine(T("Right-click: copy the summary for an AI"), 1, 1, 1)
+    GameTooltip:AddLine(T("Drag: move this button"), 0.7, 0.7, 0.7)
+    GameTooltip:Show()
+  end)
+  b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  local atan2 = math.atan2 or math.atan
+  b:SetScript("OnDragStart", function(self)
+    self:SetScript("OnUpdate", function()
+      local mx, my = Minimap:GetCenter()
+      local cx, cy = GetCursorPosition()
+      local scale = Minimap:GetEffectiveScale()
+      if not (mx and my and cx and cy and scale) then return end
+      history().minimapAngle = math.deg(atan2(cy / scale - my, cx / scale - mx))
+      updateMinimapButton()
+    end)
+  end)
+  b:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
+  return b
+end
+
+setupUi = function()
+  if not minimapButton then minimapButton = buildMinimapButton() end
+  updateMinimapButton()
+  -- First login of a character: open the window on its Start page, so a new player sees
+  -- what the addon does without having to find a command.
+  local h = history()
+  if not h.introduced then
+    h.introduced = true
+    toggleOptions("start")
+  end
+end
+
+-- Addon compartment entry on clients that have one (the TOC names this function).
+function TrailScout_OnAddonCompartmentClick()
+  toggleOptions("start")
+end
+
+command = function(msg)
   msg = msg and msg:match("^%s*(.-)%s*$") or ""
   -- "/scout <shift-clicked item link>" gives an instant Need/Greed verdict, no reload needed.
   local link = msg:match("(|c.-|Hitem:.-|h.-|h|r)") or msg:match("(|Hitem:.-|h.-|h)")
@@ -2441,6 +3004,14 @@ local function command(msg)
   local lower = msg:lower()
   if lower == "help" or lower == "?" or lower == "ayuda" then
     helpCommand()
+    return
+  end
+  if lower == "config" or lower == "options" or lower == "settings" or lower == "ui" or lower == "opciones" then
+    toggleOptions("settings")
+    return
+  end
+  if lower == "guide" or lower == "guia" then
+    toggleOptions("help")
     return
   end
   if lower == "addons" then
