@@ -1,6 +1,7 @@
 # CurseForge listing
 
-Texts for the TrailScout project page. The logo is `assets/logo-400.png`
+Texts for the TrailScout project page, live at
+<https://www.curseforge.com/wow/addons/trail-scout>. The logo is `assets/logo-400.png`
 (`assets/make_logo.py` redraws it).
 
 ## Create-project form

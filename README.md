@@ -14,7 +14,7 @@ simply ask *"what should I do next?"* and get an answer about **your** character
 It also helps on its own while you play: arrows to NPCs, routes with waypoints, loot advice
 and reminders. Any class, Horde or Alliance. English and Spanish.
 
-> CurseForge page: coming soon. Until then, install it from this page (two minutes, below).
+> **Get it on CurseForge:** <https://www.curseforge.com/wow/addons/trail-scout>
 
 ## What it does for you
 
@@ -35,11 +35,20 @@ and reminders. Any class, Horde or Alliance. English and Spanish.
 
 ## Install
 
-1. Download this page: green **Code** button → **Download ZIP**, then unzip it.
+**The easy way: CurseForge.** Open the
+[Trail Scout page](https://www.curseforge.com/wow/addons/trail-scout) and press **Install**
+in the CurseForge app, which also keeps it up to date. No app? Press **Download** on that
+page, unzip the file and copy the `TrailScout` folder into your game's
+`_forever_/Interface/AddOns/` folder.
+
+**From this page** (needed for the offline tools further down):
+
+1. Green **Code** button → **Download ZIP**, then unzip it.
 2. Copy the `addon/TrailScout` folder into your game's `_forever_/Interface/AddOns/` folder.
-   You should end up with `Interface/AddOns/TrailScout/TrailScout.toc`.
-3. Start the game, tick **TrailScout** in the AddOns list on the character screen, and log
-   in. Chat says `TrailScout: loaded. Type /scout help`.
+
+Either way you should end up with `Interface/AddOns/TrailScout/TrailScout.toc`. Start the
+game, tick **TrailScout** in the AddOns list on the character screen, and log in. Chat says
+`TrailScout: loaded. Type /scout help`.
 
 Optional but recommended: **Questie** (Forever version) and **TomTom**. `/whereis` and
 `/scout route` need them; everything else works without. For the offline tools, **Syndicator**
