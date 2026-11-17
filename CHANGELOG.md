@@ -3,6 +3,15 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.7.0
+
+- Routes from an AI chat, with no extra tools: the new question **Plan a route for me** asks the assistant to end its answer with one line that starts with `TSR1`. Paste that line into the new box on the Start page (or type `/scout import <line>`) and the route starts, with a waypoint per stop.
+- The game places the stops itself from Questie's data: one stop for each place a quest's open objectives send you to (drops, objects and vendors), where it is turned in, or any NPC or object by name. Objectives you already finished are skipped, and stops that cannot be placed are listed in chat instead of failing the whole route.
+- Stops in a row at the same place (several turn-ins in one town) are merged into one stop.
+- The summary now carries the number of the map you are on, so a route can also name a plain place by coordinates.
+- A **Clear route** button beside the route box takes the waypoints off the map.
+- An imported route is kept across `/reload`. When the offline tools write a newer route, that one is used.
+
 ## TrailScout 1.6.1
 
 - A floating TrailScout button that you can drag anywhere on screen, besides the one on the minimap. Each has its own switch in Settings.

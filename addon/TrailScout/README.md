@@ -32,7 +32,7 @@ the full snapshot needs a `/reload`.
 |---|---|---|
 | Snapshot, copy box, session history, XP pace | yes | yes |
 | `/whereis` for NPCs, objects and party members | yes | yes |
-| `/scout route` waypoints from the offline tools | yes | yes |
+| `/scout route` waypoints (route from an AI chat or the offline tools) | yes | yes |
 | Alerts: bags, durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
 | Loot NEED / GREED advice and tooltip score | yes, built-in weights | after you set your stat weights with `/scout weights` |
@@ -64,7 +64,8 @@ required dependency would stop TrailScout from loading at all without them.
 | `/scout alerts` | Shows the upkeep alert thresholds and runs a check now. |
 | `/scout alerts off` / `/scout alerts on` | Mutes or re-enables upkeep alerts (saved per character). |
 | `/scout <shift-clicked item link>` | Instant NEED / GREED verdict for that item against what is equipped. |
-| `/scout route` (or `ruta`) | Walks the route written by `tools/map_route.py --addon`: one TomTom waypoint per stop, arrow on the current one. Carries on from the saved stop after a `/reload`. |
+| `/scout route` (or `ruta`) | Walks the loaded route (imported from an AI chat, or written by `tools/map_route.py --addon`): one TomTom waypoint per stop, arrow on the current one. Carries on from the saved stop after a `/reload`. |
+| `/scout import <TSR1 line>` | Loads the route line an AI chat answered with and starts it. Same as the box on the window's Start page; `/scout TSR1; …` works too. |
 | `/scout route next` / `/scout route <n>` / `/scout route clear` | Move to the next stop, jump to stop n, or remove the route's waypoints. |
 | `/scout help` (or `?`, `ayuda`) | What the addon does and every command. |
 | `/scout config` (or `options`, `settings`, `opciones`) | Opens the settings window; `/scout guide` opens it on the Help page. |
@@ -114,10 +115,34 @@ TrailScout is listed there too.
 
 ## Routes
 
-`/scout route` walks a route made outside the game by `tools/map_route.py --addon` (from the
-[trail-scout-wow repository](https://github.com/feliarana/trail-scout-wow)). The tool writes the
-stops into `Route.lua` in this folder; the game reads that file on every `/reload`, and chat
-says `new route loaded` when there is one. Needs TomTom.
+`/scout route` walks a route, one stop at a time. Needs TomTom. A route comes from one of two
+places, and the newer one is used:
+
+**From an AI chat (nothing else to install).** On the window's Start page press **Plan a route
+for me**, paste the summary into your AI chat, and paste the line it ends its answer with into
+the box **Paste a route from your AI chat** (or type `/scout import <line>`). The line looks
+like this:
+
+```
+TSR1; Hillsbrad run; q514; find Apothecary Lydon; at 1424 61 20 Tarren Mill; t514
+```
+
+| Stop | Meaning | Placed from |
+|---|---|---|
+| `q514` | Go do quest 514 | Questie: one stop per place its open objectives send you to (creatures, objects, and whatever drops or sells an item); objectives close together share a stop. Objectives the log shows as finished are skipped |
+| `t514` | Turn in quest 514 | Questie's turn-in NPC; for a quest Questie does not know, where you accepted it (the label says so) |
+| `find <name>` | An NPC or object by name | Questie, as `/whereis` does |
+| `at <map> <x> <y> [label]` | A place by map number and coordinates | Nothing: used as written. The map number of where you stand is in the summary |
+
+The first part after `TSR1` is the route's name when it is not a stop. Stops that cannot be
+placed are listed in chat and left out; the rest of the route still loads. The route is kept
+in `TrailScoutHistory.importedRoute`, so it survives a `/reload`. Coordinates an assistant
+writes from memory in an `at` stop can be wrong: quest and name stops are the reliable ones.
+
+**From the offline tools.** `tools/map_route.py --addon` (from the
+[trail-scout-wow repository](https://github.com/feliarana/trail-scout-wow)) writes the stops
+into `Route.lua` in this folder; the game reads that file on every `/reload`, and chat says
+`new route loaded` when there is one.
 
 - Every remaining stop is a TomTom waypoint; the arrow points at the current stop.
 - A plain waypoint advances by itself when you stand on it. A quest stop (kill, loot, object,

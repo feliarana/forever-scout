@@ -25,8 +25,8 @@ and reminders. Any class, Horde or Alliance. English and Spanish.
   how far it is and gives you a **[Show on map]** link to click when it is far away. It works
   for things in the world too (`/whereis mudsnout blossom`) and follows a party member:
   `/whereis Mauro`.
-- **Follow a route.** `/scout route` walks you stop by stop with waypoints: objectives first,
-  turn-ins last.
+- **Follow a route.** Ask the AI to *plan a route*, paste the line it answers with, and
+  `/scout route` walks you stop by stop with waypoints: objectives first, turn-ins last.
 - **Know what to roll.** NEED or GREED in chat on every loot roll, and a line on every gear
   tooltip saying how much better or worse it is than what you wear.
 - **Stop forgetting things.** A warning when your bags are almost full, your gear is about to
@@ -75,6 +75,7 @@ for another, so get those two yourself.
 | `/scout help` | Every command, explained in chat. |
 | `/whereis <npc \| object \| party member>` | Finds it: distance, arrow and a link to see it on the world map. `/whereis` alone uses your target, `/whereis map` opens the map again. |
 | `/scout route` | Start (or resume) the loaded route. `/scout route next` moves on, `/scout route clear` removes it. |
+| `/scout import <TSR1 line>` | Load the route an AI chat gave you (same as the box on the Start page). |
 | `/scout <item link>` | NEED or GREED for that item. |
 | `/scout weights` | Show or set the stat weights behind the loot advice. |
 | `/scout alerts on` / `off` | Turn the reminders on or off. |

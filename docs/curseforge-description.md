@@ -5,7 +5,7 @@
 - **Minimap button** — opens a window with ready-made questions to copy into an AI chat (*What should I do next?*, *Where do my talent points go?*), a search box for NPCs and objects, a switch for every feature and a Help page. It opens by itself the first time: no command has to be typed.
 - **`/scout`** — a summary of your character in a copy box. Press Ctrl+C and paste it into any AI chat together with your question.
 - **`/whereis <name>`** — finds an NPC or an object in the world: how far it is, an arrow to it and a **[Show on map]** link. It also follows a party member.
-- **`/scout route`** — walks a route stop by stop with waypoints, objectives first and turn-ins last (routes come from the offline tools).
+- **Routes from the AI** — the question *Plan a route for me* makes the assistant answer with one line; paste it into the window and `/scout route` walks it stop by stop with waypoints. The game places the stops itself from Questie's data.
 - **Reminders** — nearly full bags, low durability, unspent talent points. Hunters also get low ammo and a dead, missing or unhappy pet.
 - **Loot advice** — NEED or GREED on every roll, and a score line on gear tooltips against what you wear. Hunters have built-in stat weights; every other class sets its own with `/scout weights`.
 - **`/scout help`** — every command, in English or Spanish to match your client.
@@ -21,7 +21,7 @@
 
 ## Good to know
 
-- **Questie and TomTom are optional.** `/whereis` needs Questie, and TomTom adds the arrow. `/scout route` needs TomTom. Everything else works without them.
+- **Questie and TomTom are optional.** `/whereis` needs Questie, and TomTom adds the arrow. `/scout route` needs TomTom, and Questie to place the quest stops of a route from the AI. Everything else works without them.
 - **Privacy:** the snapshot and the copy box include the names of party members, friends, guild and communities. Nothing leaves your computer unless you paste or share it.
 - **It does not play for you.** It only reads what any addon can read and shows you information.
 - The game only saves addon data on `/reload` or logout, so the full snapshot needs a `/reload`.
@@ -38,7 +38,7 @@
 - **Botón en el minimapa** — abre una ventana con preguntas listas para copiarle a una IA (*¿Qué hago ahora?*, *¿Dónde pongo mis talentos?*), un buscador de NPCs y objetos, un interruptor para cada función y una página de ayuda. La primera vez se abre sola: no hace falta escribir ningún comando.
 - **`/scout`** — un resumen de tu personaje en una caja para copiar. Presiona Ctrl+C y pégalo en cualquier chat de IA junto con tu pregunta.
 - **`/whereis <nombre>`** — encuentra un NPC o un objeto del mundo: a qué distancia está, una flecha y un enlace **[Ver en mapa]**. También sigue a un miembro del grupo.
-- **`/scout route`** — recorre una ruta parada por parada con puntos en el mapa, primero los objetivos y al final las entregas (las rutas salen de las herramientas complementarias).
+- **Rutas de la IA** — la pregunta *Ármame una ruta* hace que el asistente conteste con una línea; pégala en la ventana y `/scout route` la recorre parada por parada con puntos en el mapa. El juego ubica las paradas solo, con los datos de Questie.
 - **Avisos** — bolsas casi llenas, equipo a punto de romperse, puntos de talento sin gastar. Los cazadores también reciben poca munición y mascota muerta, ausente o descontenta. Cada aviso se puede apagar por separado.
 - **Consejo de botín** — NECESIDAD o CODICIA en cada tirada, y una línea de puntaje en los tooltips de equipo contra lo que llevas puesto. Los cazadores traen pesos de estadísticas de fábrica; las demás clases cargan los suyos con `/scout weights`.
 
@@ -53,7 +53,7 @@
 
 ### Bueno saber
 
-- **Questie y TomTom son opcionales.** `/whereis` necesita Questie, y TomTom agrega la flecha. `/scout route` necesita TomTom. Todo lo demás funciona sin ellos.
+- **Questie y TomTom son opcionales.** `/whereis` necesita Questie, y TomTom agrega la flecha. `/scout route` necesita TomTom, y Questie para ubicar las paradas de misión de una ruta de la IA. Todo lo demás funciona sin ellos.
 - **Privacidad:** la foto y la caja de copiar incluyen los nombres de los miembros de tu grupo, amigos, hermandad y comunidades. Nada sale de tu computadora a menos que lo pegues o lo compartas.
 - **No juega por ti.** Solo lee lo que cualquier addon puede leer y te muestra información.
 - El juego solo guarda los datos de los addons al hacer `/reload` o al salir, por eso la foto completa necesita un `/reload`.

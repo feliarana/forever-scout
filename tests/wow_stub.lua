@@ -407,6 +407,7 @@ end
 -- Questie, world map and chat links: not loaded by default.
 -- STUB.installQuestie() adds a tiny Questie database: STUB.questie.npcs / .objects are
 -- { [id] = { name, zone, x, y, dist } } with one spawn each (dist in yards from the player).
+-- Quest and item data for route imports go in STUB.questie.quests / .items.
 -- STUB.clickLink(link) plays a click on an "addon:" chat hyperlink.
 ----------------------------------------------------------------------------------------
 
@@ -420,8 +421,19 @@ function STUB.installQuestie()
       if field == "spawns" then return { [e.zone] = { { e.x, e.y, dist = e.dist } } } end
     end
   end
+  -- Quests and items are plain field tables: STUB.questie.quests[id] = { name = ...,
+  -- objectives = { creatures, objects, items }, finishedBy = { npcs, objects } } and
+  -- STUB.questie.items[id] = { name = ..., npcDrops = { ids }, objectDrops = { ids } }.
+  STUB.questie.quests, STUB.questie.items = {}, {}
+  local function fields(tableName)
+    return function(id, field)
+      local e = STUB.questie[tableName][id]
+      return e and e[field]
+    end
+  end
   local db = { NPCPointers = STUB.questie.npcs, ObjectPointers = STUB.questie.objects,
-               QueryNPCSingle = single("npcs"), QueryObjectSingle = single("objects") }
+               QueryNPCSingle = single("npcs"), QueryObjectSingle = single("objects"),
+               QueryQuestSingle = fields("quests"), QueryItemSingle = fields("items") }
   local distance = {}
   function distance.GetNearestSpawn(spawns)
     for zone, list in pairs(spawns) do return list[1], zone, list[1].dist end

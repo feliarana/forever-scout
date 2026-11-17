@@ -411,6 +411,163 @@ test("/scout route: messages are in Spanish on an esMX client", () => {
   `);
 });
 
+// Quest data for route imports: quest 514 wants ten Mudsnout Blossoms (item 3502, picked
+// from object 1728) and Hillsbrad Farmers killed; it is turned in to Apothecary Lydon.
+const ROUTE_QUESTS = `
+  STUB.questie.npcs[2300] = { name = "Hillsbrad Farmer", zone = 267, x = 33.4, y = 38.9, dist = 300 }
+  STUB.questie.items[3502] = { name = "Mudsnout Blossom", objectDrops = { 1728 } }
+  STUB.questie.quests[514] = { name = "Elixir of Agony",
+    objectives = { { { 2300, "Farmers slain" } }, nil, { { 3502 } } },
+    finishedBy = { { 2216 }, nil } }
+`;
+
+test("route import: a line from an AI chat becomes a route placed from Questie's data", () => {
+  withAddon(ONE_ITEM + QUESTIE + ROUTE_QUESTS + `
+    STUB.installTomTom()
+    STUB.x, STUB.y = 0.30, 0.30
+  `, LOGIN + `
+    -- Code fence, line break and a final period, as chats tend to answer.
+    slash("import \`\`\`TSR1; Hillsbrad run; q514; find mudsnout;\\nat 1424 61 20 Tarren Mill; t514.\`\`\`")
+    assert(STUB.said("route imported: Hillsbrad run (4 stops)."), "import not confirmed")
+    local route = TrailScoutHistory.importedRoute
+    assert(route and #route.points == 4, "route not saved")
+    -- The quest sends the player to two places, so it gets two stops: the farmers and the
+    -- blossoms (named after the item to collect). "find mudsnout" is that same spot.
+    local quest, find, at, turnin = route.points[1], route.points[2], route.points[3], route.points[4]
+    assert(quest.label == "1. Elixir of Agony: Hillsbrad Farmer" and quest.kind == "quest" and quest.m == 1267 and quest.x == 33.4)
+    assert(find.label == "2. Elixir of Agony: Mudsnout Blossom (+1)" and find.kind == "quest" and find.y == 61.3, find.label)
+    assert(at.label == "3. Tarren Mill" and at.m == 1424 and at.x == 61 and at.y == 20 and at.kind == "poi")
+    assert(turnin.label == "4. Turn in Elixir of Agony: Apothecary Lydon" and turnin.kind == "turnin" and turnin.x == 61.4)
+    -- It starts right away, and plain /scout route finds it again.
+    assert(STUB.arrow == "1. Elixir of Agony: Hillsbrad Farmer" and STUB.waypointCount() == 4)
+    slash("route clear")
+    slash("route")
+    assert(STUB.arrow == "1. Elixir of Agony: Hillsbrad Farmer", "the imported route must stay loaded")
+  `);
+});
+
+test("route import: finished objectives are skipped and unknown stops are reported", () => {
+  withAddon(ONE_ITEM + QUESTIE + ROUTE_QUESTS + `
+    STUB.installTomTom()
+    STUB.quests = { { id = 514, title = "Elixir de agonía", level = 24,
+      objectives = { { text = "Hillsbrad Farmer slain: 6/6", finished = true },
+                     { text = "Mudsnout Blossom: 2/10", finished = false } } } }
+  `, LOGIN + `
+    login()
+    slash("TSR1; q514; q999; find nobody here; dance a little; t999")
+    local route = TrailScoutHistory.importedRoute
+    -- The farmers are done, so the stop is at the blossoms; the title is the log's own.
+    assert(#route.points == 1 and route.points[1].label == "1. Elixir de agonía: Mudsnout Blossom", route.points[1].label)
+    assert(route.title == "Route from the AI")
+    assert(STUB.said("4 stops left out"), "problems not reported")
+    assert(STUB.said("q999 (no place known for this quest)") and STUB.said("find nobody here (name not found)"))
+    assert(STUB.said("dance a little (not understood)"))
+  `);
+});
+
+test("route import: works without Questie for plain places, falls back to where a quest was accepted", () => {
+  withAddon(ONE_ITEM + `STUB.installTomTom()`, LOGIN + `
+    slash("import nothing useful")
+    assert(STUB.said("that is not a route line"), "a line without the tag must be refused")
+    slash("import TSR1; q514")
+    assert(STUB.said("no stop of that route could be placed") and STUB.said("q514 (Questie is needed)"))
+    assert(not (TrailScoutHistory and TrailScoutHistory.importedRoute), "nothing is saved when no stop could be placed")
+    slash("import TSR1; at 1424 50.5, 40 ")
+    assert(TrailScoutHistory.importedRoute.points[1].label == "1. 50.5, 40.0")
+  `);
+  withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom()`, LOGIN + `
+    TrailScoutHistory = { questGivers = { [777] = { name = "Krusk", mapID = 1424, x = 63.2, y = 20.7 } } }
+    slash("import TSR1; t777")
+    local point = TrailScoutHistory.importedRoute.points[1]
+    assert(point.m == 1424 and point.x == 63.2 and point.label:find("where you accepted it", 1, true), point.label)
+
+    -- A "go to this place" quest has only a spot in the database.
+    STUB.questie.quests[888] = { name = "Scout the tower", triggerEnd = { "Tower scouted", { [267] = { { 52.3, 47.8 } } } } }
+    slash("import TSR1; q888")
+    point = TrailScoutHistory.importedRoute.points[1]
+    assert(point.m == 1267 and point.x == 52.3 and point.label == "1. Scout the tower: Tower scouted", point.label)
+  `);
+});
+
+test("route import: a quest gets a stop per place, counting vendors, and nearby objectives share one", () => {
+  withAddon(ONE_ITEM + QUESTIE + `
+    STUB.installTomTom()
+    STUB.questie.npcs[10] = { name = "Snapjaw", zone = 267, x = 63.8, y = 35.6, dist = 500 }
+    STUB.questie.npcs[11] = { name = "Derak Nightfall", zone = 267, x = 62.6, y = 19.0, dist = 5 }
+    STUB.questie.npcs[12] = { name = "Farmer Ray", zone = 267, x = 33.2, y = 34.8, dist = 900 }
+    STUB.questie.npcs[13] = { name = "Farmer Getz", zone = 267, x = 35.2, y = 38.0, dist = 950 }
+    STUB.questie.items[1] = { name = "Turtle Meat", npcDrops = { 10 } }
+    STUB.questie.items[2] = { name = "Soothing Spices", vendors = { 11 } }
+    STUB.questie.quests[7321] = { name = "Soothing Turtle Bisque", objectives = { nil, nil, { { 1 }, { 2 } } } }
+    STUB.questie.npcs[14] = { name = "Hillsbrad Farmhand", zone = 267, x = 34.0, y = 37.0, dist = 920 }
+    STUB.questie.quests[527] = { name = "Battle of Hillsbrad", objectives = { { { 12 }, { 13 }, { 14 } } } }
+  `, LOGIN + `
+    slash("import TSR1; q7321; q527")
+    local points = TrailScoutHistory.importedRoute.points
+    assert(#points == 3, "expected 3 stops, got " .. #points)
+    -- The vendor next door must not hide the turtles: each item is its own stop.
+    assert(points[1].label == "1. Soothing Turtle Bisque: Turtle Meat" and points[1].x == 63.8, points[1].label)
+    assert(points[2].label == "2. Soothing Turtle Bisque: Soothing Spices" and points[2].x == 62.6, points[2].label)
+    -- Farmers in the same fields are one stop that names the first two and counts the rest.
+    assert(points[3].label == "3. Battle of Hillsbrad: Farmer Ray + Farmer Getz (+1)", points[3].label)
+  `);
+});
+
+test("route import: stops in a row at the same place are one stop", () => {
+  withAddon(ONE_ITEM + QUESTIE + ROUTE_QUESTS + `STUB.installTomTom()`, LOGIN + `
+    -- Lydon stands at 61.4, 19.1: the turn-in and the two places next to him share a stop.
+    slash("import TSR1; at 1267 61 20 Tarren Mill; t514; at 1267 62 19.5 Inn; at 1267 30 40 Fields; at 1267 61 20 Tarren Mill")
+    local points = TrailScoutHistory.importedRoute.points
+    assert(#points == 3, "expected 3 stops, got " .. #points)
+    assert(points[1].label == "1. Tarren Mill (+2)" and points[1].kind == "turnin", points[1].label .. " " .. points[1].kind)
+    assert(points[2].label == "2. Fields" and points[3].label == "3. Tarren Mill")
+    assert(STUB.said("(3 stops)"))
+  `);
+});
+
+test("route import: the newer of the tool's route and the imported one is used", () => {
+  withAddon(ONE_ITEM + ROUTE + `STUB.installTomTom()`, LOGIN + `
+    slash("import TSR1; Mine; at 1424 10 10 First")
+    slash("route")
+    assert(STUB.arrow == "1. First", "an import made now is newer than the 2026-11-16 route file")
+    TrailScoutHistory.importedRoute.createdAt = "2020-01-01 00:00:00"
+    slash("route")
+    assert(STUB.arrow == "1. Tarren Mill", "a newer route file must win over an old import")
+  `);
+});
+
+test("Start page: the route question asks for a TSR1 line and the box loads it", () => {
+  withAddon(ONE_ITEM + `STUB.installTomTom()`, LOGIN + `
+    login()
+    local frame = TrailScoutOptionsFrame
+    assert(frame.questions[6].text == "Plan a route for me")
+    STUB.click(frame.questions[6])
+    local text = TrailScoutCopyFrame.box.text
+    assert(text:find("TSR1; route name; q123; t123", 1, true), "the question must carry the line format")
+    assert(text:find(" map 1424", 1, true), "the summary must carry the map number for 'at' stops")
+
+    slash("config")
+    STUB.click(frame.tabs.start)
+    frame.routeBox.text = "not a route"
+    STUB.click(frame.routeStart)
+    assert(frame.shown and frame.routeBox.text == "not a route", "a bad line stays in the box to be fixed")
+    frame.routeBox.text = "TSR1; at 1424 61 20 Tarren Mill"
+    STUB.click(frame.routeStart)
+    assert(not frame.shown and frame.routeBox.text == "", "a loaded route closes the window")
+    assert(STUB.arrow == "1. Tarren Mill")
+    -- The button beside it takes the route's waypoints off the map again.
+    STUB.click(frame.routeClear)
+    assert(STUB.waypointCount() == 0 and STUB.said("route cleared."))
+  `);
+  withAddon(ONE_ITEM + `STUB.locale = "esMX"`, LOGIN + `
+    login()
+    local frame = TrailScoutOptionsFrame
+    assert(frame.questions[6].text == "Ármame una ruta" and frame.routeStart.text == "Empezar esta ruta")
+    slash("import nada")
+    assert(STUB.said("eso no es una línea de ruta"))
+  `);
+});
+
 test("the placeholder Route.lua and the TOC load order are in place", () => {
   const dir = path.join(__dirname, "..", "addon", "TrailScout");
   const toc = fs.readFileSync(path.join(dir, "TrailScout.toc"), "utf8").split(/\r?\n/);
@@ -803,7 +960,7 @@ test("Start page: a question button copies the summary with that question, in th
   withAddon(ONE_ITEM, LOGIN + `
     login()
     local frame = TrailScoutOptionsFrame
-    assert(#frame.questions == 6 and frame.questions[1].text == "What should I do next?")
+    assert(#frame.questions == 7 and frame.questions[1].text == "What should I do next?")
     assert(frame.steps.text:find("press Ctrl+C", 1, true), "the steps must be on the page")
     STUB.click(frame.questions[1])
     assert(not frame.shown, "the window steps aside for the copy box")

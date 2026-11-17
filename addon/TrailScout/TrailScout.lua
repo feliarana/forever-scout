@@ -228,8 +228,8 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "/whereis <nombre> encuentra el NPC u objeto del mundo más cercano con ese nombre: a qué distancia está, una flecha y un link [Ver en mapa]. /whereis <miembro del grupo> lo sigue. /whereis solo usa tu objetivo, /whereis map vuelve a abrir el mapa y /whereis off saca la flecha. Necesita Questie; TomTom agrega la flecha."
   L["Routes"] =
     "Rutas"
-  L["/scout route walks a route stop by stop with waypoints. At a quest stop it tells you that you arrived and waits: type /scout route next when you are done. /scout route <number> jumps to a stop and /scout route clear removes it. A reload resumes where you were. Routes are made outside the game by the offline tools. Needs TomTom."] =
-    "/scout route recorre una ruta parada por parada con puntos en el mapa. En una parada de misión te avisa que llegaste y espera: escribe /scout route next cuando termines. /scout route <número> salta a una parada y /scout route clear la borra. Al recargar retoma donde estabas. Las rutas se arman fuera del juego con las herramientas offline. Necesita TomTom."
+  L["/scout route walks a route stop by stop with waypoints. At a quest stop it tells you that you arrived and waits: type /scout route next when you are done. /scout route <number> jumps to a stop and /scout route clear removes it. A reload resumes where you were. To get a route, press \"Plan a route for me\" on the Start page, ask your AI chat and paste the TSR1 line it answers with; the offline tools can make one too. Needs TomTom, and Questie to place quest stops."] =
+    "/scout route recorre una ruta parada por parada con puntos en el mapa. En una parada de misión te avisa que llegaste y espera: escribe /scout route next cuando termines. /scout route <número> salta a una parada y /scout route clear la borra. Al recargar retoma donde estabas. Para conseguir una ruta, presiona \"Ármame una ruta\" en la página Inicio, pregúntale a tu chat de IA y pega la línea TSR1 que te conteste; las herramientas offline también pueden armar una. Necesita TomTom, y Questie para ubicar las paradas de misión."
   L["Loot advice"] =
     "Consejo de botín"
   L["When a loot roll starts, chat says NEED or GREED for you, and every gear tooltip gets a line with how much better or worse the item is than what you wear. /scout <shift-clicked item> checks any item. It works from stat weights: hunters have them built in, every other class sets its own below or with /scout weights."] =
@@ -265,14 +265,36 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "/scout weights: muestra o cambia los pesos de estadísticas del consejo de botín y los tooltips."
   L["/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters."] =
     "/scout alerts [on|off]: avisos de bolsas, durabilidad, puntos de talento, y munición y mascota para cazadores."
-  L["/scout route [next|<n>|clear]: walk a route made by tools/map_route.py --addon, one TomTom waypoint per stop."] =
-    "/scout route [next|<n>|clear]: recorre una ruta hecha con tools/map_route.py --addon, un punto de TomTom por parada."
+  L["/scout route [next|<n>|clear]: walk the loaded route, one TomTom waypoint per stop. /scout import <TSR1 line>: load the route an AI chat gave you."] =
+    "/scout route [next|<n>|clear]: recorre la ruta cargada, un punto de TomTom por parada. /scout import <línea TSR1>: carga la ruta que te dio un chat de IA."
   L["route finished."] = "ruta terminada."
   L["route cleared."] = "ruta borrada."
   L["next stop: %s (%d of %d)"] = "próxima parada: %s (%d de %d)"
   L["you reached %s. Type /scout route next when you are done here."] = "llegaste a %s. Escribe /scout route next cuando termines aquí."
-  L["no route loaded. Create one with tools/map_route.py --addon, then /reload."] =
-    "no hay ruta cargada. Crea una con tools/map_route.py --addon y después /reload."
+  L["no route loaded. Press \"Plan a route for me\" in the TrailScout window, ask your AI chat and paste the line it gives you there. The offline tools can write one too (tools/map_route.py --addon)."] =
+    "no hay ruta cargada. Presiona \"Ármame una ruta\" en la ventana de TrailScout, pregúntale a tu chat de IA y pega ahí la línea que te dé. Las herramientas offline también pueden escribir una (tools/map_route.py --addon)."
+  L["Plan a route for me"] = "Ármame una ruta"
+  L["Plan a route for my quests: the order to do them and where to turn each one in. Explain it briefly, then end with ONE line I can paste into the game, in this exact form: TSR1; route name; q123; t123; find Npc Name; at 1424 63.8 35.6 Place name. q123 = go do quest 123 and t123 = turn it in (123 is the number after Q in my summary; [OK] quests only need the turn-in), find = an NPC or object by its exact name, at = a place by the map number in my summary and its coordinates. Prefer q and t: the game finds those places itself."] =
+    "Arma una ruta para mis misiones: el orden para hacerlas y dónde entregar cada una. Explícala brevemente en español y termina con UNA línea que pueda pegar en el juego, exactamente con esta forma: TSR1; nombre de la ruta; q123; t123; find Nombre del PNJ; at 1424 63.8 35.6 Nombre del lugar. q123 = ir a hacer la misión 123 y t123 = entregarla (123 es el número después de la Q en mi resumen; las misiones [OK] solo necesitan la entrega), find = un PNJ u objeto por su nombre exacto, at = un lugar por el número de mapa de mi resumen y sus coordenadas. Prefiere q y t: el juego encuentra esos lugares solo."
+  L["Paste a route from your AI chat"] = "Pega una ruta de tu chat de IA"
+  L["Start this route"] = "Empezar esta ruta"
+  L["Paste the line that starts with TSR1 (Ctrl+V) and press the button. Quest stops need Questie; the arrow needs TomTom."] =
+    "Pega la línea que empieza con TSR1 (Ctrl+V) y presiona el botón. Las paradas de misión necesitan Questie; la flecha necesita TomTom."
+  L["that is not a route line: it has to start with TSR1. Get one with the \"Plan a route for me\" question."] =
+    "eso no es una línea de ruta: tiene que empezar con TSR1. Consigue una con la pregunta \"Ármame una ruta\"."
+  L["Route from the AI"] = "Ruta de la IA"
+  L["route imported: %s (%d stops)."] = "ruta importada: %s (%d paradas)."
+  L["no stop of that route could be placed on the map."] = "no se pudo ubicar en el mapa ninguna parada de esa ruta."
+  L["%d stops left out: %s"] = "%d paradas quedaron afuera: %s"
+  L["Questie is needed"] = "hace falta Questie"
+  L["name not found"] = "nombre no encontrado"
+  L["no known place"] = "sin lugar conocido"
+  L["no place known for this quest"] = "sin lugar conocido para esta misión"
+  L["not understood"] = "no se entendió"
+  L["Turn in"] = "Entregar"
+  L["Quest"] = "Misión"
+  L["go there"] = "ir al lugar"
+  L["(where you accepted it; the turn-in may be elsewhere)"] = "(donde la aceptaste; la entrega puede ser en otro lado)"
   L["route \"%s\": %d stops."] = "ruta \"%s\": %d paradas."
   L["new route loaded: %s (%d stops). Type /scout route to start."] = "ruta nueva cargada: %s (%d paradas). Escribe /scout route para empezar."
   L["/scout addons: loaded addons that do the same job."] = "/scout addons: addons cargados que hacen el mismo trabajo."
@@ -1903,10 +1925,10 @@ local function compactText(snap)
   local out = {}
   local function add(x) out[#out + 1] = x end
   local loc = snap.location or {}
-  add(string.format("FX1 %s | level %s %s/%s XP rested %s | %s copper | %s - %s %.1f,%.1f",
+  add(string.format("FX1 %s | level %s %s/%s XP rested %s | %s copper | %s - %s %.1f,%.1f map %s",
     tostring(snap.savedAt), tostring(snap.level), tostring(snap.xp), tostring(snap.xpMax),
     tostring(snap.rested), tostring(snap.money), tostring(loc.zone), tostring(loc.subZone),
-    tonumber(loc.x) or 0, tonumber(loc.y) or 0))
+    tonumber(loc.x) or 0, tonumber(loc.y) or 0, tostring(loc.mapID)))
   if snap.question then add("QUESTION: " .. snap.question) end
   local h = snap.hearth or {}
   add("hearthstone: " .. tostring(h.bind) .. " cooldown " .. tostring(h.cooldownLeft) .. "s")
@@ -2231,18 +2253,27 @@ local function where(msg)
   end
 end
 
--- /scout route: walks a route written by "tools/map_route.py --addon" into Route.lua (the
--- global TrailScoutRoute, read again on every /reload). Every remaining stop becomes a
+-- /scout route: walks a route. It comes from "tools/map_route.py --addon" (Route.lua, the
+-- global TrailScoutRoute, read again on every /reload) or from a line pasted from an AI
+-- chat (see importRoute below); the newer of the two is used. Every remaining stop becomes a
 -- TomTom waypoint and the arrow points at the current one. Waypoint stops ("poi") advance on
 -- arrival; quest stops wait for "/scout route next", since killing or looting takes a while.
 -- The current stop is saved, so a /reload resumes the same route where it was.
 local ROUTE_ARRIVE = 1.5  -- map percent around a stop that counts as being there
+local NO_ROUTE_HELP = "no route loaded. Press \"Plan a route for me\" in the TrailScout window, ask your AI chat and paste the line it gives you there. The offline tools can write one too (tools/map_route.py --addon)."
 local routeUids, routeIndex, routeTicker, routeArrived = {}, nil, nil, nil
 
 local function routeData()
-  local route = TrailScoutRoute
-  if type(route) == "table" and type(route.points) == "table" and #route.points > 0 then return route end
-  return nil
+  local best
+  local function consider(route)
+    if type(route) == "table" and type(route.points) == "table" and #route.points > 0
+        and (not best or tostring(route.createdAt) > tostring(best.createdAt)) then
+      best = route
+    end
+  end
+  consider(TrailScoutRoute)
+  consider(history().importedRoute)
+  return best
 end
 
 local function routeRemoveWaypoint(index)
@@ -2303,7 +2334,7 @@ end
 local function routeStart(index, quiet)
   local route = routeData()
   if not route then
-    say(T("no route loaded. Create one with tools/map_route.py --addon, then /reload."))
+    say(T(NO_ROUTE_HELP))
     return
   end
   if not (TomTom and TomTom.AddWaypoint) then
@@ -2330,6 +2361,281 @@ routeResume = function()
     h.routeSeen = route.createdAt
     say(string.format(T("new route loaded: %s (%d stops). Type /scout route to start."), tostring(route.title), #route.points))
   end
+end
+
+-- Importing a route from an AI chat. The "Plan a route for me" question asks the assistant
+-- to end its answer with one line the player pastes back:
+--   TSR1; route name; q514; t514; find Apothecary Lydon; at 1424 63.8 35.6 Tarren Mill
+--   q<ID>                 where the unfinished objectives of quest ID are
+--   t<ID>                 where quest ID is turned in
+--   find <name>           an NPC or object by name, as /whereis finds it
+--   at <map> <x> <y> [label]   a place by uiMapID and map coordinates
+-- Quest and name stops are placed here from Questie's database, so the assistant does not
+-- have to know any coordinates. Stops that cannot be placed are reported and left out.
+local ROUTE_TAG = "TSR1"
+
+-- The line cut into its parts; nil when the text has no route tag. Tolerates code fences,
+-- line breaks and text before the tag.
+local function routeParts(text)
+  text = (text:gsub("[`\r]", "")):gsub("\n", ";")
+  local from = text:upper():find(ROUTE_TAG, 1, true)
+  if not from then return nil end
+  local parts = {}
+  for part in (text:sub(from + #ROUTE_TAG) .. ";"):gmatch("(.-);") do
+    part = part:match("^[%s:]*(.-)[%s%.]*$")
+    if part ~= "" then parts[#parts + 1] = part end
+  end
+  return parts
+end
+
+local function routeStopSpec(part)
+  local lower = part:lower()
+  local id = lower:match("^q%s*[:#]?%s*(%d+)$")
+  if id then return { type = "q", id = tonumber(id) } end
+  id = lower:match("^t%s*[:#]?%s*(%d+)$")
+  if id then return { type = "t", id = tonumber(id) } end
+  if lower:match("^find[%s:]+%S") then
+    return { type = "find", name = part:sub(5):match("^[%s:]*(.-)%s*$") }
+  end
+  local map, x, y, label = part:match("^[Aa][Tt]%s+(%d+)[%s,]+([%d%.]+)[%s,]+([%d%.]+)%s*(.*)$")
+  if map and tonumber(x) and tonumber(y) then
+    return { type = "at", map = tonumber(map), x = tonumber(x), y = tonumber(y), label = label }
+  end
+  return nil
+end
+
+-- Questie NPC or object as an entry nearestSpawn() takes.
+local function questieEntry(db, kind, id)
+  local query = kind == "object" and db.QueryObjectSingle or db.QueryNPCSingle
+  local name = query and try(query, id, "name")
+  return { id = id, kind = kind, name = type(name) == "string" and name or (kind .. " " .. tostring(id)) }
+end
+
+-- Nearest spawn of the entries as a route point (name = what is there), or nil.
+local function spawnPoint(entries)
+  if not entries or #entries == 0 then return nil end
+  local best = nearestSpawn(entries)
+  local zoneDB = questieModule("ZoneDB")
+  local mapID = best and zoneDB and try(zoneDB.GetUiMapIdByAreaId, zoneDB, best.zone)
+  if not mapID then return nil end
+  return { m = mapID, x = best.x, y = best.y, name = best.entry.name }
+end
+
+-- The quest's title as the log shows it, else Questie's, else its number.
+local function questTitle(db, questID)
+  for _, q in ipairs((TrailScoutDB or {}).quests or {}) do
+    if q.id == questID and q.title then return q.title end
+  end
+  local name = db and db.QueryQuestSingle and try(db.QueryQuestSingle, questID, "name")
+  return type(name) == "string" and name or (T("Quest") .. " " .. questID)
+end
+
+-- NPCs and objects behind the objectives of a quest that are still open, one list per
+-- objective: a creature to kill, an object to use, or whatever drops or sells an item to
+-- collect. An objective the log shows as finished is matched by name and left out.
+local function questTargets(db, questID)
+  local groups, done = {}, {}
+  for _, o in ipairs(questObjectives(questID)) do
+    if o.done and type(o.text) == "string" then done[#done + 1] = fold(o.text) end
+  end
+  local function finished(name)
+    if type(name) ~= "string" or name == "" then return false end
+    local key = fold(name)
+    for _, text in ipairs(done) do
+      if text:find(key, 1, true) then return true end
+    end
+    return false
+  end
+  local function ids(list)  -- Questie lists hold ids or { id, text } pairs
+    local out, keys = {}, {}
+    if type(list) ~= "table" then return out end
+    for key in pairs(list) do
+      if type(key) == "number" then keys[#keys + 1] = key end
+    end
+    table.sort(keys)  -- keep the database's order, even through holes
+    for _, key in ipairs(keys) do
+      local value = list[key]
+      local id = type(value) == "table" and value[1] or value
+      if type(id) == "number" then out[#out + 1] = id end
+    end
+    return out
+  end
+  local objectives = db.QueryQuestSingle and try(db.QueryQuestSingle, questID, "objectives")
+  if type(objectives) ~= "table" then return groups end
+  -- Creatures and objects are their own objective.
+  for index, kind in ipairs({ "npc", "object" }) do
+    for _, id in ipairs(ids(objectives[index])) do
+      local entry = questieEntry(db, kind, id)
+      if not finished(entry.name) then groups[#groups + 1] = { entry } end
+    end
+  end
+  -- An item is one objective with every source it has; the stop is named after the item.
+  for _, itemID in ipairs(ids(objectives[3])) do
+    local name = db.QueryItemSingle and try(db.QueryItemSingle, itemID, "name")
+    if not finished(name) then
+      local group = { item = type(name) == "string" and name or nil }
+      for field, kind in pairs({ npcDrops = "npc", objectDrops = "object", vendors = "npc" }) do
+        for _, id in ipairs(ids(db.QueryItemSingle and try(db.QueryItemSingle, itemID, field))) do
+          group[#group + 1] = questieEntry(db, kind, id)
+        end
+      end
+      if #group > 0 then groups[#groups + 1] = group end
+    end
+  end
+  return groups
+end
+
+-- A quest's open objectives as route points. Objectives close to each other (the same camp
+-- or field) share a stop, so a quest gets one stop per place it sends the player to.
+local QUEST_CLUSTER = 6  -- map percent
+local function questPoints(db, questID)
+  local points = {}
+  for _, group in ipairs(questTargets(db, questID)) do
+    local point = spawnPoint(group)
+    if point then
+      local what = group.item or point.name
+      local near
+      for _, other in ipairs(points) do
+        if other.m == point.m and math.abs(other.x - point.x) <= QUEST_CLUSTER
+            and math.abs(other.y - point.y) <= QUEST_CLUSTER then
+          near = other
+          break
+        end
+      end
+      if near then
+        near.names[#near.names + 1] = what
+      else
+        point.names = { what }
+        points[#points + 1] = point
+      end
+    end
+  end
+  return points
+end
+
+-- Turns one stop of the line into its route points (a quest can have several places), or
+-- nil and the reason.
+local function resolveStop(spec, db)
+  if spec.type == "at" then
+    local label = spec.label ~= "" and spec.label or string.format("%.1f, %.1f", spec.x, spec.y)
+    return { { m = spec.map, x = spec.x, y = spec.y, label = label, kind = "poi" } }
+  end
+  if not db then return nil, T("Questie is needed") end
+  local point
+  if spec.type == "find" then
+    local found = findNpcs(spec.name)
+    if not found or #found == 0 then return nil, T("name not found") end
+    point = spawnPoint(found)
+    if not point then return nil, T("no known place") end
+    point.label, point.kind = point.name, "poi"
+  elseif spec.type == "q" then
+    local points = questPoints(db, spec.id)
+    if #points > 0 then
+      local title = questTitle(db, spec.id)
+      for _, p in ipairs(points) do
+        local names = p.names
+        -- Name the first two things to do there, count the rest.
+        p.label = title .. ": " .. names[1] .. (names[2] and (" + " .. names[2]) or "")
+          .. (#names > 2 and string.format(" (+%d)", #names - 2) or "")
+        p.kind, p.name, p.names = "quest", nil, nil
+      end
+      return points
+    end
+    if not point then
+      -- "Go to this place" quests have no NPC or object, only a spot: { text, { [zone] = { { x, y } } } }.
+      local trigger = db.QueryQuestSingle and try(db.QueryQuestSingle, spec.id, "triggerEnd")
+      local zoneDB = questieModule("ZoneDB")
+      for zone, spots in pairs(type(trigger) == "table" and type(trigger[2]) == "table" and trigger[2] or {}) do
+        local mapID = zoneDB and try(zoneDB.GetUiMapIdByAreaId, zoneDB, zone)
+        local spot = type(spots) == "table" and spots[1]
+        if mapID and type(spot) == "table" and tonumber(spot[1]) and tonumber(spot[2]) then
+          point = { m = mapID, x = spot[1], y = spot[2], name = type(trigger[1]) == "string" and trigger[1] or T("go there") }
+          break
+        end
+      end
+    end
+    if not point then return nil, T("no place known for this quest") end
+    point.label, point.kind = questTitle(db, spec.id) .. ": " .. point.name, "quest"
+  else
+    local enders = db.QueryQuestSingle and try(db.QueryQuestSingle, spec.id, "finishedBy")
+    local entries = {}
+    if type(enders) == "table" then
+      for _, id in pairs(type(enders[1]) == "table" and enders[1] or {}) do entries[#entries + 1] = questieEntry(db, "npc", id) end
+      for _, id in pairs(type(enders[2]) == "table" and enders[2] or {}) do entries[#entries + 1] = questieEntry(db, "object", id) end
+    end
+    local title = T("Turn in") .. " " .. questTitle(db, spec.id)
+    point = spawnPoint(entries)
+    if point then
+      point.label = title .. ": " .. point.name
+    else
+      -- Quests the database does not know: fall back to where the player accepted it.
+      local giver = (history().questGivers or {})[spec.id]
+      if not (giver and giver.mapID and giver.x and giver.y) then return nil, T("no place known for this quest") end
+      point = { m = giver.mapID, x = giver.x, y = giver.y,
+                label = title .. " " .. T("(where you accepted it; the turn-in may be elsewhere)") }
+    end
+    point.kind = "turnin"
+  end
+  point.name = nil
+  return { point }
+end
+
+-- Reads a pasted route line, saves the route and starts it. Returns true when it loaded.
+local function importRoute(text)
+  local parts = routeParts(text or "")
+  if not parts then
+    say(T("that is not a route line: it has to start with TSR1. Get one with the \"Plan a route for me\" question."))
+    return false
+  end
+  local db = questieModule("QuestieDB")
+  local points, problems, title = {}, {}, nil
+  for i, part in ipairs(parts) do
+    local spec = routeStopSpec(part)
+    if spec then
+      local found, reason = resolveStop(spec, db)
+      if found then
+        for _, point in ipairs(found) do points[#points + 1] = point end
+      else
+        problems[#problems + 1] = part .. " (" .. reason .. ")"
+      end
+    elseif i == 1 then
+      title = part
+    else
+      problems[#problems + 1] = part .. " (" .. T("not understood") .. ")"
+    end
+  end
+  if #points == 0 then
+    say(T("no stop of that route could be placed on the map."))
+  else
+    -- Stops in a row at the same place (several turn-ins at one town) become one stop.
+    local merged = {}
+    for _, point in ipairs(points) do
+      local last = merged[#merged]
+      if last and last.m == point.m and math.abs(last.x - point.x) <= ROUTE_ARRIVE
+          and math.abs(last.y - point.y) <= ROUTE_ARRIVE then
+        last.more = (last.more or 0) + 1
+        if last.kind == "poi" then last.kind = point.kind end  -- wait there if any of them is work
+      else
+        merged[#merged + 1] = point
+      end
+    end
+    points = merged
+    for i, point in ipairs(points) do
+      point.label = i .. ". " .. point.label .. (point.more and string.format(" (+%d)", point.more) or "")
+      point.more = nil
+    end
+    local route = { title = title or T("Route from the AI"), createdAt = date("%Y-%m-%d %H:%M:%S"),
+                    loop = false, imported = true, points = points }
+    local h = history()
+    h.importedRoute, h.routeSeen = route, route.createdAt
+    say(string.format(T("route imported: %s (%d stops)."), route.title, #points))
+  end
+  if #problems > 0 then
+    say(string.format(T("%d stops left out: %s"), #problems, table.concat(problems, "; ")))
+  end
+  if #points == 0 then return false end
+  routeStart(1, true)
+  return true
 end
 
 local function routeCommand(arg)
@@ -2522,7 +2828,7 @@ local HELP_LINES = {
   "/scout <shift-clicked item>: NEED or GREED verdict against what you wear.",
   "/scout weights: show or set the stat weights used for loot advice and tooltips.",
   "/scout alerts [on|off]: warnings for bags, durability, talent points, and ammo and pet for hunters.",
-  "/scout route [next|<n>|clear]: walk a route made by tools/map_route.py --addon, one TomTom waypoint per stop.",
+  "/scout route [next|<n>|clear]: walk the loaded route, one TomTom waypoint per stop. /scout import <TSR1 line>: load the route an AI chat gave you.",
   "/scout addons: loaded addons that do the same job.",
   "/scout config: a window with every switch and the full help (also on the minimap button).",
   "Privacy: the snapshot and the copy box include names of party members, friends, guild and communities. It stays on your computer until you paste or share it.",
@@ -2614,7 +2920,7 @@ local HELP_TOPICS = {
   { "Find NPCs, objects and party members",
     "/whereis <name> finds the nearest NPC or world object with that name: how far it is, an arrow to it and a [Show on map] link. /whereis <party member> follows them. /whereis alone uses your target, /whereis map opens the map again and /whereis off removes the arrow. Needs Questie; TomTom adds the arrow." },
   { "Routes",
-    "/scout route walks a route stop by stop with waypoints. At a quest stop it tells you that you arrived and waits: type /scout route next when you are done. /scout route <number> jumps to a stop and /scout route clear removes it. A reload resumes where you were. Routes are made outside the game by the offline tools. Needs TomTom." },
+    "/scout route walks a route stop by stop with waypoints. At a quest stop it tells you that you arrived and waits: type /scout route next when you are done. /scout route <number> jumps to a stop and /scout route clear removes it. A reload resumes where you were. To get a route, press \"Plan a route for me\" on the Start page, ask your AI chat and paste the TSR1 line it answers with; the offline tools can make one too. Needs TomTom, and Questie to place quest stops." },
   { "Loot advice",
     "When a loot roll starts, chat says NEED or GREED for you, and every gear tooltip gets a line with how much better or worse the item is than what you wear. /scout <shift-clicked item> checks any item. It works from stat weights: hunters have them built in, every other class sets its own below or with /scout weights." },
   { "Reminders",
@@ -2688,6 +2994,8 @@ local AI_QUESTIONS = {
     question = "Looking at my bags, what should I sell and what should I keep?" },
   { label = "Is anything in my bags better?",
     question = "Is any gear in my bags better than what I am wearing?" },
+  { label = "Plan a route for me",
+    question = "Plan a route for my quests: the order to do them and where to turn each one in. Explain it briefly, then end with ONE line I can paste into the game, in this exact form: TSR1; route name; q123; t123; find Npc Name; at 1424 63.8 35.6 Place name. q123 = go do quest 123 and t123 = turn it in (123 is the number after Q in my summary; [OK] quests only need the turn-in), find = an NPC or object by its exact name, at = a place by the map number in my summary and its coordinates. Prefer q and t: the game finds those places itself." },
   { label = "Stat weights for my class",
     question = "What stat weights should I use for my class and role while leveling? Answer with a single line I can type in game, in this exact form: /scout weights int=1 spi=0.8 sta=0.5" },
 }
@@ -2785,7 +3093,7 @@ local function buildOptions()
   end
   frame.ownQuestion = make("EditBox", nil, start, "InputBoxTemplate")
   frame.ownQuestion:SetSize(380, 24)
-  frame.ownQuestion:SetPoint("TOPLEFT", 6, -204)
+  frame.ownQuestion:SetPoint("TOPLEFT", 6, -232)
   frame.ownQuestion:SetAutoFocus(false)
   frame.ownQuestion:SetMaxLetters(0)
   frame.ownQuestion:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -2794,10 +3102,10 @@ local function buildOptions()
   frame.askOwn = button(start, T("Copy with my question"), 172, askOwn)
   frame.askOwn:SetPoint("LEFT", frame.ownQuestion, "RIGHT", 8, 0)
 
-  heading(T("Find an NPC, an object or a party member"), -252)
+  heading(T("Find an NPC, an object or a party member"), -274)
   frame.findBox = make("EditBox", nil, start, "InputBoxTemplate")
   frame.findBox:SetSize(250, 24)
-  frame.findBox:SetPoint("TOPLEFT", 6, -276)
+  frame.findBox:SetPoint("TOPLEFT", 6, -296)
   frame.findBox:SetAutoFocus(false)
   frame.findBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   local function find()
@@ -2813,9 +3121,36 @@ local function buildOptions()
   frame.findClear = button(start, T("Clear arrow"), 100, function() where("off") end)
   frame.findClear:SetPoint("LEFT", frame.findMap, "RIGHT", 6, 0)
   frame.findHelp = start:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  frame.findHelp:SetPoint("TOPLEFT", 0, -308)
+  frame.findHelp:SetPoint("TOPLEFT", 0, -326)
   frame.findHelp:SetWidth(560)
   frame.findHelp:SetJustifyH("LEFT")
+
+  -- The way back from the AI chat: paste the route line it answered with.
+  heading(T("Paste a route from your AI chat"), -368)
+  frame.routeBox = make("EditBox", nil, start, "InputBoxTemplate")
+  frame.routeBox:SetSize(274, 24)
+  frame.routeBox:SetPoint("TOPLEFT", 6, -390)
+  frame.routeBox:SetAutoFocus(false)
+  frame.routeBox:SetMaxLetters(0)
+  frame.routeBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+  local function startRoute()
+    local line = frame.routeBox:GetText() or ""
+    frame.routeBox:ClearFocus()
+    if line:match("%S") and importRoute(line) then
+      frame.routeBox:SetText("")
+      frame:Hide()
+    end
+  end
+  frame.routeBox:SetScript("OnEnterPressed", startRoute)
+  frame.routeStart = button(start, T("Start this route"), 172, startRoute)
+  frame.routeStart:SetPoint("LEFT", frame.routeBox, "RIGHT", 8, 0)
+  frame.routeClear = button(start, T("Clear route"), 100, function() routeCommand("clear") end)
+  frame.routeClear:SetPoint("LEFT", frame.routeStart, "RIGHT", 6, 0)
+  frame.routeHelp = start:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  frame.routeHelp:SetPoint("TOPLEFT", 0, -420)
+  frame.routeHelp:SetWidth(560)
+  frame.routeHelp:SetJustifyH("LEFT")
+  frame.routeHelp:SetText(T("Paste the line that starts with TSR1 (Ctrl+V) and press the button. Quest stops need Questie; the arrow needs TomTom."))
 
   -- Settings page: one switch per feature.
   local page = frame.pages.settings
@@ -3063,6 +3398,11 @@ command = function(msg)
   end
   if lower == "addons" then
     addonsCommand()
+    return
+  end
+  local routeLine = msg:match("^[Ii]mport%a*%s+(.+)$") or (msg:upper():find("^TSR1") and msg)
+  if routeLine then
+    importRoute(routeLine)
     return
   end
   local routeArg = lower:match("^route%s*(.*)$") or lower:match("^ruta%s*(.*)$")
