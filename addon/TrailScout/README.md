@@ -35,7 +35,7 @@ the full snapshot needs a `/reload`.
 | `/scout route` waypoints (route from an AI chat or the offline tools) | yes | yes |
 | Alerts: bags, durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
-| Loot NEED / GREED advice and tooltip score | yes, built-in weights | after you set your stat weights with `/scout weights` |
+| Loot NEED / GREED advice and tooltip score | yes | yes, with a set of weights per role |
 
 ### Privacy
 
@@ -92,9 +92,13 @@ Limits of `/whereis`:
 The window opens by itself the first time a character logs in. After that, a left-click on
 the minimap button opens it on **Start**, and `/scout config` on **Settings**. Three pages:
 
+Addons that collect minimap buttons (OneForAll's *Collect minimap buttons*, Leatrix Plus's
+button bag) take TrailScout's button into their own bar along with every other addon's. The
+floating button, the addon list beside the minimap and `/scout config` open the same window.
+
 - **Start**: everything a new player needs without typing a command. The four steps to ask an
-  AI, six ready-made questions (what to do next, which quests to do or skip, talents, what to
-  sell, gear in the bags, stat weights for the class) and a box for your own; each one copies
+  AI, seven ready-made questions (what to do next, which quests to do or skip, talents, what to
+  sell, gear in the bags, a route, stat weights for the class) and a box for your own; each one copies
   the summary with the question in it, written in your language and asking for the answer in
   it. Below, a search box for NPCs, objects and party members with **Find**, **Show on map**
   and **Clear arrow**, and a line saying whether Questie and TomTom are loaded.
@@ -233,12 +237,32 @@ them. Thresholds live in `ALERT_LIMITS` in `TrailScout.lua`.
 Items are scored with stat weights: each stat on the item is multiplied by its weight and the
 total is compared to the equipped item in the same slot.
 
-- **Hunters** get built-in weights (RestedXP, levels 20-29: ranged DPS 14, agility 2.33, spirit
-  1.12, attack power 0.8, stamina 0.75, intellect 0.55, strength 0.2, armor 0.035).
-- **Every other class** has no built-in weights yet, so there is no roll advice and no tooltip
-  line until you set your own, for example `/scout weights int=1 sp=0.8 sta=0.5 spi=0.4`.
-  Stats: `agi str sta int spi armor ap rap crit hit sp heal mp5 dps rdps` (`dps` is melee
-  weapon DPS, `rdps` ranged weapon DPS). Weights are saved per character.
+Every class has built-in weights, one set per role. The first role is the default; pick
+another with the buttons on the Settings page or `/scout weights <role>`:
+
+| Class | Roles (`/scout weights …`) |
+|---|---|
+| Warrior | `melee`, `tank` |
+| Paladin | `melee`, `healer`, `tank` |
+| Hunter | `ranged` |
+| Rogue | `melee` |
+| Priest | `caster`, `healer` |
+| Shaman | `melee`, `caster`, `healer` |
+| Mage, Warlock | `caster` |
+| Druid | `melee` (feral), `caster`, `healer` |
+
+- **Where the numbers come from.** The hunter set is RestedXP's for levels 20-29 (ranged DPS
+  14, agility 2.33, spirit 1.12, attack power 0.8, stamina 0.75, intellect 0.55, strength 0.2,
+  armor 0.035). Every other set is TrailScout's own estimate for leveling, worked out from
+  Classic's rules (attack power per strength or agility, Spirit Tap, Life Tap and so on). They
+  have not been checked against Forever's changes: a starting point, not a verdict.
+- **Your own numbers** always win: `/scout weights int=1 sp=0.8 sta=0.5` changes those stats
+  and keeps the rest of the set, saved per character. `/scout weights reset` goes back to the
+  role's set. Stats: `agi str sta int spi armor ap rap crit hit sp heal mp5 spellcrit
+  spellhit dps rdps` (`dps` is melee weapon DPS, `rdps` ranged weapon DPS including wands;
+  crit and hit are per 1%).
+- The weights in use are saved in the snapshot (`weights`), so `tools/analyze.py` checks bag
+  upgrades with the same numbers.
 
 Gear your class cannot wear is flagged instead of scored: armor heavier than your class uses
 (Classic rules, with the level 40 upgrade for warriors, paladins, hunters and shamans), shields

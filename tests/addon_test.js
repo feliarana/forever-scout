@@ -240,8 +240,7 @@ test("hunter loot advice: upgrade, and armor rules by class and level", () => {
 
 test("a class without built-in weights gets a clear message, then its own weights work", () => {
   withAddon(GEAR + `
-    STUB.player.class = "MAGE"
-    -- A mage wears cloth: the leather vests above are too heavy for this class.
+    STUB.player.class = "MONK"  -- not a Forever class: stands for any class with no set
     ROBE = STUB.item({ id = 105, name = "Silk Robe", equipLoc = "INVTYPE_ROBE", classID = 4, subClassID = 1,
       stats = { ITEM_MOD_INTELLECT_SHORT = 9, ITEM_MOD_STAMINA_SHORT = 4 } })
   `, LOGIN + `
@@ -262,12 +261,74 @@ test("a class without built-in weights gets a clear message, then its own weight
     STUB.clearChat()
     slash(ROBE)
     assert(STUB.said("NEED"), "with intellect weighted, the robe is an upgrade")
+    slash("weights reset")
+    assert(TrailScoutHistory.weights == nil)
+  `);
+});
+
+const ROBE = `
+  ROBE = STUB.item({ id = 105, name = "Silk Robe", equipLoc = "INVTYPE_ROBE", classID = 4, subClassID = 1,
+    stats = { ITEM_MOD_INTELLECT_SHORT = 9, ITEM_MOD_STAMINA_SHORT = 4 } })
+  HEALROBE = STUB.item({ id = 106, name = "Robe of Mending", equipLoc = "INVTYPE_ROBE", classID = 4, subClassID = 1,
+    stats = { ITEM_MOD_SPELL_HEALING_DONE_SHORT = 20, ITEM_MOD_CRIT_SPELL_RATING_SHORT = 1 } })
+`;
+
+test("every class has built-in weights: a mage gets loot advice with nothing to set up", () => {
+  withAddon(GEAR + ROBE + `STUB.player.class = "MAGE"`, LOGIN + `
+    slash(ROBE)
+    assert(STUB.said("NEED"), "intellect and stamina are worth something to a mage out of the box")
     STUB.clearChat()
     slash(BETTER)
     assert(STUB.said("too heavy"), "a mage cannot wear leather")
+    STUB.clearChat()
+    slash("weights")
+    assert(STUB.said("stat weights (class default: Spell damage): ") and STUB.said("sp=1") and STUB.said("spellcrit=9"))
+    slash("")
+    assert(TrailScoutDB.weights.role == "caster" and TrailScoutDB.weights.values.int == 1.1,
+      "the snapshot must carry the weights in use for the offline tools")
+  `);
+  // The nine classes of the game, each with at least one role.
+  const source = fs.readFileSync(ADDON, "utf8");
+  const roles = source.slice(source.indexOf("local CLASS_ROLES = {"), source.indexOf("local ROLE_LABELS"));
+  for (const cls of ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID"]) {
+    assert.match(roles, new RegExp("^  " + cls + " = \\{\\s*\\{ key = \"", "m"), cls + " has no weights");
+  }
+});
 
-    slash("weights reset")
-    assert(TrailScoutHistory.weights == nil)
+test("a class with several roles picks one, and its own numbers still win", () => {
+  withAddon(GEAR + ROBE + `STUB.player.class = "PRIEST"`, LOGIN + `
+    -- Leveling priests default to damage: a healing robe is worth little.
+    slash(HEALROBE)
+    local asDamage = STUB.chat[#STUB.chat]
+    slash("weights healer")
+    assert(TrailScoutHistory.weightRole == "healer")
+    assert(STUB.said("stat weights (class default: Healer): ") and STUB.said("heal=1"))
+    STUB.clearChat()
+    slash(HEALROBE)
+    assert(STUB.said("NEED") and STUB.chat[#STUB.chat] ~= asDamage, "healing must count for a healer")
+    -- 20 healing and 1% spell crit at 6 make 26 points, against 2.4 for the vest she wears.
+    assert(STUB.said("+23.6"), STUB.chat[#STUB.chat])
+
+    STUB.clearChat()
+    slash("weights tank")
+    assert(STUB.said("your class has no weights for that role.") and TrailScoutHistory.weightRole == "healer")
+
+    -- Tuning one stat keeps the rest of the role's set; picking a role again drops the tuning.
+    slash("weights heal=2")
+    assert(TrailScoutHistory.weights.heal == 2 and TrailScoutHistory.weights.int == 1.2)
+    slash("weights caster")
+    assert(TrailScoutHistory.weights == nil and TrailScoutHistory.weightRole == "caster")
+  `);
+  withAddon(GEAR + `STUB.player.class = "DRUID"; STUB.locale = "esMX"`, LOGIN + `
+    login()
+    slash("weights sanador")
+    assert(TrailScoutHistory.weightRole == "healer" and STUB.said("por defecto de la clase: Sanador"))
+    slash("config")
+    local frame = TrailScoutOptionsFrame
+    assert(#frame.roles == 3 and frame.roles[1].text == "Daño cuerpo a cuerpo" and frame.roles[3].text == "Sanador")
+    STUB.click(frame.roles[2])
+    assert(TrailScoutHistory.weightRole == "caster" and frame.weights.text:find("sp=1", 1, true))
+    assert(frame.weightsSource.text:find("Daño con hechizos", 1, true), frame.weightsSource.text)
   `);
 });
 
@@ -568,6 +629,18 @@ test("Start page: the route question asks for a TSR1 line and the box loads it",
   `);
 });
 
+// Lua allows 200 local variables per function, and the file's top level is one function.
+// Going over is a load error in game, so leave room and fail here first.
+test("the addon stays under Lua's limit of 200 top-level locals", () => {
+  const ast = luaparse.parse(fs.readFileSync(ADDON, "utf8"), { luaVersion: "5.1" });
+  let locals = 0;
+  for (const node of ast.body) {
+    if (node.type === "LocalStatement") locals += node.variables.length;
+    if (node.type === "FunctionDeclaration" && node.isLocal) locals += 1;
+  }
+  assert.ok(locals <= 198, "top-level locals: " + locals + " (limit 200): move one into a function or a table");
+});
+
 test("the placeholder Route.lua and the TOC load order are in place", () => {
   const dir = path.join(__dirname, "..", "addon", "TrailScout");
   const toc = fs.readFileSync(path.join(dir, "TrailScout.toc"), "utf8").split(/\r?\n/);
@@ -856,11 +929,11 @@ test("loot advice on rolls can be switched off; asking about an item still works
 });
 
 test("stat weights can be edited and reset from the window", () => {
-  withAddon(GEAR + `STUB.player.class = "MAGE"`, LOGIN + `
+  withAddon(GEAR + `STUB.player.class = "MONK"`, LOGIN + `
     login()
     slash("config")
     local frame = TrailScoutOptionsFrame
-    assert(frame.weights.text == "", "a class without weights starts with an empty line")
+    assert(frame.weights.text == "" and #frame.roles == 0, "a class without weights starts with an empty line")
     frame.weights.text = "int=1 sta=0.5"
     STUB.click(frame.applyWeights)
     assert(TrailScoutHistory.weights.int == 1 and TrailScoutHistory.weights.sta == 0.5)

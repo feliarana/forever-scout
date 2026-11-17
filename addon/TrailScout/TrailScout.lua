@@ -61,10 +61,16 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   -- Stat weights command
   L["stat weights (%s): %s"] = "pesos de estadísticas (%s): %s"
   L["yours"] = "tuyos"
+  L["Melee damage"] = "Daño cuerpo a cuerpo"
+  L["Ranged damage"] = "Daño a distancia"
+  L["Spell damage"] = "Daño con hechizos"
+  L["Healer"] = "Sanador"
+  L["Tank"] = "Tanque"
+  L["your class has no weights for that role."] = "tu clase no tiene pesos para ese rol."
   L["class default"] = "por defecto de la clase"
   L["none set"] = "sin definir"
-  L["usage: /scout weights agi=2.3 sta=0.7 ... | /scout weights reset. Stats: %s. dps is melee weapon DPS, rdps is ranged weapon DPS."] =
-    "uso: /scout weights agi=2.3 sta=0.7 ... | /scout weights reset. Estadísticas: %s. dps es el DPS del arma cuerpo a cuerpo, rdps el del arma a distancia."
+  L["usage: /scout weights agi=2.3 sta=0.7 ... | /scout weights healer (or tank, melee, caster, ranged: the roles your class has) | /scout weights reset. Stats: %s. dps is melee weapon DPS, rdps is ranged weapon DPS, crit and hit are per 1%%."] =
+    "uso: /scout weights agi=2.3 sta=0.7 ... | /scout weights sanador (o tanque, cuerpo, hechizos, distancia: los roles de tu clase) | /scout weights reset. Estadísticas: %s. dps es el DPS del arma cuerpo a cuerpo, rdps el del arma a distancia, crit y hit son por cada 1%%."
   L["unknown stat \"%s\". Stats: %s."] = "estadística desconocida \"%s\". Estadísticas: %s."
   L["stat weights saved for this character."] = "pesos de estadísticas guardados para este personaje."
   L["stat weights reset to the class default."] = "pesos de estadísticas restablecidos a los de la clase."
@@ -232,8 +238,8 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "/scout route recorre una ruta parada por parada con puntos en el mapa. En una parada de misión te avisa que llegaste y espera: escribe /scout route next cuando termines. /scout route <número> salta a una parada y /scout route clear la borra. Al recargar retoma donde estabas. Para conseguir una ruta, presiona \"Ármame una ruta\" en la página Inicio, pregúntale a tu chat de IA y pega la línea TSR1 que te conteste; las herramientas offline también pueden armar una. Necesita TomTom, y Questie para ubicar las paradas de misión."
   L["Loot advice"] =
     "Consejo de botín"
-  L["When a loot roll starts, chat says NEED or GREED for you, and every gear tooltip gets a line with how much better or worse the item is than what you wear. /scout <shift-clicked item> checks any item. It works from stat weights: hunters have them built in, every other class sets its own below or with /scout weights."] =
-    "Cuando empieza una tirada de botín, el chat te dice NECESIDAD o CODICIA, y cada tooltip de equipo suma una línea con cuánto mejor o peor es el item que lo que tienes puesto. /scout <item con shift-clic> revisa cualquier item. Funciona con pesos de estadísticas: los cazadores los traen de fábrica y las demás clases cargan los suyos aquí abajo o con /scout weights."
+  L["When a loot roll starts, chat says NEED or GREED for you, and every gear tooltip gets a line with how much better or worse the item is than what you wear. /scout <shift-clicked item> checks any item. It works from stat weights. Every class comes with a set for each of its roles (damage, healer, tank): pick yours with the buttons on the Settings page or /scout weights healer. They are TrailScout's estimates for leveling, so tune them there or with /scout weights whenever you know better."] =
+    "Cuando empieza una tirada de botín, el chat te dice NECESIDAD o CODICIA, y cada tooltip de equipo suma una línea con cuánto mejor o peor es el item que lo que tienes puesto. /scout <item con shift-clic> revisa cualquier item. Funciona con pesos de estadísticas. Cada clase trae un juego para cada uno de sus roles (daño, sanador, tanque): elige el tuyo con los botones de la página de Ajustes o con /scout weights sanador. Son estimaciones de TrailScout para subir de nivel, así que ajústalos ahí o con /scout weights cuando sepas algo mejor."
   L["Reminders"] =
     "Avisos"
   L["A warning on screen and a sound when your bags are almost full, your gear is about to break or you have a talent point to spend. Hunters also get low ammo and a dead, missing or unhappy pet. Each reminder repeats every five minutes while it lasts and can be switched off on the Settings page."] =
@@ -351,6 +357,8 @@ local STAT_KEYS = {
   ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "rap",
   ITEM_MOD_CRIT_RATING_SHORT = "crit",
   ITEM_MOD_HIT_RATING_SHORT = "hit",
+  ITEM_MOD_CRIT_SPELL_RATING_SHORT = "spellcrit",
+  ITEM_MOD_HIT_SPELL_RATING_SHORT = "spellhit",
   ITEM_MOD_SPELL_POWER_SHORT = "sp",
   ITEM_MOD_SPELL_HEALING_DONE_SHORT = "heal",
   ITEM_MOD_POWER_REGEN0_SHORT = "mp5",
@@ -376,28 +384,91 @@ end
 
 -- Loot advisor: scores an item with per-class stat weights and compares it to what is equipped,
 -- so a Need/Greed decision can be made in chat without a /reload.
--- Weights per class token. `dps` is melee weapon DPS, `rdps` ranged weapon DPS. Only classes
--- with a sourced set are listed (hunter: RestedXP, levels 20-29); any player can set their own
--- with "/scout weights", saved per character in TrailScoutHistory.weights.
-local CLASS_WEIGHTS = {
-  HUNTER = { agi = 2.33, spi = 1.12, sta = 0.75, int = 0.55, str = 0.20, armor = 0.035,
-             ap = 0.8, rap = 0.8, crit = 10, hit = 10, dps = 3, rdps = 14 },
+-- Weights per class token and role; the first role of a class is its default, the others
+-- are picked with "/scout weights <role>" or the buttons on the Settings page. `dps` is
+-- melee weapon DPS, `rdps` ranged weapon DPS (bows, guns, wands), crit and hit are per 1%.
+-- The hunter set is RestedXP's for levels 20-29. Every other set is TrailScout's own
+-- estimate for leveling, worked out from Classic's rules (2 attack power per strength for
+-- warriors, paladins, shamans and druids, 1 per agility for rogues and cats, Spirit Tap for
+-- priests, Life Tap for warlocks...). They are a starting point, not verified on Forever:
+-- any player can tune them with "/scout weights", saved per character in
+-- TrailScoutHistory.weights.
+local CLASS_ROLES = {
+  WARRIOR = {
+    { key = "melee", weights = { str = 2, agi = 1.2, sta = 0.8, spi = 0.3, ap = 1, crit = 16, hit = 14, armor = 0.03, dps = 12 } },
+    { key = "tank", weights = { sta = 2, str = 1.2, agi = 1.3, armor = 0.15, ap = 0.6, crit = 8, hit = 12, dps = 7 } },
+  },
+  PALADIN = {
+    { key = "melee", weights = { str = 2, agi = 0.8, sta = 0.9, int = 0.6, spi = 0.3, ap = 1, crit = 14, hit = 12, sp = 0.3, armor = 0.03, dps = 12 } },
+    { key = "healer", weights = { int = 1.5, heal = 1, sp = 0.5, mp5 = 3, spi = 0.6, sta = 0.6, spellcrit = 10 } },
+    { key = "tank", weights = { sta = 2, str = 1, agi = 0.8, int = 0.6, armor = 0.15, sp = 0.5, ap = 0.5, hit = 10, dps = 5 } },
+  },
+  HUNTER = {
+    { key = "ranged", weights = { agi = 2.33, spi = 1.12, sta = 0.75, int = 0.55, str = 0.20, armor = 0.035,
+                                  ap = 0.8, rap = 0.8, crit = 10, hit = 10, dps = 3, rdps = 14 } },
+  },
+  ROGUE = {
+    { key = "melee", weights = { agi = 2, str = 1, sta = 0.7, ap = 1, crit = 16, hit = 16, armor = 0.02, dps = 13 } },
+  },
+  PRIEST = {
+    { key = "caster", weights = { spi = 1.4, int = 1, sp = 1, sta = 0.6, mp5 = 2, heal = 0.3, spellcrit = 5, spellhit = 8, rdps = 6 } },
+    { key = "healer", weights = { heal = 1, int = 1.2, spi = 1.3, mp5 = 3, sp = 0.4, sta = 0.6, spellcrit = 6 } },
+  },
+  SHAMAN = {
+    { key = "melee", weights = { str = 1.8, agi = 1.3, sta = 0.8, int = 0.7, spi = 0.3, ap = 0.9, crit = 15, hit = 13, sp = 0.3, armor = 0.03, dps = 12 } },
+    { key = "caster", weights = { sp = 1, int = 1, sta = 0.6, spi = 0.4, mp5 = 2.5, spellcrit = 9, spellhit = 9 } },
+    { key = "healer", weights = { heal = 1, int = 1.3, mp5 = 3, spi = 0.5, sta = 0.6, sp = 0.4, spellcrit = 7 } },
+  },
+  MAGE = {
+    { key = "caster", weights = { sp = 1, int = 1.1, spi = 0.6, sta = 0.6, mp5 = 2, spellcrit = 9, spellhit = 9, rdps = 2 } },
+  },
+  WARLOCK = {
+    { key = "caster", weights = { sp = 1, sta = 0.9, int = 0.7, spi = 0.5, mp5 = 1, spellcrit = 7, spellhit = 9, rdps = 2 } },
+  },
+  DRUID = {
+    { key = "melee", weights = { str = 2, agi = 1.6, sta = 0.9, int = 0.4, spi = 0.5, ap = 1, crit = 15, hit = 13, armor = 0.04 } },
+    { key = "caster", weights = { sp = 1, int = 1, spi = 0.6, sta = 0.6, mp5 = 2, spellcrit = 9, spellhit = 9 } },
+    { key = "healer", weights = { heal = 1, int = 1.2, spi = 1.1, mp5 = 3, sta = 0.6, sp = 0.4, spellcrit = 5 } },
+  },
 }
+local ROLE_LABELS = { melee = "Melee damage", ranged = "Ranged damage", caster = "Spell damage",
+                      healer = "Healer", tank = "Tank" }
+-- Words "/scout weights <role>" also takes, for Spanish clients.
+local ROLE_ALIASES = { sanador = "healer", sanadora = "healer", tanque = "tank", hechizos = "caster",
+                       distancia = "ranged", cuerpo = "melee" }
 -- Stat names "/scout weights" accepts, in display order.
 local WEIGHT_STATS = { "agi", "str", "sta", "int", "spi", "armor", "ap", "rap", "crit", "hit",
-                       "sp", "heal", "mp5", "dps", "rdps" }
+                       "sp", "heal", "mp5", "spellcrit", "spellhit", "dps", "rdps" }
 
 local function playerClass()
   return select(2, UnitClass("player"))
 end
 
--- Weights in use: the character's own, else the class default, else nil (no loot advice).
+-- The role whose weights the character uses: the one it picked, else the class's first.
+local function classRole()
+  local roles = CLASS_ROLES[playerClass()]
+  if not roles then return nil end
+  local chosen = TrailScoutHistory and TrailScoutHistory.weightRole
+  for _, role in ipairs(roles) do
+    if role.key == chosen then return role end
+  end
+  return roles[1]
+end
+
+-- Weights in use: the character's own, else its class and role default, else nil (no loot
+-- advice). Also returns where they come from and, for a default, the role's key.
 local function activeWeights()
   local h = TrailScoutHistory
   if h and type(h.weights) == "table" and next(h.weights) then return h.weights, "yours" end
-  local weights = CLASS_WEIGHTS[playerClass()]
-  if weights then return weights, "class default" end
+  local role = classRole()
+  if role then return role.weights, "class default", role.key end
   return nil, "none set"
+end
+
+-- "class default: Healer", "yours"... for the lines that say which weights are in use.
+local function weightsSourceText()
+  local _, source, role = activeWeights()
+  return T(source) .. (role and (": " .. T(ROLE_LABELS[role])) or "")
 end
 
 -- Weapon subclasses a hunter can equip (axes, bows, guns, polearms, swords, staves, misc, fist, daggers, thrown, crossbows).
@@ -1721,6 +1792,10 @@ local function buildSnapshot()
 
   section("savedAt", function() return date("%Y-%m-%d %H:%M:%S") end)
   section("question", function() return session.question end)
+  section("weights", function()
+    local weights, source, role = activeWeights()
+    return weights and { source = source, role = role, values = weights } or nil
+  end)
   section("name", function() return UnitName("player") end)
   section("realm", function() return GetRealmName() end)
   -- Non-localized tokens ("HUNTER", "Troll", "Horde") so offline tools can filter quests.
@@ -2372,11 +2447,11 @@ end
 --   at <map> <x> <y> [label]   a place by uiMapID and map coordinates
 -- Quest and name stops are placed here from Questie's database, so the assistant does not
 -- have to know any coordinates. Stops that cannot be placed are reported and left out.
-local ROUTE_TAG = "TSR1"
 
 -- The line cut into its parts; nil when the text has no route tag. Tolerates code fences,
 -- line breaks and text before the tag.
 local function routeParts(text)
+  local ROUTE_TAG = "TSR1"
   text = (text:gsub("[`\r]", "")):gsub("\n", ";")
   local from = text:upper():find(ROUTE_TAG, 1, true)
   if not from then return nil end
@@ -2487,8 +2562,8 @@ end
 
 -- A quest's open objectives as route points. Objectives close to each other (the same camp
 -- or field) share a stop, so a quest gets one stop per place it sends the player to.
-local QUEST_CLUSTER = 6  -- map percent
 local function questPoints(db, questID)
+  local QUEST_CLUSTER = 6  -- map percent
   local points = {}
   for _, group in ipairs(questTargets(db, questID)) do
     local point = spawnPoint(group)
@@ -2844,14 +2919,25 @@ local function helpCommand()
 end
 
 -- "/scout weights": show, set ("agi=2.3 sta=0.7") or reset the stat weights of this character.
-local WEIGHTS_USAGE = "usage: /scout weights agi=2.3 sta=0.7 ... | /scout weights reset. Stats: %s. dps is melee weapon DPS, rdps is ranged weapon DPS."
+local WEIGHTS_USAGE = "usage: /scout weights agi=2.3 sta=0.7 ... | /scout weights healer (or tank, melee, caster, ranged: the roles your class has) | /scout weights reset. Stats: %s. dps is melee weapon DPS, rdps is ranged weapon DPS, crit and hit are per 1%%."
 
 local function weightsCommand(arg)
   local h = history()
   local statList = table.concat(WEIGHT_STATS, ", ")
+  local roleKey = ROLE_ALIASES[arg] or arg
+  local isRole = false
+  for _, role in ipairs(CLASS_ROLES[playerClass()] or {}) do
+    if role.key == roleKey then isRole = true end
+  end
   if arg == "reset" then
     h.weights = nil
     say(T("stat weights reset to the class default."))
+  elseif isRole then
+    -- Picking a role drops the character's own numbers: the role's defaults are now in use.
+    h.weightRole, h.weights = roleKey, nil
+  elseif ROLE_LABELS[roleKey] then
+    say(T("your class has no weights for that role."))
+    return
   elseif arg ~= "" then
     local valid, parsed = {}, {}
     for _, stat in ipairs(WEIGHT_STATS) do valid[stat] = true end
@@ -2873,12 +2959,12 @@ local function weightsCommand(arg)
     h.weights = merged
     say(T("stat weights saved for this character."))
   end
-  local weights, source = activeWeights()
+  local weights = activeWeights()
   local parts = {}
   for _, stat in ipairs(WEIGHT_STATS) do
     if weights and weights[stat] then parts[#parts + 1] = stat .. "=" .. weights[stat] end
   end
-  say(string.format(T("stat weights (%s): %s"), T(source), #parts > 0 and table.concat(parts, " ") or "-"))
+  say(string.format(T("stat weights (%s): %s"), weightsSourceText(), #parts > 0 and table.concat(parts, " ") or "-"))
   if arg == "" then say(string.format(T(WEIGHTS_USAGE), statList)) end
 end
 
@@ -2922,7 +3008,7 @@ local HELP_TOPICS = {
   { "Routes",
     "/scout route walks a route stop by stop with waypoints. At a quest stop it tells you that you arrived and waits: type /scout route next when you are done. /scout route <number> jumps to a stop and /scout route clear removes it. A reload resumes where you were. To get a route, press \"Plan a route for me\" on the Start page, ask your AI chat and paste the TSR1 line it answers with; the offline tools can make one too. Needs TomTom, and Questie to place quest stops." },
   { "Loot advice",
-    "When a loot roll starts, chat says NEED or GREED for you, and every gear tooltip gets a line with how much better or worse the item is than what you wear. /scout <shift-clicked item> checks any item. It works from stat weights: hunters have them built in, every other class sets its own below or with /scout weights." },
+    "When a loot roll starts, chat says NEED or GREED for you, and every gear tooltip gets a line with how much better or worse the item is than what you wear. /scout <shift-clicked item> checks any item. It works from stat weights. Every class comes with a set for each of its roles (damage, healer, tank): pick yours with the buttons on the Settings page or /scout weights healer. They are TrailScout's estimates for leveling, so tune them there or with /scout weights whenever you know better." },
   { "Reminders",
     "A warning on screen and a sound when your bags are almost full, your gear is about to break or you have a talent point to spend. Hunters also get low ammo and a dead, missing or unhappy pet. Each reminder repeats every five minutes while it lasts and can be switched off on the Settings page." },
   { "What is saved, and privacy",
@@ -3010,8 +3096,7 @@ local function refreshOptions()
   for key, check in pairs(optionsFrame.checks) do check:SetChecked(optionValue(key)) end
   optionsFrame.weights:SetText(weightsText())
   optionsFrame.weights:SetCursorPosition(0)  -- show the start of the line, not its end
-  local _, source = activeWeights()
-  optionsFrame.weightsSource:SetText(string.format(T("Stat weights (%s). Stats: %s"), T(source), table.concat(WEIGHT_STATS, " ")))
+  optionsFrame.weightsSource:SetText(string.format(T("Stat weights (%s). Stats: %s"), weightsSourceText(), table.concat(WEIGHT_STATS, " ")))
 end
 
 local function buildOptions()
@@ -3194,6 +3279,19 @@ local function buildOptions()
     refreshOptions()
   end)
   frame.resetWeights:SetPoint("LEFT", frame.applyWeights, "RIGHT", 6, 0)
+  -- One button per role the class has weights for (damage, healer, tank...).
+  frame.roles = {}
+  local after = frame.resetWeights
+  for i, role in ipairs(CLASS_ROLES[playerClass()] or {}) do
+    local key = role.key
+    local b = button(page, T(ROLE_LABELS[key]), 122, function()
+      weightsCommand(key)
+      refreshOptions()
+    end)
+    b:SetPoint("LEFT", after, "RIGHT", i == 1 and 14 or 6, 0)
+    after = b
+    frame.roles[i] = b
+  end
 
   -- The things you would otherwise type.
   local actions = {
@@ -3300,7 +3398,9 @@ end
 local function buildFloatButton()
   local b = CreateFrame("Button", "TrailScoutFloatButton", UIParent)
   b:SetSize(36, 36)
-  b:SetFrameStrata("MEDIUM")
+  -- Above quest trackers and bag bars: their invisible frames reach further than what they
+  -- draw, and under one of them the button could only be clicked or dragged by its edges.
+  b:SetFrameStrata("HIGH")
   b:SetMovable(true)
   b:SetClampedToScreen(true)
   b:RegisterForDrag("LeftButton")

@@ -7,13 +7,14 @@
 - **`/whereis <name>`** — finds an NPC or an object in the world: how far it is, an arrow to it and a **[Show on map]** link. It also follows a party member.
 - **Routes from the AI** — the question *Plan a route for me* makes the assistant answer with one line; paste it into the window and `/scout route` walks it stop by stop with waypoints. The game places the stops itself from Questie's data.
 - **Reminders** — nearly full bags, low durability, unspent talent points. Hunters also get low ammo and a dead, missing or unhappy pet.
-- **Loot advice** — NEED or GREED on every roll, and a score line on gear tooltips against what you wear. Hunters have built-in stat weights; every other class sets its own with `/scout weights`.
+- **Loot advice** — NEED or GREED on every roll, and a score line on gear tooltips against what you wear. Every class has built-in stat weights, with a set per role (damage, healer, tank) to pick on the Settings page; tune them with `/scout weights`.
 - **`/scout help`** — every command, in English or Spanish to match your client.
 
 ## Quick start
 
-1. Install the addon and log in. Chat shows `TrailScout: loaded. Type /scout help`.
-2. Type `/scout`, press Ctrl+C in the box that opens, and paste the line into your AI chat with a question like *"what should I do next?"*.
+**Step 1.** Install the addon and log in. Chat shows `TrailScout: loaded. Type /scout help`.
+
+**Step 2.** Type `/scout`, press Ctrl+C in the box that opens, and paste the line into your AI chat with a question like *"what should I do next?"*.
 
 ## Going further
 
@@ -40,12 +41,13 @@
 - **`/whereis <nombre>`** — encuentra un NPC o un objeto del mundo: a qué distancia está, una flecha y un enlace **[Ver en mapa]**. También sigue a un miembro del grupo.
 - **Rutas de la IA** — la pregunta *Ármame una ruta* hace que el asistente conteste con una línea; pégala en la ventana y `/scout route` la recorre parada por parada con puntos en el mapa. El juego ubica las paradas solo, con los datos de Questie.
 - **Avisos** — bolsas casi llenas, equipo a punto de romperse, puntos de talento sin gastar. Los cazadores también reciben poca munición y mascota muerta, ausente o descontenta. Cada aviso se puede apagar por separado.
-- **Consejo de botín** — NECESIDAD o CODICIA en cada tirada, y una línea de puntaje en los tooltips de equipo contra lo que llevas puesto. Los cazadores traen pesos de estadísticas de fábrica; las demás clases cargan los suyos con `/scout weights`.
+- **Consejo de botín** — NECESIDAD o CODICIA en cada tirada, y una línea de puntaje en los tooltips de equipo contra lo que llevas puesto. Cada clase trae sus pesos de estadísticas, con un juego por rol (daño, sanador, tanque) que se elige en la página de Ajustes; se ajustan con `/scout weights`.
 
 ### Para empezar
 
-1. Instala el addon y entra al juego. El chat muestra `TrailScout: cargado. Escribe /scout help`.
-2. Escribe `/scout`, presiona Ctrl+C en la caja que se abre y pega la línea en tu chat de IA con una pregunta como *"¿qué me conviene hacer ahora?"*.
+**Paso 1.** Instala el addon y entra al juego. El chat muestra `TrailScout: cargado. Escribe /scout help`.
+
+**Paso 2.** Escribe `/scout`, presiona Ctrl+C en la caja que se abre y pega la línea en tu chat de IA con una pregunta como *"¿qué me conviene hacer ahora?"*.
 
 ### Para ir más lejos
 

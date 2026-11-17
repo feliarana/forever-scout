@@ -29,23 +29,69 @@ INVTYPE_SLOTS = {
     "INVTYPE_RANGEDRIGHT": [18], "INVTYPE_THROWN": [18],
 }
 RANGED = {"INVTYPE_RANGED", "INVTYPE_RANGEDRIGHT", "INVTYPE_THROWN"}
-# Armor a hunter cannot wear yet (mail unlocks at 40, plate never). Only used for hunters,
-# the only class with stat weights so far.
-BLOCKED_ARMOR = {"Placas", "Plate", "Escudos", "Shields"}
-MAIL = {"Malla", "Mail"}
+# Armor types by weight, in English and Spanish clients, and the heaviest each class wears
+# (before level 40, from level 40): Classic rules, the same table the addon uses.
+ARMOR_RANK = {"Tela": 1, "Cloth": 1, "Cuero": 2, "Leather": 2, "Malla": 3, "Mail": 3,
+              "Placas": 4, "Plate": 4}
+ARMOR_LIMIT = {
+    "WARRIOR": (3, 4), "PALADIN": (3, 4), "HUNTER": (2, 3), "SHAMAN": (2, 3), "ROGUE": (2, 2),
+    "DRUID": (2, 2), "PRIEST": (1, 1), "MAGE": (1, 1), "WARLOCK": (1, 1),
+}
+SHIELDS = {"Escudos", "Shields"}
+SHIELD_CLASSES = {"WARRIOR", "PALADIN", "SHAMAN"}
+
+
+def wearable(sub_type, cls, level):
+    """Whether this class can wear an armor subtype at this level (unknown types pass)."""
+    if sub_type in SHIELDS:
+        return cls in SHIELD_CLASSES
+    rank, limit = ARMOR_RANK.get(sub_type), ARMOR_LIMIT.get(cls)
+    if not rank or not limit:
+        return True
+    return rank <= (limit[1] if level >= 40 else limit[0])
 # Quest sort categories / zones that are not leveling content: holidays, AQ war effort,
 # Children's Week, Darkmoon Faire, PvP commendations and battlegrounds.
 SKIP_ZONES = {-22, -41, -284, -367, -364, -365, -366, -369, -370, -376, -1002, -1003, 2597, 3277, 3358}
 
 
-def score(item, weights):
+def score(item, weights, addon_keys=False):
+    """Weighted stat total of an item.
+
+    config.STAT_WEIGHTS uses "dps" for the ranged weapon only. Weights saved by the addon
+    (addon_keys) use "dps" for melee weapons and "rdps" for ranged ones.
+    """
     stats = item.get("stats") or {}
+    ranged = item.get("slot") in RANGED
     total = 0.0
     for key, weight in weights.items():
-        if key == "dps" and item.get("slot") not in RANGED:
+        if addon_keys and key in ("dps", "rdps"):
+            if (key == "rdps") == ranged:
+                total += (stats.get("dps") or 0) * weight
+            continue
+        if key == "dps" and not ranged:
             continue
         total += (stats.get(key) or 0) * weight
     return total
+
+
+def gear_weights(snap, cls):
+    """Weights for the bag-upgrade check: (weights, addon_keys, where they come from).
+
+    config.STAT_WEIGHTS wins, since it is this player's own choice; otherwise the weights the
+    addon was using when it saved the snapshot (the character's own, or its class and role
+    default).
+    """
+    own = config.STAT_WEIGHTS.get(cls)
+    if own:
+        return own, False, "config.STAT_WEIGHTS"
+    saved = snap.get("weights") or {}
+    values = saved.get("values")
+    if isinstance(values, dict) and values:
+        source = saved.get("source") or "addon"
+        if saved.get("role"):
+            source += f": {saved['role']}"
+        return values, True, f"addon, {source}"
+    return None, False, None
 
 
 def fmt_time(seconds):
@@ -214,26 +260,28 @@ def gear(snap):
     food = [b for b in bags if b.get("subType") in ("Comida y bebida", "Food & Drink")]
     print("Food/drink: " + (", ".join(f"{f.get('name')} x{f.get('count')}" for f in food) or "none"))
 
-    weights = config.STAT_WEIGHTS.get(cls)
+    weights, addon_keys, source = gear_weights(snap, cls)
     if not weights:
         print(f"No stat weights for {cls or 'unknown class'}: bag-upgrade check skipped "
-              "(add them to config.STAT_WEIGHTS).")
+              "(set them in game with /scout weights and /reload, or in config.STAT_WEIGHTS).")
         return
+
+    def points(item):
+        return score(item, weights, addon_keys)
     upgrades = []
     for item in bags:
         slots = INVTYPE_SLOTS.get(item.get("slot"))
         if not slots or (item.get("reqLevel") or 0) > level:
             continue
-        sub = item.get("subType")
-        if sub in BLOCKED_ARMOR or (sub in MAIL and level < 40):
+        if not wearable(item.get("subType"), cls, level):
             continue
-        new = score(item, weights)
-        cur = min(slots, key=lambda s: score(equipped.get(s) or {}, weights))
-        old = score(equipped.get(cur) or {}, weights)
+        new = points(item)
+        cur = min(slots, key=lambda s: points(equipped.get(s) or {}))
+        old = points(equipped.get(cur) or {})
         if new > old + 0.01:
             upgrades.append((new - old, item, equipped.get(cur), cur))
     if upgrades:
-        print("Possible upgrades in bags (RestedXP weights):")
+        print(f"Possible upgrades in bags (weights: {source}):")
         for gain, item, cur, slot in sorted(upgrades, key=lambda u: -u[0]):
             print(f"  +{gain:.1f}  {item.get('name')} → slot {slot} "
                   f"(replaces {cur.get('name') if cur else 'empty'})")

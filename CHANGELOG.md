@@ -3,6 +3,14 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.8.0
+
+- Loot advice now works for every class out of the box. Warriors, paladins, rogues, priests, shamans, mages, warlocks and druids get their own stat weights, so NEED or GREED on rolls and the score line on tooltips appear without setting anything up.
+- Classes with more than one job pick a role: damage, healer or tank. Use the new buttons on the Settings page or type `/scout weights healer` (`tank`, `melee`, `caster`).
+- Spell critical strike and spell hit are now scored (`spellcrit`, `spellhit` in `/scout weights`).
+- The new weights are TrailScout's own estimates for leveling, worked out from Classic's rules and not yet checked against Forever's changes. Hunters keep theirs. You can still tune any number with `/scout weights`.
+- The floating button now sits above quest trackers and bag bars, so it can be clicked and dragged when it is next to one.
+
 ## TrailScout 1.7.0
 
 - Routes from an AI chat, with no extra tools: the new question **Plan a route for me** asks the assistant to end its answer with one line that starts with `TSR1`. Paste that line into the new box on the Start page (or type `/scout import <line>`) and the route starts, with a waypoint per stop.

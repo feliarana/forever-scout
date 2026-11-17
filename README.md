@@ -93,13 +93,21 @@ Full reference, with every detail: [addon README](addon/TrailScout/README.md).
 | Online friends, guild and communities in the summary | yes | yes |
 | Alerts: bags almost full, low durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
-| Loot NEED / GREED advice and tooltip score | yes, ready to use | after one line: `/scout weights int=1 sta=0.5 …` |
+| Loot NEED / GREED advice and tooltip score | yes | yes: pick your role (damage, healer, tank) on the Settings page |
 
-The addon started as a troll hunter's setup, so hunters have stat weights built in. Any other
-class sets its own once: ask your AI *"what are good leveling stat weights for my class?"* and
-type them with `/scout weights`.
+Every class comes with stat weights for each of its roles. Outside hunters they are
+TrailScout's own estimates for leveling, worked out from Classic's rules and not yet checked
+against what Forever changed: treat them as a starting point. To tune them, ask your AI
+*"what are good leveling stat weights for my class?"* (there is a button for it) and type the
+answer with `/scout weights`.
 
 ## Questions
+
+**I do not see the TrailScout button on the minimap.**
+Another addon is probably keeping your minimap tidy: OneForAll and Leatrix Plus can collect
+every addon's minimap button into a bar or a menu of their own, and TrailScout's goes in with
+the rest. Open that bar (OneForAll: its floating **1** button), or use the floating TrailScout
+button, the addon list beside the minimap, or `/scout config`.
 
 **Do I need to know programming or install Python?**
 No. The addon alone gives you everything above. Python is only for the optional offline tools.

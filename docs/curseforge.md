@@ -24,7 +24,9 @@ Optional dependencies to declare on the page: Questie and TomTom (only `/whereis
 
 The page description is [curseforge-description.md](curseforge-description.md): paste the
 whole file with the editor set to Markdown. It is kept one paragraph or bullet per line, with
-no hard wraps, because some Markdown editors turn every line break into a visible one.
+no hard wraps, because some Markdown editors turn every line break into a visible one. Steps are
+written as **Step 1.** paragraphs, not as a numbered list: the CurseForge app shows ordered
+lists without their numbers.
 
 ## Moderation policies that shaped this page
 

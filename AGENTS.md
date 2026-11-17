@@ -128,15 +128,17 @@ English or the client language (`17`, `barrens`, `"Mil Agujas"`).
 
 ## Class notes
 
-Only hunters have built-in stat weights (`STAT_WEIGHTS` in `config.py`, `CLASS_WEIGHTS` in
-`addon/TrailScout/TrailScout.lua`); the ammo and pet alerts are hunter-only too. For any
-other class:
+Every class has built-in stat weights, one set per role (`CLASS_ROLES` in
+`addon/TrailScout/TrailScout.lua`): damage, healer or tank, picked on the Settings page or
+with `/scout weights <role>`. The ammo and pet alerts are hunter-only.
 
-- In game, the loot advisor and the tooltip score stay off until the player sets weights.
-  Look up current stat priorities for their class and spec, then give them one line to type,
+- The hunter set is RestedXP's. Every other set is TrailScout's own estimate from Classic's
+  rules, not checked against Forever: say so when you lean on it. When the player's role does
+  not match (`weights.role` in the snapshot), tell them which role to pick. To improve a set,
+  look up current stat priorities for their class and spec and give them one line to type,
   for example `/scout weights int=1 sp=0.8 sta=0.5 spi=0.4`. Say where the numbers came from.
-- Offline, `analyze.py` skips the bag-upgrade check: judge upgrades yourself from the item
-  stats in the snapshot.
+- Offline, `analyze.py` checks bag upgrades with `config.STAT_WEIGHTS` when the class is
+  there, otherwise with the weights the addon saved in the snapshot. Its output names which.
 
 ## Changing the repo
 
