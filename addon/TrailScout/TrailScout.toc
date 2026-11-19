@@ -4,7 +4,7 @@
 ## Notes-esMX: Guarda una foto de tu personaje (misiones, equipo, bolsas, talentos, amigos) para que la lea un asistente de IA. Escribe /scout help.
 ## Notes-esES: Guarda una foto de tu personaje (misiones, equipo, bolsas, talentos, amigos) para que la lea un asistente de IA. Escribe /scout help.
 ## Author: Feli
-## Version: 1.9.0
+## Version: 1.10.0
 ## OptionalDeps: Questie, TomTom
 ## IconTexture: Interface\Icons\INV_Misc_Map_01
 ## AddonCompartmentFunc: TrailScout_OnAddonCompartmentClick

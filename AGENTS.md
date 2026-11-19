@@ -130,7 +130,8 @@ English or the client language (`17`, `barrens`, `"Mil Agujas"`).
 
 Every class has built-in stat weights, one set per role (`CLASS_ROLES` in
 `addon/TrailScout/TrailScout.lua`): damage, healer or tank, picked on the Settings page or
-with `/scout weights <role>`. The ammo and pet alerts are hunter-only.
+with `/scout weights <role>`. The ammo and pet alerts are hunter-only; the other
+classes except warriors get a warning when a supply they carry (soul shards, reagents) runs low.
 
 - The hunter set is RestedXP's. Every other set is TrailScout's own estimate from Classic's
   rules, not checked against Forever: say so when you lean on it. When the player's role does

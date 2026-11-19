@@ -113,8 +113,8 @@ if clientLocale == "esMX" or clientLocale == "esES" then
   L["upkeep alerts on."] = "alertas activadas."
   L["on"] = "activadas"
   L["off"] = "apagadas"
-  L["upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points. Repeat every %d min. /scout alerts on|off"] =
-    "alertas %s: munición < %d, lugares libres <= %d, durabilidad < %d%%, mascota muerta / descontenta / conforme / ausente, puntos de talento sin gastar. Se repiten cada %d min. /scout alerts on|off"
+  L["upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points, class supplies running low. Repeat every %d min. /scout alerts on|off"] =
+    "alertas %s: munición < %d, lugares libres <= %d, durabilidad < %d%%, mascota muerta / descontenta / conforme / ausente, puntos de talento sin gastar, consumibles de clase por acabarse. Se repiten cada %d min. /scout alerts on|off"
   -- Addon overlap check
   L["Bags"] = "Bolsas"
   L["Damage meters"] = "Medidores de daño"
@@ -196,8 +196,10 @@ if clientLocale == "esMX" or clientLocale == "esES" then
     "Equipo a punto de romperse"
   L["Unspent talent points"] =
     "Puntos de talento sin gastar"
-  L["Low ammo (hunters)"] =
-    "Poca munición (cazadores)"
+  L["Low ammo or class supplies (shards, reagents)"] =
+    "Poca munición o consumibles de clase (fragmentos, componentes)"
+  L["No %s left."] = "No queda %s."
+  L["Low on %s: %d left."] = "Queda poco de %s: %d."
   L["Pet dead, missing or unhappy (hunters)"] =
     "Mascota muerta, ausente o descontenta (cazadores)"
   L["NEED / GREED advice in chat when a loot roll starts"] =
@@ -2030,7 +2032,8 @@ local function compactText(snap)
   -- Talents and perks: what is taken, and with a point to spend or for the talent question,
   -- every one that can take a point with the game's own description. A chat that cannot
   -- read the saved file has nothing else to answer from.
-  local detailed = snap.question == T("Where should I put my next talent points for my class and the way I am playing?")
+  local detailed = type(snap.question) == "string" and (snap.question:lower():find("talent", 1, true)
+    or snap.question == T("Where should I put my next talent points for my class and the way I am playing?"))
   local function traits(label, trees)
     local taken, options, free, listed = {}, {}, 0, {}
     for _, tree in ipairs(trees or {}) do
@@ -2783,6 +2786,20 @@ local ALERT_LIMITS = {
   freeSlots = 2,        -- free bag slots at or below this
   durability = 25,      -- lowest equipped item durability (percent) below this
   repeatSeconds = 300,
+  -- Class supplies: { itemID, count below which to warn }. Only an item the character has
+  -- carried in the last supplyDays is watched, so a spell not learned yet, a reagent Forever
+  -- dropped or one a Legacy perk made unnecessary never warns.
+  supplyDays = 7,
+  supplies = {
+    WARLOCK = { { 6265, 2 } },                                   -- Soul Shard
+    ROGUE = { { 5140, 3 }, { 5530, 3 } },                        -- Flash Powder, Blinding Powder
+    SHAMAN = { { 17030, 2 } },                                   -- Ankh
+    MAGE = { { 17031, 2 }, { 17032, 2 }, { 17020, 5 }, { 17056, 2 } },  -- runes, Arcane Powder, Light Feather
+    PRIEST = { { 17028, 5 }, { 17029, 5 }, { 17056, 2 } },       -- candles, Light Feather
+    DRUID = { { 17034, 2 }, { 17035, 2 }, { 17036, 2 }, { 17037, 2 }, { 17038, 2 },  -- Rebirth seeds
+              { 17021, 5 }, { 17026, 5 } },                      -- Wild Berries, Wild Thornroot
+    PALADIN = { { 17033, 2 }, { 21177, 10 } },                   -- Symbol of Divinity, Symbol of Kings
+  },
 }
 local PROJECTILE_CLASS = 6  -- item class ID of arrows and bullets
 local alertState = {}
@@ -2799,14 +2816,16 @@ local ALERT_SETTING = {
   petMissing = "alert_pet", bags = "alert_bags", durability = "alert_durability", talents = "alert_talents",
 }
 
-local function alert(key, active, text)
-  if ALERT_SETTING[key] and not setting(ALERT_SETTING[key]) then active = false end
+-- `once`: warn a single time while the condition lasts, instead of repeating.
+local function alert(key, active, text, once)
+  local switch = ALERT_SETTING[key] or (key:find("^supply") and "alert_ammo")
+  if switch and not setting(switch) then active = false end
   if not active then
     alertState[key] = nil
     return
   end
   local now = GetTime()
-  if alertState[key] and now - alertState[key] < ALERT_LIMITS.repeatSeconds then return end
+  if alertState[key] and (once or now - alertState[key] < ALERT_LIMITS.repeatSeconds) then return end
   alertState[key] = now
   if RaidNotice_AddMessage and RaidWarningFrame then
     pcall(RaidNotice_AddMessage, RaidWarningFrame, text, { r = 1, g = 0.5, b = 0.1 })
@@ -2880,6 +2899,38 @@ local function checkAlerts()
     end
   end
 
+  -- Class supplies (soul shards, reagents): warned once when they run low and once when
+  -- they run out. Shares the ammo switch.
+  -- Guarded on its own: a bag value the client refuses to hand over must not take the
+  -- reminders below (talents, bags, durability) down with it.
+  local supplies = ALERT_LIMITS.supplies[class]
+  if supplies then pcall(function()
+    local h = history()
+    h.supplies = h.supplies or {}
+    local counts, names = {}, {}
+    for bag = 0, 4 do
+      local slots = (C_Container and try(C_Container.GetContainerNumSlots, bag)) or try(GetContainerNumSlots, bag) or 0
+      for slot = 1, slots do
+        local info = C_Container and try(C_Container.GetContainerItemInfo, bag, slot)
+        if info and info.itemID then
+          counts[info.itemID] = (counts[info.itemID] or 0) + (info.stackCount or 1)
+          names[info.itemID] = itemNameFromLink(info.hyperlink)
+        end
+      end
+    end
+    local now = time()
+    for _, supply in ipairs(supplies) do
+      local id, low = supply[1], supply[2]
+      local count = counts[id] or 0
+      if count > 0 then h.supplies[id] = { name = names[id] or (h.supplies[id] and h.supplies[id].name), at = now } end
+      local seen = h.supplies[id]
+      local watched = seen and seen.name and now - (seen.at or 0) < ALERT_LIMITS.supplyDays * 86400 and not dead
+      alert("supplyOut" .. id, watched and count == 0, watched and string.format(T("No %s left."), seen.name), true)
+      alert("supplyLow" .. id, watched and count > 0 and count < low,
+        watched and string.format(T("Low on %s: %d left."), seen.name, count), true)
+    end
+  end) end
+
   local points = unspentTalentPoints()
   alert("talents", points > 0 and not inCombat and not dead,
     string.format(T("%d unspent talent point(s): open the talent window."), points))
@@ -2915,7 +2966,7 @@ local function alertsCommand(arg)
     scheduleAlerts()
   else
     for k in pairs(alertState) do alertState[k] = nil end
-    say(string.format(T("upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points. Repeat every %d min. /scout alerts on|off"),
+    say(string.format(T("upkeep alerts %s: ammo < %d, free bag slots <= %d, durability < %d%%, pet dead / unhappy / content / missing, unspent talent points, class supplies running low. Repeat every %d min. /scout alerts on|off"),
       cfg.enabled and T("on") or T("off"), ALERT_LIMITS.ammo, ALERT_LIMITS.freeSlots, ALERT_LIMITS.durability, ALERT_LIMITS.repeatSeconds / 60))
     if cfg.enabled then pcall(checkAlerts) end
   end
@@ -3029,7 +3080,7 @@ local OPTION_CHECKS = {
   { key = "alert_bags", label = "Bags almost full", indent = true },
   { key = "alert_durability", label = "Gear about to break", indent = true },
   { key = "alert_talents", label = "Unspent talent points", indent = true },
-  { key = "alert_ammo", label = "Low ammo (hunters)", indent = true },
+  { key = "alert_ammo", label = "Low ammo or class supplies (shards, reagents)", indent = true },
   { key = "alert_pet", label = "Pet dead, missing or unhappy (hunters)", indent = true },
   { key = "lootAdvice", label = "NEED / GREED advice in chat when a loot roll starts" },
   { key = "tooltip", label = "Score line on gear tooltips" },

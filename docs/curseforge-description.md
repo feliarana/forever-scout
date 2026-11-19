@@ -6,7 +6,7 @@
 - **`/scout`** — a summary of your character in a copy box. Press Ctrl+C and paste it into any AI chat together with your question.
 - **`/whereis <name>`** — finds an NPC or an object in the world: how far it is, an arrow to it and a **[Show on map]** link. It also follows a party member.
 - **Routes from the AI** — the question *Plan a route for me* makes the assistant answer with one line; paste it into the window and `/scout route` walks it stop by stop with waypoints. The game places the stops itself from Questie's data.
-- **Reminders** — nearly full bags, low durability, unspent talent points. Hunters also get low ammo and a dead, missing or unhappy pet.
+- **Reminders** — nearly full bags, low durability, unspent talent points. Hunters also get low ammo and a dead, missing or unhappy pet; warlocks, shamans, mages, priests, druids, paladins and rogues are told when their shards or reagents run low.
 - **Loot advice** — NEED or GREED on every roll, and a score line on gear tooltips against what you wear. Every class has built-in stat weights, with a set per role (damage, healer, tank) to pick on the Settings page; tune them with `/scout weights`.
 - **`/scout help`** — every command, in English or Spanish to match your client.
 
@@ -40,7 +40,7 @@
 - **`/scout`** — un resumen de tu personaje en una caja para copiar. Presiona Ctrl+C y pégalo en cualquier chat de IA junto con tu pregunta.
 - **`/whereis <nombre>`** — encuentra un NPC o un objeto del mundo: a qué distancia está, una flecha y un enlace **[Ver en mapa]**. También sigue a un miembro del grupo.
 - **Rutas de la IA** — la pregunta *Ármame una ruta* hace que el asistente conteste con una línea; pégala en la ventana y `/scout route` la recorre parada por parada con puntos en el mapa. El juego ubica las paradas solo, con los datos de Questie.
-- **Avisos** — bolsas casi llenas, equipo a punto de romperse, puntos de talento sin gastar. Los cazadores también reciben poca munición y mascota muerta, ausente o descontenta. Cada aviso se puede apagar por separado.
+- **Avisos** — bolsas casi llenas, equipo a punto de romperse, puntos de talento sin gastar. Los cazadores también reciben poca munición y mascota muerta, ausente o descontenta; brujos, chamanes, magos, sacerdotes, druidas, paladines y pícaros reciben un aviso cuando se les acaban los fragmentos o componentes. Cada aviso se puede apagar por separado.
 - **Consejo de botín** — NECESIDAD o CODICIA en cada tirada, y una línea de puntaje en los tooltips de equipo contra lo que llevas puesto. Cada clase trae sus pesos de estadísticas, con un juego por rol (daño, sanador, tanque) que se elige en la página de Ajustes; se ajustan con `/scout weights`.
 
 ### Para empezar

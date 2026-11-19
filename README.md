@@ -30,7 +30,8 @@ and reminders. Any class, Horde or Alliance. English and Spanish.
 - **Know what to roll.** NEED or GREED in chat on every loot roll, and a line on every gear
   tooltip saying how much better or worse it is than what you wear.
 - **Stop forgetting things.** A warning when your bags are almost full, your gear is about to
-  break or you have a talent point to spend. Hunters also get low ammo and pet warnings.
+  break or you have a talent point to spend. Hunters also get low ammo and pet warnings; other
+  classes are warned when their own supplies (soul shards, reagents) run low.
 - **Trim your addon list.** `/scout addons` shows which of your addons do the same job twice.
 
 ## Install
@@ -93,6 +94,7 @@ Full reference, with every detail: [addon README](addon/TrailScout/README.md).
 | Online friends, guild and communities in the summary | yes | yes |
 | Alerts: bags almost full, low durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
+| Alerts: class supplies running low (soul shards, ankhs, runes, candles, seeds, symbols, powders) | — | yes, except warriors |
 | Loot NEED / GREED advice and tooltip score | yes | yes: pick your role (damage, healer, tank) on the Settings page |
 
 Every class comes with stat weights for each of its roles. Outside hunters they are

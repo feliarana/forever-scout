@@ -35,6 +35,7 @@ the full snapshot needs a `/reload`.
 | `/scout route` waypoints (route from an AI chat or the offline tools) | yes | yes |
 | Alerts: bags, durability, unspent talent points | yes | yes |
 | Alerts: ammo and pet | yes | — |
+| Alerts: class supplies running low | — | yes, except warriors |
 | Loot NEED / GREED advice and tooltip score | yes | yes, with a set of weights per role |
 
 ### Privacy
@@ -221,6 +222,8 @@ talent changes, and every 20 seconds.
 |---|---|---|
 | Low ammo (hunter) | Equipped ammo below 400 | Equip the bigger stack of other ammo if there is one, else buy more |
 | No ammo (hunter) | No ammo equipped | Drag arrows to the ammo slot, or buy them |
+| Low on a class supply | A supply of your class drops below its minimum (2 for soul shards, ankhs, runes, seeds and Symbols of Divinity, 3 for rogue powders, 5 for candles and group-buff reagents, 10 for Symbols of Kings) | Says how many are left, once |
+| Out of a class supply | The last one is used | Says so, once |
 | Pet dead (hunter) | Pet is dead, out of combat | Revive Pet |
 | Pet unhappy (hunter) | Happiness 1 (75% damage, may run away) | Feed Pet now |
 | Pet content (hunter) | Happiness 2, out of combat | Feed Pet for +25% damage |

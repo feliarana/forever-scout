@@ -400,6 +400,11 @@ test("the summary names the class and the talents, with options when a point is 
     assert(text:find("talents that can take a point: Endurance Training 3/5: Increases the Health of your pet by 15%.", 1, true),
       "talent options missing from the talent question")
   `);
+  withAddon(ONE_ITEM, LOGIN + `
+    slash("que talentos me conviene poner?")
+    assert(TrailScoutCopyFrame.box.text:find("talents that can take a point", 1, true),
+      "a typed question about talents must bring the options too")
+  `);
   withAddon(ONE_ITEM + `STUB.talentPoints = 1 STUB.legacy = { points = 1, placeholders = true }`, LOGIN + `
     slash("where do I go next?")
     local text = TrailScoutCopyFrame.box.text
@@ -880,6 +885,100 @@ test("zone sizes in yards are saved for every zone the client knows", () => {
     local count = 0
     for _ in pairs(sizes) do count = count + 1 end
     assert(count == 2, "only zone maps belong in the table, got " .. count)
+  `);
+});
+
+test("class supplies: warned once when low and once when out, only for what the character carried", () => {
+  withAddon(`
+    STUB.player.class = "SHAMAN"
+    ankh = STUB.item({ id = 17030, name = "Ankh", type = "Reagent" })
+    STUB.bags[0] = { size = 16 }
+  `, LOGIN + `
+    login()
+    STUB.advance(5)
+    assert(not STUB.said("Ankh"), "a reagent never carried must not warn")
+
+    STUB.bags[0][1] = { ankh, 3 }
+    STUB.fire("BAG_UPDATE_DELAYED") STUB.advance(5)
+    assert(not STUB.said("Ankh"), "three ankhs is enough")
+    assert(TrailScoutHistory.supplies[17030].name == "Ankh")
+
+    STUB.bags[0][1] = { ankh, 1 }
+    STUB.fire("BAG_UPDATE_DELAYED") STUB.advance(5)
+    assert(STUB.said("Low on Ankh: 1 left."), "low supply alert missing")
+    STUB.clearChat()
+    STUB.fire("BAG_UPDATE_DELAYED") STUB.advance(400)
+    assert(not STUB.said("Low on Ankh"), "the supply alert must not repeat")
+
+    STUB.bags[0][1] = nil
+    STUB.fire("BAG_UPDATE_DELAYED") STUB.advance(5)
+    assert(STUB.said("No Ankh left."), "out of supply alert missing")
+
+    -- Dying with the last one (Reincarnation) warns again once alive; the shared switch mutes it.
+    STUB.clearChat()
+    slash("alerts on") STUB.advance(5)
+    assert(STUB.said("No Ankh left."), "the alert must come back after the alerts are reset")
+    STUB.clearChat()
+    TrailScoutHistory.settings = { alert_ammo = false }
+    slash("alerts on") STUB.advance(5)
+    assert(not STUB.said("Ankh"), "the ammo and supplies switch must mute it")
+    TrailScoutHistory.settings = nil
+
+    -- Not carried for more than a week (a perk made it unnecessary): stop watching.
+    STUB.clearChat()
+    TrailScoutHistory.supplies[17030].at = time() - 8 * 86400
+    slash("alerts on") STUB.advance(5)
+    assert(not STUB.said("Ankh"), "a supply not carried for a week must be forgotten")
+  `);
+  // A failure while counting supplies leaves the other reminders working.
+  withAddon(`
+    STUB.player.class = "SHAMAN"
+    local junk = STUB.item({ id = 1, name = "Linen Cloth", type = "Trade Goods" })
+    STUB.bags[0] = { size = 1, [1] = { junk, 5 } }
+  `, LOGIN + `
+    login()
+    -- A stack count that cannot be added up, like a value the client keeps to itself.
+    local real = C_Container.GetContainerItemInfo
+    C_Container.GetContainerItemInfo = function(bag, slot)
+      local info = real(bag, slot)
+      if info then info.stackCount = {} end
+      return info
+    end
+    STUB.clearChat()
+    slash("alerts on") STUB.advance(5)
+    assert(STUB.said("Bags almost full"), "a supplies failure must not silence the other alerts")
+  `);
+  // Soul shards are counted across every bag; a hunter carrying a reagent is not warned.
+  withAddon(`
+    STUB.player.class = "WARLOCK"
+    shard = STUB.item({ id = 6265, name = "Soul Shard", type = "Reagent" })
+    STUB.bags[0] = { size = 16, [1] = { shard, 1 } }
+    STUB.bags[4] = { size = 8, [3] = { shard, 1 } }
+  `, LOGIN + `
+    login()
+    STUB.advance(5)
+    assert(not STUB.said("Soul Shard"), "two shards in different bags are enough")
+    STUB.bags[4][3] = nil
+    STUB.fire("BAG_UPDATE_DELAYED") STUB.advance(5)
+    assert(STUB.said("Low on Soul Shard: 1 left."), "shards must be counted across bags")
+  `);
+  withAddon(`
+    ankh = STUB.item({ id = 17030, name = "Ankh", type = "Reagent" })
+    STUB.bags[0] = { size = 16, [1] = { ankh, 1 } }
+  `, LOGIN + `
+    login()
+    STUB.advance(5)
+    assert(not STUB.said("Ankh"), "another class's reagent is not this class's supply")
+  `);
+  withAddon(`
+    STUB.player.class = "SHAMAN"
+    STUB.locale = "esMX"
+    ankh = STUB.item({ id = 17030, name = "Ankh", type = "Reagent" })
+    STUB.bags[0] = { size = 16, [1] = { ankh, 1 } }
+  `, LOGIN + `
+    login()
+    STUB.advance(5)
+    assert(STUB.said("Queda poco de Ankh: 1."), "supply alert missing or untranslated")
   `);
 });
 

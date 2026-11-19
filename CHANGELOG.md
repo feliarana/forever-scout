@@ -3,6 +3,12 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.10.0
+
+- New reminders for the classes that carry supplies: warlocks (Soul Shards), shamans (Ankh), mages (runes, Arcane Powder, Light Feather), priests (candles, Light Feather), druids (seeds, Wild Berries, Wild Thornroot), paladins (Symbols) and rogues (Flash Powder, Blinding Powder). You are told once when one runs low and once when it runs out.
+- Only a supply your character has carried in the last week is watched, so nothing warns about a spell you have not learned or a reagent you no longer need. The switch is shared with the hunter's ammo reminder on the Settings page.
+- A question you type yourself that mentions talents now brings the list of talents that can take a point, like the ready-made talent question does.
+
 ## TrailScout 1.9.0
 
 - The summary you paste into an AI chat now says your race, class and faction, and lists the talents and perks you have taken.
