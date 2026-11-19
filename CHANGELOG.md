@@ -3,6 +3,10 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.8.1
+
+- `/whereis` on your target and the record of who gave you each quest no longer depend on the hidden parts of an NPC's identifier being plain numbers. Forever scrambles those parts, which could make both fail without a message.
+
 ## TrailScout 1.8.0
 
 - Loot advice now works for every class out of the box. Warriors, paladins, rogues, priests, shamans, mages, warlocks and druids get their own stat weights, so NEED or GREED on rolls and the score line on tooltips appear without setting anything up.

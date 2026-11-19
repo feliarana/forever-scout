@@ -164,7 +164,11 @@ function UnitExists(unit)
 end
 -- STUB.npc = { name, id } is the unit of an open quest, trainer or vendor window.
 function UnitGUID(unit)
-  if unit == "npc" and STUB.npc then return "Creature-0-4444-0-55-" .. STUB.npc.id .. "-0000ABCDEF" end
+  -- Server and spawn parts are obfuscated on Forever: not plain numbers.
+  if unit == "npc" and STUB.npc then return "Creature-0-a1B2c3-0-55-" .. STUB.npc.id .. "-x9Yz00ABCD" end
+  if unit == "target" and STUB.target and STUB.target.id then
+    return "Creature-0-a1B2c3-0-55-" .. STUB.target.id .. "-x9Yz00ABCD"
+  end
 end
 function UnitName(unit)
   if unit == "player" then return STUB.player.name end

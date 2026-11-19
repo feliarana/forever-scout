@@ -735,6 +735,14 @@ test("/whereis: finds an NPC, sets the arrow and offers the map", () => {
   `);
 });
 
+test("/whereis: with no argument reads the NPC id from an obfuscated target GUID", () => {
+  withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom()`, `
+    STUB.target = { name = "Apothecary Lydon", id = 2216 }
+    SlashCmdList.TRAILSCOUTWHERE("")
+    assert(STUB.said("Apothecary Lydon (2216)"), "the target's NPC id was not read")
+  `);
+});
+
 test("/whereis: also finds world objects by name", () => {
   withAddon(ONE_ITEM + QUESTIE + `STUB.installTomTom()`, `
     SlashCmdList.TRAILSCOUTWHERE("mudsnout")

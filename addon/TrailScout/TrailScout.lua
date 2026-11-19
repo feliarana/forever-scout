@@ -1597,7 +1597,7 @@ local function onQuestAccepted(first, second)
       entry.name = plain(UnitName(unit))
       local guid = plain(UnitGUID and UnitGUID(unit))
       if type(guid) == "string" then
-        local kind, id = guid:match("^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)")
+        local kind, id = guid:match("^(%a+)%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-(%d+)")
         entry.kind, entry.id = kind, tonumber(id)
       end
       break
@@ -2246,7 +2246,11 @@ end
 local function targetNpcId()
   local guid = plain(UnitGUID("target"))
   if type(guid) ~= "string" then return nil end
-  return tonumber(guid:match("^Creature%-%d+%-%d+%-%d+%-%d+%-(%d+)") or guid:match("^Vehicle%-%d+%-%d+%-%d+%-%d+%-(%d+)"))
+  -- Forever obfuscates the server and spawn parts of the GUID, so only the NPC id is
+  -- assumed to be a number.
+  local kind, id = guid:match("^(%a+)%-[^-]*%-[^-]*%-[^-]*%-[^-]*%-(%d+)")
+  if kind ~= "Creature" and kind ~= "Vehicle" then return nil end
+  return tonumber(id)
 end
 
 local function where(msg)
