@@ -119,7 +119,7 @@ English or the client language (`17`, `barrens`, `"Mil Agujas"`).
 | Script | Purpose |
 |---|---|
 | `tools/analyze.py [--char NAME] [zone …]` | Character summary, where talent and perk points can go, professions, bank and mail, turn-ins, progress, unlocks, available quests |
-| `tools/guide.py [--char NAME] <questID …>` | Start, turn-in, text, objectives with levels, ELITE and spawn clusters |
+| `tools/guide.py [--char NAME] <questID …>` | Start, turn-in, text, objectives with levels, ELITE and spawn clusters; for a bought item, who sells it in the player's zone and the turn-in zone |
 | `tools/route_check.py [--char NAME] ZONE:X,Y …` | Distance of each logged quest to a route, and XP at the current level |
 | `tools/quest_value.py [--char NAME]` | Every logged quest ranked by estimated XP per minute, with minutes, quest XP and kill XP; other zones are timed from arriving there |
 | `tools/map_route.py [--char NAME] [--addon \| --tomtom] [QUESTID \| turnin:QUESTID \| ZONE:X,Y=label …]` | Numbered route for the in-game map. No stops = the whole current zone with its quest chains: logged quests, what their turn-ins unlock and new quests to pick up, in dependency order (`--no-chains`, `--no-accept` to limit it). With stops: just those, turn-ins last. `--addon` writes it for `/scout route`; writes to `$WOW_AI_MAP_FILE` when set |

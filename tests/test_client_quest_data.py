@@ -75,6 +75,16 @@ class MergeHistoryTest(unittest.TestCase):
         self.assertEqual(merged["flights"], {"Orgrimmar": 1})
         self.assertEqual(merged["runs"], {})
 
+    def test_one_profession_opened_today_keeps_the_others_from_the_history(self):
+        hist = {"recipes": {"Cooking": {"at": "2026-11-15 20:18", "list": [{"name": "Roast"}]},
+                            "Leatherworking": {"at": "2026-11-15 20:19", "list": []}},
+                "flights": {"Orgrimmar": 1}}
+        db = {"recipes": {"Leatherworking": {"at": "2026-11-19 09:26", "list": [{"name": "Bracers"}]}}}
+        common.fill_from_history(db, hist)
+        self.assertEqual(set(db["recipes"]), {"Cooking", "Leatherworking"})
+        self.assertEqual(db["recipes"]["Leatherworking"]["at"], "2026-11-19 09:26")
+        self.assertEqual(db["flights"], {"Orgrimmar": 1})
+
 
 class ClientLanguageTest(unittest.TestCase):
     """Names follow the game client: 'English / Spanish' on a Spanish client, English alone

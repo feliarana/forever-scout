@@ -25,7 +25,7 @@ def load_q(auto_build=True):
     if not stale:
         with open(config.Q_PKL, "rb") as fh:
             Q = pickle.load(fh)
-        stale = Q.get("source") != build_q.source_stamp()
+        stale = Q.get("source") != build_q.source_stamp() or Q.get("schema") != build_q.SCHEMA
         if not stale:
             return Q
     if not auto_build:
@@ -152,11 +152,19 @@ def char_snapshot(char_dir):
     snapshots_found = [db for db, _ in loaded if db]
     db = max(snapshots_found, key=lambda d: str(d.get("savedAt") or ""), default={})
     if db:
-        # Flight paths and recipes are only re-recorded when their windows open again.
-        for key in ("flights", "recipes"):
-            if not db.get(key) and hist.get(key):
-                db[key] = hist[key]
+        fill_from_history(db, hist)
     return db, hist
+
+
+def fill_from_history(db, hist):
+    """Flight paths and recipes are only re-recorded when their windows open again, so the
+    snapshot keeps every entry the history has (also from before a rename) and its own on top.
+    One profession opened today must not hide the others recorded earlier."""
+    for key in ("flights", "recipes"):
+        old, new = hist.get(key), db.get(key)
+        if isinstance(old, dict) and old:
+            db[key] = {**old, **new} if isinstance(new, dict) else old
+    return db
 
 
 def snapshots():
@@ -649,14 +657,42 @@ def objective_targets(Q, q):
             add_points(points, "obj", oid)
             sources.append({"kind": "obj", "id": oid, "label": object_name(Q, oid)})
         sources.sort(key=lambda s: -(s.get("drop") or 0))
+        # An item nothing drops is bought: its vendors are the places to go. For an item that
+        # also drops, vendors are listed but the stops stay on the drops.
+        vendors = [nid for nid in item.get("vendors") or [] if _vendor_serves(Q, nid)]
+        bought = bool(vendors) and not sources
+        for nid in vendors:
+            if bought:
+                add_points(points, "npc", nid)
+            sources.append({"kind": "vendor", "id": nid, "label": npc_name(Q, nid)})
         out.append({"kind": "item", "id": iid, "label": item_name(Q, iid),
-                    "sources": sources, "points": points})
+                    "sources": sources, "points": points, "bought": bought})
     return out
+
+
+def _vendor_serves(Q, nid, ident=None):
+    """False for a vendor of the other faction."""
+    faction = (ident or IDENTITY).get("faction")
+    theirs = Q["npcs"].get(nid, {}).get("faction")
+    return faction not in ("Horde", "Alliance") or theirs in (None, "AH", faction[0])
+
+
+def vendors_in(Q, target, zone):
+    """[(label, (x, y))] for the vendors of a bought objective that stand in `zone`."""
+    found = []
+    for source in target["sources"]:
+        if source["kind"] == "vendor":
+            for point in spawns_of(Q, "npc", source["id"]).get(zone) or []:
+                found.append((source["label"], point))
+                break
+    return found
 
 
 def fmt_source(s):
     if s["kind"] == "obj":
         return f"{s['label']} (object)"
+    if s["kind"] == "vendor":
+        return f"{s['label']} (vendor)"
     txt = f"{s['label']} lvl {s['level']}"
     if s.get("elite"):
         txt += " ELITE"

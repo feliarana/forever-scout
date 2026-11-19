@@ -3,6 +3,13 @@
 Newest version first. The section of a version is what goes in the changelog box when its zip
 is uploaded to CurseForge.
 
+## TrailScout 1.9.0
+
+- The summary you paste into an AI chat now says your race, class and faction, and lists the talents and perks you have taken.
+- Asking "Where do my talent points go?" adds every talent that can take a point, with the game's own description, so the AI can answer without reading any file. The same list is added whenever you have a talent or legacy point to spend.
+- Offline tools: a quest item that is bought, not looted, now shows who sells it near you (`tools/guide.py`) and becomes a "Buy ..." stop on the route (`tools/map_route.py`). It used to be listed as "no known spawns".
+- Offline tools: opening one profession window no longer hides the recipes recorded earlier for your other professions.
+
 ## TrailScout 1.8.1
 
 - `/whereis` on your target and the record of who gave you each quest no longer depend on the hidden parts of an NPC's identifier being plain numbers. Forever scrambles those parts, which could make both fail without a message.

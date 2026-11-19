@@ -22,6 +22,10 @@ def source_stamp():
     return stamp
 
 
+# Bumped when the cache gains a field, so an older Q.pkl is rebuilt even with QuestieDB unchanged.
+SCHEMA = 2
+
+
 def slot(value, index):
     """Field `index` (1-based) of a CBOR value that may be a list (0-based) or a dict (1-based)."""
     if isinstance(value, list):
@@ -92,10 +96,11 @@ def build():
     for iid, r in db.rows("Item"):
         items[iid] = {
             "name": r.get(1), "name_es": names_es["Item"].get(iid),
-            "npcs": r.get(2) or [], "objects": r.get(3) or [],
+            "npcs": r.get(2) or [], "objects": r.get(3) or [], "vendors": r.get(14) or [],
         }
 
     Q = {
+        "schema": SCHEMA,
         "built_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "source": source_stamp(),
         "flavor": db.get("Flavor"),

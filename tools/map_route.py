@@ -46,7 +46,7 @@ import common  # noqa: E402  (puts the repo root on sys.path for config)
 import config  # noqa: E402
 from common import (  # noqa: E402
     cluster, dist, fits_character, is_horde_ok, load_q, load_snapshot, npc_name, object_name,
-    objective_targets, player_pos, prereqs_met, quest_name, resolve_zone, spawns_of, take_char_arg,
+    objective_targets, player_pos, vendors_in, prereqs_met, quest_name, resolve_zone, spawns_of, take_char_arg,
     xp_at_level, zone_name,
 )
 
@@ -100,6 +100,11 @@ def objective_stops(Q, q, log_quest, zone):
         npcs = [src for src in target["sources"] if src["kind"] == "npc"]
         if npcs and all(src.get("elite") for src in npcs):
             name += " (elite)"
+        if target.get("bought"):
+            # A vendor is one spot, not a spawn area: name who sells it.
+            seller, centre = vendors_in(Q, target, zone)[0]
+            stops.append(stop(zone, centre, f"Buy {name} ({short_name(seller)})", "buy", 0))
+            continue
         stops.append(stop(zone, centre, name, PIN_KINDS[target["kind"]], 0))
     return stops, finishable
 

@@ -340,6 +340,10 @@ local NODES = {
   [100] = { tree = 10, name = "Endurance Training", spell = 900, rank = 3, max = 5 },
   [200] = { tree = 20, name = "Well Rested", spell = 901, rank = 0, max = 5 },
   [201] = { tree = 20, name = "Skilled Skinner", spell = 902, rank = 2, max = 3 },
+  -- Two perks the game has not released yet (same name, same text), listed only with
+  -- STUB.legacy.placeholders.
+  [202] = { tree = 20, name = "Unknown", spell = 903, rank = 0, max = 1, placeholder = true },
+  [203] = { tree = 20, name = "Unknown", spell = 903, rank = 0, max = 1, placeholder = true },
 }
 
 C_Traits = {}
@@ -359,7 +363,8 @@ end
 function C_Traits.GetTreeNodes(treeID)
   local ids = {}
   for id, node in pairs(NODES) do
-    if node.tree == treeID then ids[#ids + 1] = id end
+    local hidden = node.placeholder and not (STUB.legacy and STUB.legacy.placeholders)
+    if node.tree == treeID and not hidden then ids[#ids + 1] = id end
   end
   table.sort(ids)
   return ids

@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (  # noqa: E402
     cluster, fits_character, fmt_loc, fmt_source, fmt_xp, load_q, load_snapshot, locate, take_char_arg,
-    objective_targets, quest_name, zone_name,
+    objective_targets, player_zone, quest_name, vendors_in, zone_name,
 )
 
 CLUSTER_RADIUS = 8.0
@@ -26,7 +26,7 @@ def clusters_for(points):
     return sorted(found, key=lambda c: -c[0])[:TOP_CLUSTERS]
 
 
-def show(Q, qid, level):
+def show(Q, qid, level, here=None):
     q = Q["quests"].get(qid)
     if not q:
         print(f"\n### {qid}: not in QuestieDB")
@@ -55,13 +55,28 @@ def show(Q, qid, level):
     for t in targets:
         kind = {"mob": "Kill", "object": "Use", "item": "Collect"}[t["kind"]]
         print(f"- {kind}: {t['label']}")
+        vendors = [s for s in t["sources"] if s["kind"] == "vendor"]
+        drops = [s for s in t["sources"] if s["kind"] != "vendor"]
         if t["kind"] != "mob" or len(t["sources"]) > 1:
-            for s in t["sources"][:MAX_SOURCES]:
+            for s in drops[:MAX_SOURCES]:
                 print(f"    from: {fmt_source(s)}")
-            if len(t["sources"]) > MAX_SOURCES:
-                print(f"    … and {len(t['sources']) - MAX_SOURCES} more sources")
+            if len(drops) > MAX_SOURCES:
+                print(f"    … and {len(drops) - MAX_SOURCES} more sources")
+            if vendors:
+                print(f"    sold by {len(vendors)} vendor{'s' if len(vendors) != 1 else ''}"
+                      + ("" if t.get("bought") else f", e.g. {vendors[0]['label']}"))
         else:
             print(f"    {fmt_source(t['sources'][0])}")
+        if t.get("bought"):
+            # A vendor item: the useful places are where the player is and where it is handed in.
+            zones = [here] + [loc[1] for loc in locate(Q, q["end_npcs"], q["end_objects"])]
+            shown = False
+            for z in dict.fromkeys(z for z in zones if z):
+                for seller, (x, y) in vendors_in(Q, t, z)[:3]:
+                    print(f"    buy from: {seller} — {zone_name(Q, z)} {x:.1f},{y:.1f}")
+                    shown = True
+            if shown:
+                continue
         cl = clusters_for(t["points"])
         if not cl:
             print("    no known spawns")
@@ -75,11 +90,12 @@ def main():
         sys.exit(__doc__)
     Q = load_q()
     try:
-        level = load_snapshot()[0].get("level") or 60
+        snap = load_snapshot()[0]
+        level, here = snap.get("level") or 60, player_zone(Q, snap)
     except (Exception, SystemExit):  # no snapshot: still print the guide
-        level = 60
+        level, here = 60, None
     for arg in sys.argv[1:]:
-        show(Q, int(arg), level)
+        show(Q, int(arg), level, here)
 
 
 if __name__ == "__main__":

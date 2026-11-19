@@ -282,9 +282,11 @@ is the comparison; a two-hander is compared to main hand plus off hand.
 
 ## Copy box
 
-`/scout` shows a one-line summary: level, XP, rested XP, gold, location, hearthstone, free bag
-slots, durability, buffs, pet, party, online friends, quests with objectives, bags and
-equipment. The box is one line wide, so it only shows the start of the text; a line above it
+`/scout` shows a one-line summary: race, class and faction, level, XP, rested XP, gold,
+location, hearthstone, free bag slots, durability, buffs, pet, party, online friends, quests
+with objectives, the talents and perks you have taken, bags and equipment. With a talent or
+legacy point to spend, or when the question is the talent one, it also lists every talent that
+can take a point with the game's own description. The box is one line wide, so it only shows the start of the text; a line above it
 says what it is and how long. The text is already selected: press Ctrl+C to copy it (the box
 closes) or Esc to close it. The summary is always
 in English, whatever the client language, since it is meant for an AI chat.

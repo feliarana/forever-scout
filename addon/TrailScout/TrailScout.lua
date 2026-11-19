@@ -2000,8 +2000,9 @@ local function compactText(snap)
   local out = {}
   local function add(x) out[#out + 1] = x end
   local loc = snap.location or {}
-  add(string.format("FX1 %s | level %s %s/%s XP rested %s | %s copper | %s - %s %.1f,%.1f map %s",
-    tostring(snap.savedAt), tostring(snap.level), tostring(snap.xp), tostring(snap.xpMax),
+  add(string.format("FX1 %s | %s %s %s | level %s %s/%s XP rested %s | %s copper | %s - %s %.1f,%.1f map %s",
+    tostring(snap.savedAt), tostring(snap.race), tostring(snap.class), tostring(snap.faction),
+    tostring(snap.level), tostring(snap.xp), tostring(snap.xpMax),
     tostring(snap.rested), tostring(snap.money), tostring(loc.zone), tostring(loc.subZone),
     tonumber(loc.x) or 0, tonumber(loc.y) or 0, tostring(loc.mapID)))
   if snap.question then add("QUESTION: " .. snap.question) end
@@ -2025,6 +2026,41 @@ local function compactText(snap)
     local objs = {}
     for _, o in ipairs(q.objectives or {}) do objs[#objs + 1] = tostring(o.text) end
     add(string.format("Q%s %s%s %s", tostring(q.id), q.complete and "[OK] " or "", tostring(q.title), table.concat(objs, "; ")))
+  end
+  -- Talents and perks: what is taken, and with a point to spend or for the talent question,
+  -- every one that can take a point with the game's own description. A chat that cannot
+  -- read the saved file has nothing else to answer from.
+  local detailed = snap.question == T("Where should I put my next talent points for my class and the way I am playing?")
+  local function traits(label, trees)
+    local taken, options, free, listed = {}, {}, 0, {}
+    for _, tree in ipairs(trees or {}) do
+      for _, c in ipairs(tree.currencies or {}) do free = math.max(free, tonumber(c.available) or 0) end
+      for _, n in ipairs(tree.nodes or {}) do
+        local rank, max = tonumber(n.rank) or 0, tonumber(n.max) or 0
+        if n.name then
+          local short = tostring(n.name) .. " " .. rank .. "/" .. max
+          if rank > 0 then taken[#taken + 1] = short end
+          if n.canBuy or (n.open and rank < max) then
+            -- Perks the game has not released yet all share one placeholder text: say it once.
+            local option = short .. (n.desc and (": " .. n.desc) or "")
+            if not listed[option] then
+              listed[option] = true
+              options[#options + 1] = option
+            end
+          end
+        end
+      end
+    end
+    if #taken == 0 and #options == 0 then return end
+    add(label .. " (" .. free .. " unspent): " .. (#taken > 0 and table.concat(taken, ", ") or "none"))
+    if (detailed or free > 0) and #options > 0 then
+      add(label .. " that can take a point: " .. table.concat(options, "; "))
+    end
+  end
+  traits("talents", snap.talents and snap.talents.trees)
+  for _, system in ipairs(snap.traitSystems or {}) do
+    -- Forever's Legacy trees (system 45) come without a name.
+    traits(system.systemID == 45 and "legacy perks" or tostring(system.name or "perks"), system.trees)
   end
   local bag = {}
   for _, it in pairs(snap.bags or {}) do bag[#bag + 1] = tostring(it.name) .. " x" .. tostring(it.count) end

@@ -386,6 +386,32 @@ test("the copy box summary is English data whatever the client language", () => 
   `);
 });
 
+test("the summary names the class and the talents, with options when a point is free or asked about", () => {
+  withAddon(ONE_ITEM, LOGIN + `
+    slash("where do I go next?")
+    local text = TrailScoutCopyFrame.box.text
+    assert(text:find("HUNTER", 1, true), "the class is missing from the summary")
+    assert(text:find("talents (0 unspent): Endurance Training 3/5", 1, true), "taken talents missing")
+    assert(not text:find("that can take a point", 1, true), "options belong to the talent question")
+
+    -- The talent question lists where a point could go, with the game's description.
+    slash("Where should I put my next talent points for my class and the way I am playing?")
+    text = TrailScoutCopyFrame.box.text
+    assert(text:find("talents that can take a point: Endurance Training 3/5: Increases the Health of your pet by 15%.", 1, true),
+      "talent options missing from the talent question")
+  `);
+  withAddon(ONE_ITEM + `STUB.talentPoints = 1 STUB.legacy = { points = 1, placeholders = true }`, LOGIN + `
+    slash("where do I go next?")
+    local text = TrailScoutCopyFrame.box.text
+    assert(text:find("talents (1 unspent)", 1, true) and text:find("talents that can take a point", 1, true),
+      "a free point must bring the options along")
+    assert(text:find("Legacy (1 unspent): Skilled Skinner 2/3", 1, true), "perk trees missing")
+    assert(text:find("Legacy that can take a point: Well Rested 0/5", 1, true), "perk options missing")
+    local _, placeholders = text:gsub("Unknown 0/1", "")
+    assert(placeholders == 1, "perks not released yet must be listed once, got " .. placeholders)
+  `);
+});
+
 // A three-stop route as tools/map_route.py --addon writes it into Route.lua: a waypoint,
 // a quest objective and a turn-in, all on the map the stub player stands on (1424).
 const ROUTE = `
